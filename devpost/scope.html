@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lore — Project Scope</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --text-muted: #78716c;
+    --accent: #7c3aed;
+    --accent-light: #ede9fe;
+    --accent-border: #c4b5fd;
+    --kernel-bg: #fef3c7;
+    --kernel-border: #fbbf24;
+    --now-bg: #dcfce7;
+    --now-border: #4ade80;
+    --later-bg: #e0f2fe;
+    --later-border: #38bdf8;
+    --cut-bg: #fef2f2;
+    --cut-border: #f87171;
+    --svg-node: #f5f3ff;
+    --svg-node-stroke: #8b5cf6;
+    --svg-arrow: #a78bfa;
+    --svg-text: #1c1917;
+    --svg-label: #6d28d9;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c0a09;
+      --surface: #1c1917;
+      --border: #44403c;
+      --text: #fafaf9;
+      --text-muted: #a8a29e;
+      --accent: #a78bfa;
+      --accent-light: #1e1635;
+      --accent-border: #6d28d9;
+      --kernel-bg: #292117;
+      --kernel-border: #b45309;
+      --now-bg: #0f2918;
+      --now-border: #16a34a;
+      --later-bg: #0c1929;
+      --later-border: #0284c7;
+      --cut-bg: #291212;
+      --cut-border: #dc2626;
+      --svg-node: #1e1635;
+      --svg-node-stroke: #7c3aed;
+      --svg-arrow: #7c3aed;
+      --svg-text: #fafaf9;
+      --svg-label: #c4b5fd;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c0a09;
+    --surface: #1c1917;
+    --border: #44403c;
+    --text: #fafaf9;
+    --text-muted: #a8a29e;
+    --accent: #a78bfa;
+    --accent-light: #1e1635;
+    --accent-border: #6d28d9;
+    --kernel-bg: #292117;
+    --kernel-border: #b45309;
+    --now-bg: #0f2918;
+    --now-border: #16a34a;
+    --later-bg: #0c1929;
+    --later-border: #0284c7;
+    --cut-bg: #291212;
+    --cut-border: #dc2626;
+    --svg-node: #1e1635;
+    --svg-node-stroke: #7c3aed;
+    --svg-arrow: #7c3aed;
+    --svg-text: #fafaf9;
+    --svg-label: #c4b5fd;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 16px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    padding: 2rem 0 1rem;
+  }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    margin-top: 0.5rem;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2em 0.7em;
+    border-radius: 999px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+    margin-bottom: 0.75rem;
+  }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+  }
+  section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  section p, section li {
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+
+  .kernel {
+    background: var(--kernel-bg);
+    border-color: var(--kernel-border);
+  }
+
+  .diagram-section {
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .diagram-section h2 {
+    margin-bottom: 1rem;
+  }
+  svg.flow {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .who blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 0.75rem;
+  }
+
+  details {
+    margin-top: 0.5rem;
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 0.5rem 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  details summary::before {
+    content: "▸";
+    transition: transform 0.15s;
+    display: inline-block;
+    font-size: 0.85rem;
+  }
+  details[open] summary::before {
+    transform: rotate(90deg);
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details .content {
+    padding: 0.5rem 0 0.5rem 1.2rem;
+  }
+  details .content ul {
+    list-style: none;
+    padding: 0;
+  }
+  details .content li {
+    padding: 0.35rem 0;
+    padding-left: 1.2rem;
+    position: relative;
+  }
+  details .content li::before {
+    position: absolute;
+    left: 0;
+    font-size: 0.85rem;
+  }
+
+  .boundary-card {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .boundary-card:last-child { margin-bottom: 0; }
+  .now-card { background: var(--now-bg); border: 1px solid var(--now-border); }
+  .later-card { background: var(--later-bg); border: 1px solid var(--later-border); }
+  .cut-card { background: var(--cut-bg); border: 1px solid var(--cut-border); }
+  .boundary-card h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+  .boundary-card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .boundary-card li {
+    font-size: 0.9rem;
+    padding: 0.25rem 0;
+    padding-left: 1.4rem;
+    position: relative;
+  }
+  .now-card li::before { content: "✓"; position: absolute; left: 0; color: var(--now-border); font-weight: 700; }
+  .later-card li::before { content: "→"; position: absolute; left: 0; color: var(--later-border); }
+  .cut-card li::before { content: "✕"; position: absolute; left: 0; color: var(--cut-border); font-weight: 700; }
+  .cut-reason { color: var(--text-muted); font-size: 0.85rem; }
+
+  .demo {
+    background: var(--accent-light);
+    border-color: var(--accent-border);
+  }
+  .demo ol {
+    padding-left: 1.5rem;
+  }
+  .demo li {
+    padding: 0.25rem 0;
+  }
+  code {
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    font-size: 0.88em;
+    background: var(--accent-light);
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    padding: 0.1em 0.35em;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 1.5rem 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Scope — Approved</span>
+  <h1>Lore</h1>
+  <p>A personal CLI + local web UI that records what changed in your code, why you changed it, and walks you through the parts you didn't understand.</p>
+</header>
+
+<section class="kernel">
+  <h2>🔑 The Unique Kernel</h2>
+  <p>The <strong>"I don't understand this yet"</strong> loop. Every code change starts as unreviewed. You come back, hit explain, get a plain-English walkthrough, and mark it learned when you actually get it. Lore isn't a changelog — it's a study list built from your real coding sessions.</p>
+</section>
+
+<section class="diagram-section">
+  <h2>The Core Loop</h2>
+  <svg class="flow" viewBox="0 0 660 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lore core loop diagram: lore start, code, lore stop, describe, AI summarizes, web UI, explain, mark learned">
+    <!-- Nodes -->
+    <rect x="20" y="30" width="130" height="50" rx="10" fill="var(--svg-node)" stroke="var(--svg-node-stroke)" stroke-width="2"/>
+    <text x="85" y="60" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" fill="var(--svg-text)">lore start</text>
+
+    <rect x="200" y="30" width="130" height="50" rx="10" fill="var(--svg-node)" stroke="var(--svg-node-stroke)" stroke-width="2"/>
+    <text x="265" y="55" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" fill="var(--svg-text)">code normally</text>
+    <text x="265" y="70" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="10" fill="var(--svg-label)">(agent, paste, type)</text>
+
+    <rect x="380" y="30" width="130" height="50" rx="10" fill="var(--svg-node)" stroke="var(--svg-node-stroke)" stroke-width="2"/>
+    <text x="445" y="60" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" fill="var(--svg-text)">lore stop</text>
+
+    <rect x="380" y="140" width="130" height="50" rx="10" fill="var(--svg-node)" stroke="var(--svg-node-stroke)" stroke-width="2"/>
+    <text x="445" y="163" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="13" font-weight="600" fill="var(--svg-text)">"what were you</text>
+    <text x="445" y="178" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="13" font-weight="600" fill="var(--svg-text)">trying to do?"</text>
+
+    <rect x="200" y="140" width="130" height="50" rx="10" fill="var(--svg-node)" stroke="var(--svg-node-stroke)" stroke-width="2"/>
+    <text x="265" y="160" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" fill="var(--svg-text)">AI summarizes</text>
+    <text x="265" y="175" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="10" fill="var(--svg-label)">diff → plain English</text>
+
+    <rect x="20" y="140" width="130" height="50" rx="10" fill="var(--svg-node)" stroke="var(--svg-node-stroke)" stroke-width="2"/>
+    <text x="85" y="160" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" fill="var(--svg-text)">lore ui</text>
+    <text x="85" y="175" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="10" fill="var(--svg-label)">sessions + changes</text>
+
+    <rect x="20" y="250" width="130" height="50" rx="10" fill="var(--svg-node)" stroke="var(--svg-node-stroke)" stroke-width="2"/>
+    <text x="85" y="275" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" fill="var(--svg-text)">explain</text>
+    <text x="85" y="290" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="10" fill="var(--svg-label)">step-by-step walkthrough</text>
+
+    <rect x="250" y="250" width="160" height="50" rx="10" fill="var(--kernel-bg)" stroke="var(--kernel-border)" stroke-width="2.5"/>
+    <text x="330" y="280" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" font-weight="700" fill="var(--svg-text)">mark learned ✓</text>
+
+    <!-- Arrows -->
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--svg-arrow)"/>
+      </marker>
+    </defs>
+
+    <!-- start → code -->
+    <line x1="150" y1="55" x2="198" y2="55" stroke="var(--svg-arrow)" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- code → stop -->
+    <line x1="330" y1="55" x2="378" y2="55" stroke="var(--svg-arrow)" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- stop → describe -->
+    <line x1="445" y1="80" x2="445" y2="138" stroke="var(--svg-arrow)" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- describe → AI -->
+    <line x1="380" y1="165" x2="332" y2="165" stroke="var(--svg-arrow)" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- AI → web ui -->
+    <line x1="200" y1="165" x2="152" y2="165" stroke="var(--svg-arrow)" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- web ui → explain -->
+    <line x1="85" y1="190" x2="85" y2="248" stroke="var(--svg-arrow)" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- explain → mark learned -->
+    <line x1="150" y1="275" x2="248" y2="275" stroke="var(--svg-arrow)" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- mark learned → loop back (dashed) -->
+    <path d="M 410 275 Q 560 275 560 55 Q 560 20 505 20 L 85 20 Q 30 20 30 30" stroke="var(--svg-arrow)" stroke-width="1.5" stroke-dasharray="6,4" fill="none" marker-end="url(#arrow)"/>
+    <text x="560" y="155" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="11" fill="var(--svg-label)" transform="rotate(-90 560 155)">next session</text>
+  </svg>
+</section>
+
+<section class="who">
+  <h2>Who It's For</h2>
+  <p>Students and self-taught developers who build with AI — pasting code from ChatGPT, working with Claude Code, moving fast. They ship things that work but don't always understand what they shipped.</p>
+  <blockquote>"I know nothing can replace doing everything by yourself from scratch… Use AI while still learning."</blockquote>
+</section>
+
+<section>
+  <h2>POC Boundary</h2>
+
+  <div class="boundary-card now-card">
+    <h3>Now — The Proof of Concept</h3>
+    <ul>
+      <li><code>lore start</code> — snapshot the project state (requires git)</li>
+      <li><code>lore stop</code> — prompt, diff, AI summary, save session</li>
+      <li><code>lore ui</code> — local web page with sessions, changes, explain, mark learned</li>
+      <li>Works on new and existing git repos</li>
+      <li>Non-git folder → Lore stops and tells you to initialize one</li>
+      <li>Everything flagged as "not understood" by default</li>
+    </ul>
+  </div>
+
+  <details>
+    <summary>Later</summary>
+    <div class="content">
+      <div class="boundary-card later-card">
+        <ul>
+          <li><code>lore add</code> — save a single file, line range, or pasted code with a note</li>
+          <li>"Why?" search in the web UI and <code>lore why</code> in the terminal</li>
+          <li>AI-highlighted concepts on top of the unreviewed list</li>
+          <li>Working without git</li>
+          <li>Accounts and cloud sync</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Explicitly Cut</summary>
+    <div class="content">
+      <div class="boundary-card cut-card">
+        <ul>
+          <li>Capturing terminal output <span class="cut-reason">— session diffing catches what changed; transcript isn't needed</span></li>
+          <li>Live tracking of every file save <span class="cut-reason">— start/stop gives a clear, intentional boundary</span></li>
+          <li>Sending the whole project to AI <span class="cut-reason">— only the session's changes, not the entire codebase</span></li>
+          <li>Linked entries, AI agent export, graph view <span class="cut-reason">— interesting but not needed for the core loop</span></li>
+          <li>Quizzes and flashcards <span class="cut-reason">— Lore is a study list with walkthroughs, not a testing tool</span></li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="demo">
+  <h2>The One-Minute Demo</h2>
+  <ol>
+    <li>Run <code>lore start</code></li>
+    <li>Ask Claude Code to add or fix something</li>
+    <li>Run <code>lore stop</code>, type what you were trying to do</li>
+    <li>Open the web page — see the session summary and list of changes</li>
+    <li>Open a change you don't understand, hit <strong>explain</strong></li>
+    <li>Read the step-by-step walkthrough</li>
+    <li>Mark it as <strong>understood</strong> ✓</li>
+  </ol>
+</section>
+
+<footer>Lore — Scope Draft · Devpost Learn</footer>
+
+</body>
+</html>
