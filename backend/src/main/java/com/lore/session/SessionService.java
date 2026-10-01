@@ -1,10 +1,15 @@
 package com.lore.session;
 
+import com.lore.change.Change;
+import com.lore.change.ChangeRepository;
+import com.lore.git.DiffParser;
 import com.lore.git.GitService;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,11 +17,18 @@ import java.util.UUID;
 public class SessionService {
 
     private final SessionRepository sessionRepository;
+    private final ChangeRepository changeRepository;
     private final GitService gitService;
+    private final DiffParser diffParser;
 
-    public SessionService(SessionRepository sessionRepository, GitService gitService) {
+    public SessionService(SessionRepository sessionRepository,
+                          ChangeRepository changeRepository,
+                          GitService gitService,
+                          DiffParser diffParser) {
         this.sessionRepository = sessionRepository;
+        this.changeRepository = changeRepository;
         this.gitService = gitService;
+        this.diffParser = diffParser;
     }
 
     public Session start(Path projectDir) throws IOException {
@@ -37,10 +49,62 @@ public class SessionService {
         return sessionRepository.save(session);
     }
 
+    public StopResult stop(Path projectDir, String reason) throws IOException {
+        Path repoRoot = gitService.repoRoot(projectDir);
+        String projectPath = repoRoot.toAbsolutePath().toString();
+
+        Session session = sessionRepository.findByProjectPathAndStatus(
+                projectPath, Session.SessionStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalStateException("No session is running."));
+
+        String stopRef = gitService.snapshot(repoRoot, session.getId() + "-stop");
+        session.setStopRef(stopRef);
+
+        String startCommit = gitService.resolveRef(repoRoot, session.getStartRef());
+        String stopCommit = gitService.resolveRef(repoRoot, stopRef);
+        String rawDiff = gitService.diff(repoRoot, startCommit, stopCommit);
+
+        List<DiffParser.ParsedChange> parsed = diffParser.parse(rawDiff);
+
+        if (parsed.isEmpty()) {
+            session.setStatus(Session.SessionStatus.DISCARDED);
+            session.setStoppedAt(Instant.now());
+            sessionRepository.save(session);
+            gitService.deleteRef(repoRoot, session.getStartRef());
+            gitService.deleteRef(repoRoot, stopRef);
+            return new StopResult(session, 0, 0, true);
+        }
+
+        session.setReason(reason);
+        session.setStatus(Session.SessionStatus.COMPLETE);
+        session.setStoppedAt(Instant.now());
+        sessionRepository.save(session);
+
+        int fileCount = (int) parsed.stream().map(DiffParser.ParsedChange::filePath).distinct().count();
+
+        for (DiffParser.ParsedChange pc : parsed) {
+            Change change = new Change(UUID.randomUUID(), session, pc.filePath(),
+                    Change.ChangeType.valueOf(pc.changeType()));
+            change.setOldFilePath(pc.oldFilePath());
+            change.setOldStart(pc.oldStart());
+            change.setOldCount(pc.oldCount());
+            change.setNewStart(pc.newStart());
+            change.setNewCount(pc.newCount());
+            change.setDiffContent(pc.diffContent());
+            change.setBinary(pc.binary());
+            change.setDisplayOrder(pc.displayOrder());
+            changeRepository.save(change);
+        }
+
+        return new StopResult(session, fileCount, parsed.size(), false);
+    }
+
     public Optional<Session> getActive(Path projectDir) throws IOException {
         Path repoRoot = gitService.repoRoot(projectDir);
         String projectPath = repoRoot.toAbsolutePath().toString();
         return sessionRepository.findByProjectPathAndStatus(
                 projectPath, Session.SessionStatus.ACTIVE);
     }
+
+    public record StopResult(Session session, int fileCount, int changeCount, boolean discarded) {}
 }

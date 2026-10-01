@@ -80,13 +80,10 @@ public class GitService {
     }
 
     /**
-     * Diffs two commits and returns the raw unified diff patch.
-     * Uses: git diff-tree -r -p -M <startCommit> <stopCommit>
-     *
-     * TODO: Implement in slice 2b (lore stop).
+     * Diffs two refs and returns the raw unified diff patch.
      */
     public String diff(Path repoDir, String startRef, String stopRef) throws IOException {
-        throw new UnsupportedOperationException("GitService.diff() not implemented yet");
+        return runGit(repoDir, Map.of(), "git", "diff-tree", "-r", "-p", "-M", startRef, stopRef);
     }
 
     /**
@@ -112,11 +109,9 @@ public class GitService {
 
     /**
      * Deletes a git ref (for discarding sessions).
-     *
-     * TODO: Implement in slice 2b (lore stop).
      */
     public void deleteRef(Path repoDir, String ref) throws IOException {
-        throw new UnsupportedOperationException("GitService.deleteRef() not implemented yet");
+        runGit(repoDir, Map.of(), "git", "update-ref", "-d", ref);
     }
 
     private String runGit(Path dir, Map<String, String> extraEnv, String... cmd) throws IOException {

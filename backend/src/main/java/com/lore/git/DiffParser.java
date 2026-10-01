@@ -1,11 +1,14 @@
 package com.lore.git;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Component
 public class DiffParser {
 
     public record ParsedChange(
