@@ -1,6 +1,6 @@
 ---
 doc: spec
-status: draft
+status: approved
 ---
 
 # Lore — Technical Spec
@@ -113,7 +113,7 @@ Wraps git plumbing commands via `ProcessBuilder`. Core operations:
 - **Cleanup:** Runs `git update-ref -d refs/lore/sessions/<id>` to remove refs for discarded sessions.
 - **Ignored files:** Respects `.gitignore`. Files git ignores (e.g. `.env`) are never captured or sent to AI.
 
-TODO: Learner writes this implementation. Hints point to:
+References:
 - [git write-tree](https://git-scm.com/docs/git-write-tree) — creates a tree object from the index
 - [git commit-tree](https://git-scm.com/docs/git-commit-tree) — creates a commit object from a tree
 - [git update-ref](https://git-scm.com/docs/git-update-ref) — stores/deletes refs
@@ -136,7 +136,7 @@ Parses the unified diff patch output from `git diff-tree -r -p -M` and splits it
 - Flags binary files (detected by `Binary files ... differ` in the diff output) — they're recorded as changes but their content is not stored and they're not sent to AI.
 - Assigns `display_order` for stable ordering in the UI.
 
-TODO: Learner writes this implementation. Hints cover:
+References:
 - The unified diff format: `@@` hunk header syntax, `a/` and `b/` path prefixes, `+`/`-`/space line prefixes
 - How `git diff-tree -M` outputs rename headers (`rename from`, `rename to`, `similarity index`)
 - How to detect binary files in diff output
@@ -164,7 +164,7 @@ Uses AWS SDK for Java v2 `BedrockRuntimeClient` to invoke Claude via the Convers
 
 The interface allows swapping to direct Anthropic API calls later.
 
-TODO: Learner writes the prompt engineering and AI call logic. Hints cover:
+References:
 - [Bedrock Converse API](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html) — how to invoke Claude via the SDK
 - [AWS SDK BedrockRuntimeClient](https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/bedrockruntime/BedrockRuntimeClient.html) — the Java client
 - Prompt design: how to instruct Claude to return structured JSON with line number references
@@ -366,7 +366,7 @@ lore/
 ## Tests
 
 ### Git Service Tests
-TODO: Learner writes these tests. Test the snapshot logic:
+Test the snapshot logic:
 - Snapshot creates a tree object that includes all non-ignored files.
 - Snapshot does not modify the working tree, staging area, or HEAD.
 - Snapshot creates a ref under `refs/lore/sessions/`.
@@ -377,7 +377,7 @@ TODO: Learner writes these tests. Test the snapshot logic:
 Hints: create a temporary git repo in a temp directory for each test. For the no-identity test, create the repo without running `git config user.name` or `git config user.email`. Run git plumbing commands to inspect the created tree. Use JUnit 5 + `@TempDir`.
 
 ### Diff Parser Tests
-TODO: Learner writes these tests. Test the parser against real unified diff output:
+Test the parser against real unified diff output:
 - Single file modified with one hunk → one Change.
 - Single file modified with multiple hunks → multiple Changes.
 - Added, deleted, and renamed files → correct `change_type` and paths.
@@ -414,8 +414,7 @@ Hints: capture real `git diff-tree` output from test repos as string fixtures. P
 - **H2 file mode with Flyway and `AUTO_SERVER=TRUE`** — Learner chose local file storage with migrations from day one for schema discipline. Auto server mode for concurrent CLI + web server access.
 - **AWS Bedrock (Claude)** — Learner wants to set up AWS themselves; interface abstraction allows switching to direct Anthropic API later.
 - **Git snapshot via temporary index + write-tree + commit-tree + update-ref** — Learner-designed approach: doesn't touch staging area, branch history, or hooks; captures untracked files; works with zero commits; stores under `refs/lore/sessions/<id>`.
-- **TODO-driven core logic** — Learner writes core implementations (git operations, diff parsing, AI calls, session orchestration) from method signatures + hints. Plumbing (Maven/Vite config, project skeleton, build packaging) is set up for them.
-- **Unit tests for DiffParser and snapshot logic** — Learner writes tests with hints on what to assert and how to set up test repos/fixtures.
+- **Agent-driven core logic with learn-mode review** — Agent writes all implementations (git operations, diff parsing, AI calls, session orchestration, tests). After each slice, agent walks the learner through the code, maps it to the spec, and asks 2–3 comprehension questions before the slice is approved. Previously: learner was going to write core logic from method signatures + hints; changed to agent-writes on 2026-09-30 to hit the Oct 10 deadline.
 - **Small slices on separate branches with PRs** — Practicing for a 24-hour hackathon workflow.
 - **Future-proofing without building** — Data flows through `/api`, schema changes through migrations, nothing assumes frontend and backend share a process. No auth, accounts, or cloud now.
 

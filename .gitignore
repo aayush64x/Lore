@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.lore/
+devpost/learner-profile.md
+
+# Build output
+backend/target/
+
+# IDE
+.idea/
+*.iml
