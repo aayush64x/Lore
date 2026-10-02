@@ -1,14 +1,19 @@
 package com.lore.session;
 
+import com.lore.ai.AiService;
+import com.lore.ai.dto.SummaryResponse;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.git.DiffParser;
 import com.lore.git.GitService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,19 +21,24 @@ import java.util.UUID;
 @Service
 public class SessionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SessionService.class);
+
     private final SessionRepository sessionRepository;
     private final ChangeRepository changeRepository;
     private final GitService gitService;
     private final DiffParser diffParser;
+    private final AiService aiService;
 
     public SessionService(SessionRepository sessionRepository,
                           ChangeRepository changeRepository,
                           GitService gitService,
-                          DiffParser diffParser) {
+                          DiffParser diffParser,
+                          AiService aiService) {
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
         this.gitService = gitService;
         this.diffParser = diffParser;
+        this.aiService = aiService;
     }
 
     public Session start(Path projectDir) throws IOException {
@@ -78,10 +88,10 @@ public class SessionService {
         session.setReason(reason);
         session.setStatus(Session.SessionStatus.COMPLETE);
         session.setStoppedAt(Instant.now());
-        sessionRepository.save(session);
 
         int fileCount = (int) parsed.stream().map(DiffParser.ParsedChange::filePath).distinct().count();
 
+        List<Change> savedChanges = new ArrayList<>();
         for (DiffParser.ParsedChange pc : parsed) {
             Change change = new Change(UUID.randomUUID(), session, pc.filePath(),
                     Change.ChangeType.valueOf(pc.changeType()));
@@ -93,8 +103,34 @@ public class SessionService {
             change.setDiffContent(pc.diffContent());
             change.setBinary(pc.binary());
             change.setDisplayOrder(pc.displayOrder());
-            changeRepository.save(change);
+            savedChanges.add(changeRepository.save(change));
         }
+
+        try {
+            List<AiService.ChangeInput> aiInputs = parsed.stream()
+                    .map(pc -> new AiService.ChangeInput(
+                            pc.filePath(), pc.changeType(), pc.diffContent(), pc.binary()))
+                    .toList();
+
+            SummaryResponse summary = aiService.summarize(aiInputs, reason);
+            session.setSummary(summary.sessionSummary());
+            session.setSummaryStatus(Session.SummaryStatus.COMPLETE);
+
+            for (SummaryResponse.ChangeDescription cd : summary.changeDescriptions()) {
+                savedChanges.stream()
+                        .filter(c -> c.getDisplayOrder() == cd.displayOrder())
+                        .findFirst()
+                        .ifPresent(c -> {
+                            c.setDescription(cd.description());
+                            changeRepository.save(c);
+                        });
+            }
+        } catch (Exception e) {
+            log.error("AI summarization failed", e);
+            session.setSummaryStatus(Session.SummaryStatus.FAILED);
+        }
+
+        sessionRepository.save(session);
 
         return new StopResult(session, fileCount, parsed.size(), false);
     }

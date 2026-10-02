@@ -30,15 +30,22 @@ public class StopCommand implements Runnable {
                 System.out.println("(No reason given — the summary will be less useful.)");
             }
 
+            System.out.println("Summarizing changes...");
             SessionService.StopResult result = sessionService.stop(cwd, reason.isEmpty() ? null : reason);
 
             if (result.discarded()) {
                 System.out.println("No changes since lore start. Nothing to save.");
             } else {
-                System.out.println("Session saved: " + (result.session().getReason() != null ? result.session().getReason() : "(no reason)")
+                String reasonText = result.session().getReason() != null
+                        ? result.session().getReason() : "(no reason)";
+                System.out.println("Session saved: " + reasonText
                         + ". " + result.fileCount() + " files changed, "
                         + result.changeCount() + " changes to review."
                         + " Run lore ui to study them.");
+
+                if (result.session().getSummaryStatus() == com.lore.session.Session.SummaryStatus.FAILED) {
+                    System.out.println("(Summary generation failed — you can retry from the web UI.)");
+                }
             }
         } catch (IllegalStateException e) {
             System.err.println(e.getMessage());
