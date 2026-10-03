@@ -14,29 +14,69 @@
 //
 // NAVIGATION: Clicking a row goes to /sessions/:id
 
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { fetchSessions } from "../api/client";
+import type { SessionResponse } from "../api/client";
+
 export default function SessionList() {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [sessions, setSessions] = useState<SessionResponse[] | null>(null);
+
+  const [searchParams] = useSearchParams();
+  const project = searchParams.get("project");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!project) return;
+
+    setLoading(true);
+    fetchSessions(project)
+      .then((data) => setSessions(data))
+      .finally(() => setLoading(false));
+  }, [project]);
+
   return (
-    <div className="session-list-page">
-      <h1 className="project-name">Lore</h1>
+    <div className="max-w-3xl mx-auto px-4 py-6">
+      <h1 className="text-2xl font-semibold mb-6">Lore</h1>
 
-      {/* Empty state — show when there are no sessions */}
-      <div className="empty-state">
-        <p>No sessions yet. Run <code>lore start</code> in your terminal to record your first one.</p>
-      </div>
+      {loading && (
+        <div className="text-gray-500 text-center py-12">Loading sessions...</div>
+      )}
 
-      {/* Session rows — show when sessions exist */}
-      <ul className="session-list">
-        {/* Map over sessions here. Each item should be a <li> like this: */}
-        <li className="session-row">
-          <div className="session-reason">Added login feature</div>
-          <div className="session-meta">
-            <span className="session-date">Oct 1, 2:30 PM</span>
-            <span className="session-files">3 files</span>
-            <span className="session-changes">7 changes</span>
-          </div>
-          <div className="session-progress">0 of 7 understood</div>
-        </li>
-      </ul>
+      {!loading && sessions && sessions.length === 0 && (
+        <div className="text-gray-500 text-center py-12">
+          <p>
+            No sessions yet. Run{" "}
+            <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">
+              lore start
+            </code>{" "}
+            in your terminal to record your first one.
+          </p>
+        </div>
+      )}
+
+      {!loading && sessions && sessions.length > 0 && (
+        <ul className="space-y-2">
+          {sessions.map((session) => (
+            <li
+              key={session.id}
+              onClick={() => navigate(`/sessions/${session.id}`)}
+              className="p-4 border border-gray-200 rounded-lg cursor-pointer bg-white hover:border-blue-500 transition-colors"
+            >
+              <div className="font-medium">{session.reason}</div>
+              <div className="text-sm text-gray-500 flex gap-4 mt-1">
+                <span>{new Date(session.startedAt).toLocaleString()}</span>
+                <span>{session.fileCount} files</span>
+                <span>{session.changeCount} changes</span>
+              </div>
+              <div className="text-sm text-gray-500 mt-1">
+                {session.understoodCount} of {session.changeCount} understood
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

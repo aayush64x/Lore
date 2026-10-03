@@ -1,22 +1,22 @@
-// Progress Bar Component — shows how many changes the user has understood.
-//
-// PURPOSE: Visual indicator of review progress for a session.
-//
-// PROPS TO ACCEPT:
-//   - understood: number (how many changes marked understood)
-//   - total: number (total changes in the session)
-//
-// RENDER: A bar that fills proportionally (understood / total).
-//   Show the text "X of Y understood" next to or inside the bar.
-//   When understood === total, the bar is full — session complete.
+interface ProgressBarProps {
+  understood: number;
+  total: number;
+}
 
-export default function ProgressBar() {
+export default function ProgressBar({ understood, total }: ProgressBarProps) {
+  const percent = total === 0 ? 0 : Math.round((understood / total) * 100);
+
   return (
-    <div className="progress-bar-container">
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: '30%' }}></div>
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-blue-600 rounded-full transition-all duration-300"
+          style={{ width: `${percent}%` }}
+        ></div>
       </div>
-      <span className="progress-text">3 of 10 understood</span>
+      <span className="text-xs text-gray-500 whitespace-nowrap">
+        {understood} of {total} understood
+      </span>
     </div>
   );
 }

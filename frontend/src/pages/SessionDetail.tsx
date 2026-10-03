@@ -1,63 +1,98 @@
-// Session Detail Page — shows one session's summary and all its changes.
-//
-// PURPOSE: The user clicked a session from the list. Now they see what changed
-// and can dig into individual diffs.
-//
-// DATA NEEDED: Call fetchSession(id) on mount.
-//   - "id" comes from the URL param: /sessions/:id
-//   - Use useParams() from react-router-dom to read it.
-//
-// STATES TO HANDLE:
-//   - Loading: show "Loading session..."
-//   - Not found: show an error if the fetch returns 404
-//   - Loaded: render the session detail
-//
-// NAVIGATION: Back link to the session list (/)
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { fetchSession } from "../api/client";
+import type { SessionDetailResponse, ChangeResponse } from "../api/client";
+import DiffView from "../components/DiffView";
+import ProgressBar from "../components/ProgressBar";
 
 export default function SessionDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [session, setSession] = useState<SessionDetailResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+
+    setLoading(true);
+    fetchSession(id)
+      .then((data) => setSession(data))
+      .catch(() => setError("Session not found."))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6 text-gray-500">Loading session...</div>
+    );
+  }
+
+  if (error || !session) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <button onClick={() => navigate("/")} className="text-blue-600 text-sm hover:underline mb-4">
+          ← Back to sessions
+        </button>
+        <p className="text-red-600">{error ?? "Session not found."}</p>
+      </div>
+    );
+  }
+
+  const changesByFile: Record<string, ChangeResponse[]> = {};
+  for (const change of session.changes) {
+    const key = change.filePath;
+    if (!changesByFile[key]) changesByFile[key] = [];
+    changesByFile[key].push(change);
+  }
+
+  const totalChanges = session.changes.length;
+  const understoodChanges = session.changes.filter((c) => c.understood).length;
+
   return (
-    <div className="session-detail-page">
-      {/* Back link */}
-      <a href="/" className="back-link">← Back to sessions</a>
+    <div className="max-w-3xl mx-auto px-4 py-6">
+      <button onClick={() => navigate(-1)} className="text-blue-600 text-sm hover:underline inline-block mb-4">
+        ← Back to sessions
+      </button>
 
-      {/* Session header */}
-      <div className="session-header">
-        <h1 className="session-reason">Added login feature</h1>
-        <div className="session-date">Oct 1, 2:30 PM</div>
+      <div className="mb-4">
+        <h1 className="text-xl font-semibold">{session.reason ?? "Untitled session"}</h1>
+        <div className="text-sm text-gray-500">{new Date(session.startedAt).toLocaleString()}</div>
       </div>
 
-      {/* AI summary */}
-      <div className="session-summary">
-        <p>Implemented user authentication with password validation and session management.</p>
+      <div className="mb-4">
+        <ProgressBar understood={understoodChanges} total={totalChanges} />
       </div>
 
-      {/* Changes list — grouped by file */}
-      <div className="changes-list">
-        <h2>Changes</h2>
-
-        {/* One block per file. Map over changes grouped by filePath. */}
-        <div className="file-group">
-          <h3 className="file-name">src/LoginService.java</h3>
-
-          {/* One entry per change (hunk) in this file */}
-          <div className="change-entry">
-            <div className="change-header">
-              <span className="change-lines">Lines 10–25</span>
-              <span className="change-description">Add password validation to the login method</span>
-              <span className="change-status">Not understood</span>
-            </div>
-
-            {/* DiffView goes here — render diffContent with colored lines */}
-            <pre className="diff-view">
-              {/* Each line of diffContent:
-                  - starts with "+" → green (added)
-                  - starts with "-" → red (removed)
-                  - starts with " " → default (context)
-                  - starts with "@@" → grey (hunk header)
-              */}
-            </pre>
-          </div>
+      {session.summary && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+          <p className="text-gray-700">{session.summary}</p>
         </div>
+      )}
+
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Changes</h2>
+
+        {Object.entries(changesByFile).map(([filePath, changes]) => (
+          <div key={filePath} className="mb-6">
+            <h3 className="font-mono text-sm font-medium mb-2">{filePath}</h3>
+
+            {changes.map((change) => (
+              <div key={change.id} className="bg-white border border-gray-200 rounded-lg mb-2 overflow-hidden">
+                <div className="px-4 py-3 flex gap-3 items-center text-sm">
+                  <span className="text-gray-500 font-mono text-xs">
+                    Lines {change.newStart}–{change.newStart + change.newCount}
+                  </span>
+                  <span className="flex-1">{change.description ?? change.changeType}</span>
+                  <span className={`text-xs ${change.understood ? "text-green-600" : "text-gray-400"}`}>
+                    {change.understood ? "Understood" : "Not understood"}
+                  </span>
+                </div>
+                <DiffView diffContent={change.diffContent} />
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );
