@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchSession } from "../api/client";
+import { fetchSession, toggleUnderstood } from "../api/client";
 import type { SessionDetailResponse, ChangeResponse } from "../api/client";
 import DiffView from "../components/DiffView";
 import ProgressBar from "../components/ProgressBar";
@@ -37,6 +37,30 @@ export default function SessionDetail() {
         <p className="text-red-600">{error ?? "Session not found."}</p>
       </div>
     );
+  }
+
+  function handleToggleUnderstood(changeId: string) {
+    if (!session) return;
+
+    setSession({
+      ...session,
+      changes: session.changes.map((c) =>
+        c.id === changeId ? { ...c, understood: !c.understood } : c
+      ),
+    });
+
+    toggleUnderstood(changeId).catch(() => {
+      setSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              changes: prev.changes.map((c) =>
+                c.id === changeId ? { ...c, understood: !c.understood } : c
+              ),
+            }
+          : prev
+      );
+    });
   }
 
   const changesByFile: Record<string, ChangeResponse[]> = {};
@@ -84,9 +108,19 @@ export default function SessionDetail() {
                     Lines {change.newStart}–{change.newStart + change.newCount}
                   </span>
                   <span className="flex-1">{change.description ?? change.changeType}</span>
-                  <span className={`text-xs ${change.understood ? "text-green-600" : "text-gray-400"}`}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleUnderstood(change.id);
+                    }}
+                    className={`text-xs px-2 py-1 rounded ${
+                      change.understood
+                        ? "bg-green-100 text-green-700 hover:bg-green-200"
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    } transition-colors`}
+                  >
                     {change.understood ? "Understood" : "Not understood"}
-                  </span>
+                  </button>
                 </div>
                 <DiffView diffContent={change.diffContent} />
               </div>

@@ -67,3 +67,15 @@ export async function fetchSession(id : string): Promise<SessionDetailResponse>{
   }
   return response.json();
 }
+
+// 3. toggleUnderstood(id: string): Promise<{ understood: boolean }>
+//    PUT /api/changes/{id}/understood
+
+export async function toggleUnderstood(id: string): Promise<{ understood: boolean }> {
+  const response = await fetch(`/api/changes/${id}/understood`, { method: "PUT" });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+  return response.json();
+}
