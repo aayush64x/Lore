@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { fetchSession, toggleUnderstood } from "../api/client";
 import type { SessionDetailResponse, ChangeResponse } from "../api/client";
 import DiffView from "../components/DiffView";
+import ExplainWalkthrough from "../components/ExplainWalkthrough";
 import ProgressBar from "../components/ProgressBar";
 
 export default function SessionDetail() {
@@ -123,6 +124,7 @@ export default function SessionDetail() {
                   </button>
                 </div>
                 <DiffView diffContent={change.diffContent} />
+                {!change.binary && <ExplainWalkthrough changeId={change.id} />}
               </div>
             ))}
           </div>

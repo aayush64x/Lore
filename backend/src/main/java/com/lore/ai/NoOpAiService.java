@@ -1,5 +1,6 @@
 package com.lore.ai;
 
+import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.SummaryResponse;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -17,5 +18,13 @@ public class NoOpAiService implements AiService {
                         c.filePath(), 0, c.changeType() + " " + c.filePath()))
                 .toList();
         return new SummaryResponse("AI summary not available — configure AWS credentials to enable.", descriptions);
+    }
+
+    @Override
+    public ExplanationResponse explain(String filePath, String diffContent) {
+        return new ExplanationResponse(
+                "AI explanation not available — configure AWS credentials to enable.",
+                List.of(),
+                List.of());
     }
 }

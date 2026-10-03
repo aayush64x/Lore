@@ -79,3 +79,33 @@ export async function toggleUnderstood(id: string): Promise<{ understood: boolea
   }
   return response.json();
 }
+
+// 4. explainChange(id: string): Promise<ExplanationData>
+//    POST /api/changes/{id}/explain
+
+export interface ExplanationStep {
+  text: string;
+  diff_line_start: number;
+  diff_line_end: number;
+}
+
+export interface ExplanationConcept {
+  name: string;
+  meaning: string;
+}
+
+export interface ExplanationData {
+  overview: string;
+  steps: ExplanationStep[];
+  concepts: ExplanationConcept[];
+  status: string;
+}
+
+export async function explainChange(id: string): Promise<ExplanationData> {
+  const response = await fetch(`/api/changes/${id}/explain`, { method: "POST" });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+  return response.json();
+}

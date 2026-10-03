@@ -2,6 +2,7 @@ package com.lore.ai;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.SummaryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,6 +162,168 @@ public class BedrockAiService implements AiService {
         }
 
         throw new RuntimeException("No tool use block in AI response");
+    }
+
+    @Override
+    public ExplanationResponse explain(String filePath, String diffContent) {
+        String numberedDiff = numberDiffLines(diffContent);
+        String systemPrompt = buildExplainSystemPrompt();
+        String userMessage = "File: " + filePath + "\n\n" + numberedDiff;
+
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("save_explanation")
+                .description("Save the step-by-step explanation of a code change")
+                .inputSchema(ToolInputSchema.builder()
+                        .json(explanationToolSchema())
+                        .build())
+                .build();
+
+        ConverseResponse response = client.converse(ConverseRequest.builder()
+                .modelId(modelId)
+                .system(SystemContentBlock.builder().text(systemPrompt).build())
+                .messages(Message.builder()
+                        .role(ConversationRole.USER)
+                        .content(ContentBlock.fromText(userMessage))
+                        .build())
+                .toolConfig(ToolConfiguration.builder()
+                        .tools(Tool.builder().toolSpec(toolSpec).build())
+                        .toolChoice(ToolChoice.fromAny(AnyToolChoice.builder().build()))
+                        .build())
+                .build());
+
+        return parseExplainResponse(response);
+    }
+
+    private String numberDiffLines(String diffContent) {
+        String[] lines = diffContent.split("\n", -1);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            sb.append(i + 1).append(": ").append(lines[i]).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String buildExplainSystemPrompt() {
+        return """
+                You are a code tutor for a learning tool called Lore. \
+                A developer made a code change and wants to understand it step by step.
+
+                You will receive a diff with each line numbered sequentially (1, 2, 3...). \
+                Call the save_explanation tool with:
+                1. An "overview" — one sentence saying what this change does overall.
+                2. A "steps" array — walk through the change in logical order. Each step has:
+                   - "text": a plain-English explanation of what these lines do and why
+                   - "diff_line_start": the first numbered line this step covers
+                   - "diff_line_end": the last numbered line this step covers
+                3. A "concepts" array — programming concepts used in this change. Each has:
+                   - "name": the concept name (e.g. "dependency injection", "array destructuring")
+                   - "meaning": a one-sentence explanation a beginner would understand
+
+                Write for someone who can read code but doesn't fully understand it yet. \
+                Be concrete — say what the code does, not just that it exists.""";
+    }
+
+    @SuppressWarnings("unchecked")
+    private ExplanationResponse parseExplainResponse(ConverseResponse response) {
+        for (ContentBlock block : response.output().message().content()) {
+            if (block.type() == ContentBlock.Type.TOOL_USE) {
+                try {
+                    Map<String, Object> input = mapper.readValue(
+                            block.toolUse().input().toString(),
+                            new TypeReference<>() {});
+
+                    String overview = (String) input.get("overview");
+
+                    List<Map<String, Object>> rawSteps =
+                            (List<Map<String, Object>>) input.get("steps");
+                    List<ExplanationResponse.Step> steps = new ArrayList<>();
+                    if (rawSteps != null) {
+                        for (Map<String, Object> rs : rawSteps) {
+                            steps.add(new ExplanationResponse.Step(
+                                    (String) rs.get("text"),
+                                    rs.get("diff_line_start") instanceof Number n ? n.intValue() : 0,
+                                    rs.get("diff_line_end") instanceof Number n ? n.intValue() : 0));
+                        }
+                    }
+
+                    List<Map<String, Object>> rawConcepts =
+                            (List<Map<String, Object>>) input.get("concepts");
+                    List<ExplanationResponse.Concept> concepts = new ArrayList<>();
+                    if (rawConcepts != null) {
+                        for (Map<String, Object> rc : rawConcepts) {
+                            concepts.add(new ExplanationResponse.Concept(
+                                    (String) rc.get("name"),
+                                    (String) rc.get("meaning")));
+                        }
+                    }
+
+                    return new ExplanationResponse(overview, steps, concepts);
+                } catch (Exception e) {
+                    log.error("Failed to parse AI explanation response", e);
+                    throw new RuntimeException("Failed to parse AI explanation response", e);
+                }
+            }
+        }
+        throw new RuntimeException("No tool use block in AI response");
+    }
+
+    private software.amazon.awssdk.core.document.Document explanationToolSchema() {
+        return software.amazon.awssdk.core.document.Document.mapBuilder()
+                .putString("type", "object")
+                .putDocument("properties", software.amazon.awssdk.core.document.Document.mapBuilder()
+                        .putDocument("overview", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                .putString("type", "string")
+                                .putString("description", "One sentence saying what this change does overall")
+                                .build())
+                        .putDocument("steps", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                .putString("type", "array")
+                                .putDocument("items", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                        .putString("type", "object")
+                                        .putDocument("properties", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                                .putDocument("text", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                                        .putString("type", "string")
+                                                        .putString("description", "Plain-English explanation of what these lines do")
+                                                        .build())
+                                                .putDocument("diff_line_start", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                                        .putString("type", "integer")
+                                                        .putString("description", "First numbered diff line this step covers")
+                                                        .build())
+                                                .putDocument("diff_line_end", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                                        .putString("type", "integer")
+                                                        .putString("description", "Last numbered diff line this step covers")
+                                                        .build())
+                                                .build())
+                                        .putList("required", List.of(
+                                                software.amazon.awssdk.core.document.Document.fromString("text"),
+                                                software.amazon.awssdk.core.document.Document.fromString("diff_line_start"),
+                                                software.amazon.awssdk.core.document.Document.fromString("diff_line_end")))
+                                        .build())
+                                .build())
+                        .putDocument("concepts", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                .putString("type", "array")
+                                .putDocument("items", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                        .putString("type", "object")
+                                        .putDocument("properties", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                                .putDocument("name", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                                        .putString("type", "string")
+                                                        .putString("description", "The concept name")
+                                                        .build())
+                                                .putDocument("meaning", software.amazon.awssdk.core.document.Document.mapBuilder()
+                                                        .putString("type", "string")
+                                                        .putString("description", "One-sentence explanation a beginner would understand")
+                                                        .build())
+                                                .build())
+                                        .putList("required", List.of(
+                                                software.amazon.awssdk.core.document.Document.fromString("name"),
+                                                software.amazon.awssdk.core.document.Document.fromString("meaning")))
+                                        .build())
+                                .build())
+                        .build())
+                .putList("required", List.of(
+                        software.amazon.awssdk.core.document.Document.fromString("overview"),
+                        software.amazon.awssdk.core.document.Document.fromString("steps"),
+                        software.amazon.awssdk.core.document.Document.fromString("concepts")))
+                .build();
     }
 
     private software.amazon.awssdk.core.document.Document summaryToolSchema() {
