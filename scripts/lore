@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+JAR="$(find "$SCRIPT_DIR/../backend/target" -maxdepth 1 -name 'lore-*.jar' -not -name '*-plain.jar' 2>/dev/null | head -1)"
+
+if [ -z "$JAR" ]; then
+  echo "Error: JAR not found. Run 'mvn package' in the backend directory first." >&2
+  exit 1
+fi
+
+if ! command -v java &>/dev/null; then
+  echo "Error: Java not found. Java 21+ is required." >&2
+  exit 1
+fi
+
+exec java -jar "$JAR" "$@"

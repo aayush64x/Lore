@@ -6,6 +6,8 @@ devpost/learner-profile.md
 
 # Build output
 backend/target/
+backend/src/main/resources/static/
+frontend/node/
 
 # IDE
 .idea/
