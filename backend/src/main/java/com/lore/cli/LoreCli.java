@@ -17,7 +17,7 @@ import java.nio.file.Path;
         mixinStandardHelpOptions = true,
         version = "0.1.0",
         description = "Learn from your AI-assisted coding sessions.",
-        subcommands = { StartCommand.class, StopCommand.class }
+        subcommands = { StartCommand.class, StopCommand.class, UICommand.class }
 )
 public class LoreCli implements Runnable, CommandLineRunner, ExitCodeGenerator {
 
