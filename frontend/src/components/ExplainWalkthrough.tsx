@@ -4,12 +4,43 @@ import type { ExplanationData } from "../api/client";
 
 interface ExplainWalkthroughProps {
   changeId: string;
+  onHighlight?: (start: number, end: number) => void;
+  onClearHighlight?: () => void;
 }
 
-export default function ExplainWalkthrough({ changeId }: ExplainWalkthroughProps) {
+export default function ExplainWalkthrough({ changeId, onHighlight, onClearHighlight }: ExplainWalkthroughProps) {
   const [explanation, setExplanation] = useState<ExplanationData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // TODO: Add state to track which step is currently active (hovered/focused).
+  //
+  // WHAT: When the user hovers over a step, call onHighlight with that step's
+  //   diff_line_start and diff_line_end so DiffView highlights those lines.
+  //   When they move away, call onClearHighlight to remove the highlight.
+  //
+  // INPUTS:
+  //   - onHighlight(start, end): callback from the parent — tells DiffView
+  //     which lines to highlight
+  //   - onClearHighlight(): callback from the parent — clears the highlight
+  //   - Each step has: step.diff_line_start, step.diff_line_end
+  //
+  // STEPS:
+  //   1. Add a state variable for the active step index (null when none).
+  //   2. On the step's <div>, add onMouseEnter that sets the active step
+  //      and calls onHighlight(step.diff_line_start, step.diff_line_end).
+  //   3. On the step's <div>, add onMouseLeave that clears the active step
+  //      and calls onClearHighlight().
+  //   4. Give the active step a visual cue (e.g. a left border or background)
+  //      so the user knows which step they're reading.
+  //   5. Guard: only call onHighlight/onClearHighlight if they exist
+  //      (they're optional props).
+  //
+  // READ: React docs > "Responding to Events" (event handlers on elements)
+  //
+  // HOW TO CHECK: In the browser, click "Explain this", hover each step.
+  //   The step should visually highlight, and the matching diff lines above
+  //   should get the blue outline. Moving the mouse away clears both.
 
   function handleExplain() {
     setLoading(true);

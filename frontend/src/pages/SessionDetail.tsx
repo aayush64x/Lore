@@ -12,6 +12,7 @@ export default function SessionDetail() {
   const [session, setSession] = useState<SessionDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [highlightRange, setHighlightRange] = useState<{ changeId: string; start: number; end: number } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -123,8 +124,18 @@ export default function SessionDetail() {
                     {change.understood ? "Understood" : "Not understood"}
                   </button>
                 </div>
-                <DiffView diffContent={change.diffContent} />
-                {!change.binary && <ExplainWalkthrough changeId={change.id} />}
+                <DiffView
+                  diffContent={change.diffContent}
+                  highlightStart={highlightRange?.changeId === change.id ? highlightRange.start : undefined}
+                  highlightEnd={highlightRange?.changeId === change.id ? highlightRange.end : undefined}
+                />
+                {!change.binary && (
+                  <ExplainWalkthrough
+                    changeId={change.id}
+                    onHighlight={(start, end) => setHighlightRange({ changeId: change.id, start, end })}
+                    onClearHighlight={() => setHighlightRange(null)}
+                  />
+                )}
               </div>
             ))}
           </div>
