@@ -415,7 +415,7 @@ Hints: capture real `git diff-tree` output from test repos as string fixtures. P
 - **AWS Bedrock (Claude)** — Learner wants to set up AWS themselves; interface abstraction allows switching to direct Anthropic API later.
 - **Git snapshot via temporary index + write-tree + commit-tree + update-ref** — Learner-designed approach: doesn't touch staging area, branch history, or hooks; captures untracked files; works with zero commits; stores under `refs/lore/sessions/<id>`.
 - **Agent-driven core logic with learn-mode review** — Agent writes all implementations (git operations, diff parsing, AI calls, session orchestration, tests). After each slice, agent walks the learner through the code, maps it to the spec, and asks 2–3 comprehension questions before the slice is approved. Previously: learner was going to write core logic from method signatures + hints; changed to agent-writes on 2026-09-30 to hit the Oct 10 deadline.
-- **Small slices on separate branches with PRs** — Practicing for a 24-hour hackathon workflow.
+- **Small slices, one commit per slice** — Until Oct 26: commit per slice, merge to main directly, no PRs. (Previously: separate branches with PRs, practicing for a 24-hour hackathon workflow.)
 - **Future-proofing without building** — Data flows through `/api`, schema changes through migrations, nothing assumes frontend and backend share a process. No auth, accounts, or cloud now.
 
 ### Derived Implementation Details
