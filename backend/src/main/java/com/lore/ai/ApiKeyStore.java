@@ -20,7 +20,8 @@ import java.util.function.UnaryOperator;
 
 /**
  * Finds the Anthropic API key: the ANTHROPIC_API_KEY environment variable first,
- * then anthropic.api.key in {lore.home}/config.properties. Saving writes that file
+ * then anthropic.api.key in {lore.home}/config.properties. The same file may also
+ * hold anthropic.model=... to override the default Claude model. Saving writes that file
  * so only the owner can read it. Nothing here ever logs or prints the key.
  */
 @Component
@@ -28,6 +29,7 @@ public class ApiKeyStore {
 
     public static final String ENV_VAR = "ANTHROPIC_API_KEY";
     static final String PROPERTY = "anthropic.api.key";
+    static final String MODEL_PROPERTY = "anthropic.model";
 
     private static final Set<PosixFilePermission> OWNER_FILE = PosixFilePermissions.fromString("rw-------");
     private static final Set<PosixFilePermission> OWNER_DIR = PosixFilePermissions.fromString("rwx------");
@@ -59,6 +61,13 @@ public class ApiKeyStore {
                 .filter(k -> !k.isEmpty());
     }
 
+    /** The anthropic.model line from config.properties, if the user set one. */
+    public Optional<String> modelOverride() {
+        return Optional.ofNullable(load().getProperty(MODEL_PROPERTY))
+                .map(String::strip)
+                .filter(m -> !m.isEmpty());
+    }
+
     /** Saves the key to config.properties (owner read/write only), keeping any other settings. */
     public void save(String key) throws IOException {
         if (key == null || key.isBlank()) {
@@ -80,7 +89,8 @@ public class ApiKeyStore {
                 : Files.createTempFile(dir, "config", ".tmp");
         try {
             try (Writer w = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
-                props.store(w, "Lore settings. Keep this file private.");
+                props.store(w, "Lore settings. Keep this file private.\n"
+                        + "To change the Claude model, add a line like: anthropic.model=claude-opus-5-5");
             }
             Files.move(tmp, configFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
                     java.nio.file.StandardCopyOption.ATOMIC_MOVE);

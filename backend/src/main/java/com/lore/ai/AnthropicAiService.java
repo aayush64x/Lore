@@ -35,21 +35,22 @@ public class AnthropicAiService implements AiService {
     private static final long MAX_TOKENS = 16_000L;
 
     private final ApiKeyStore keyStore;
-    private final String model;
+    /** Default from lore.anthropic.model; anthropic.model in config.properties overrides it. */
+    private final String defaultModel;
     private final String baseUrl;
 
     private AnthropicClient client;
     private String clientKey;
 
     @Autowired
-    public AnthropicAiService(ApiKeyStore keyStore, @Value("${lore.anthropic.model}") String model) {
-        this(keyStore, model, API_BASE_URL);
+    public AnthropicAiService(ApiKeyStore keyStore, @Value("${lore.anthropic.model}") String defaultModel) {
+        this(keyStore, defaultModel, API_BASE_URL);
     }
 
     /** Tests only: points the client at a local stub server instead of api.anthropic.com. */
-    AnthropicAiService(ApiKeyStore keyStore, String model, String baseUrl) {
+    AnthropicAiService(ApiKeyStore keyStore, String defaultModel, String baseUrl) {
         this.keyStore = keyStore;
-        this.model = model;
+        this.defaultModel = defaultModel;
         this.baseUrl = baseUrl;
     }
 
@@ -124,7 +125,7 @@ public class AnthropicAiService implements AiService {
 
     private <T> T call(Class<T> outputType, String system, String userMessage) {
         StructuredMessageCreateParams<T> params = MessageCreateParams.builder()
-                .model(model)
+                .model(keyStore.modelOverride().orElse(defaultModel))
                 .maxTokens(MAX_TOKENS)
                 .system(system)
                 .outputConfig(outputType)
@@ -185,6 +186,6 @@ public class AnthropicAiService implements AiService {
 
     @Override
     public String toString() {
-        return "AnthropicAiService[model=" + model + "]";
+        return "AnthropicAiService[defaultModel=" + defaultModel + "]";
     }
 }

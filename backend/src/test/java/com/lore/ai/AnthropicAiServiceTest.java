@@ -53,13 +53,13 @@ class AnthropicAiServiceTest {
 
     private AnthropicAiService service(Path home, String envKey) {
         ApiKeyStore store = new ApiKeyStore(home, name -> ApiKeyStore.ENV_VAR.equals(name) ? envKey : null);
-        return new AnthropicAiService(store, "claude-opus-5-5",
+        return new AnthropicAiService(store, "claude-sonnet-5-5",
                 "http://127.0.0.1:" + server.getAddress().getPort());
     }
 
     private static String message(String text) throws Exception {
         return mapper.writeValueAsString(Map.of(
-                "id", "msg_test", "type", "message", "role", "assistant", "model", "claude-opus-5-5",
+                "id", "msg_test", "type", "message", "role", "assistant", "model", "claude-sonnet-5-5",
                 "content", List.of(Map.of("type", "text", "text", text)),
                 "stop_reason", "end_turn",
                 "usage", Map.of("input_tokens", 10, "output_tokens", 10)));
@@ -82,7 +82,7 @@ class AnthropicAiServiceTest {
 
         JsonNode body = seenBody.get();
         assertEquals(FAKE_KEY, seenKey.get());
-        assertEquals("claude-opus-5-5", body.get("model").asText());
+        assertEquals("claude-sonnet-5-5", body.get("model").asText());
         assertEquals("json_schema", body.at("/output_config/format/type").asText());
         assertTrue(body.at("/output_config/format/schema/properties").has("change_descriptions"), body.toString());
     }
@@ -95,6 +95,16 @@ class AnthropicAiServiceTest {
         service(home, null).summarize(List.of(), null);
 
         assertEquals(FAKE_KEY, seenKey.get());
+    }
+
+    @Test
+    void model_can_be_changed_in_config_file(@TempDir Path home) throws Exception {
+        Files.writeString(home.resolve("config.properties"), "anthropic.model=claude-opus-5-5\n");
+        responseBody = message("{\"session_summary\": \"ok\", \"change_descriptions\": []}");
+
+        service(home, FAKE_KEY).summarize(List.of(), null);
+
+        assertEquals("claude-opus-5-5", seenBody.get().get("model").asText());
     }
 
     @Test
