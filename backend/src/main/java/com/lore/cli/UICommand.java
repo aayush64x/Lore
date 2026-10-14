@@ -1,65 +1,58 @@
 package com.lore.cli;
 
-// TODO: Build the "lore ui" command that starts the web server and opens the browser.
-//
-// WHAT: When the user runs "lore ui", Spring Boot is already running in SERVLET
-//   mode (LoreApplication.main handles that). This command just needs to print
-//   the URL, try to open the browser, and let the server keep running.
-//
-// INPUT: None.
-//
-// OUTPUT: Prints the URL to the console. Opens the browser if possible.
-//   The terminal blocks (the web server stays alive) until the user hits Ctrl+C.
-//
-// STEPS:
-//   1. Print "Lore is running at http://127.0.0.1:8080" (or similar).
-//   2. Try to open the URL in the default browser using java.awt.Desktop.
-//      If Desktop isn't supported, just print a fallback message.
-//   3. That's it — Spring's web server is already running, so this command
-//      returns and the process stays alive serving requests.
-//
-// ANNOTATIONS NEEDED:
-//   - @Component (Spring finds it)
-//   - @Command(name = "ui", description = "...") (Picocli registers it)
-//   - implements Runnable (Picocli calls run())
-//
-// ALSO: Register this command as a subcommand in LoreCli.java —
-//   add UICommand.class to the subcommands array on line 20.
-//
-// READ: Picocli User Guide > Subcommands
-//   Also: java.awt.Desktop javadoc — browse(URI) method
-//
-// HOW TO CHECK: Run "mvn spring-boot:run -Dspring-boot.run.arguments=ui"
-//   from the backend directory. It should print the URL, open the browser,
-//   and keep running until you hit Ctrl+C.
-//
-// LOOK AT: StartCommand.java for the annotation pattern.
+// "lore ui" — Spring's web server is already running (LoreApplication.main
+// switches to SERVLET mode for this command). This prints the URL and opens
+// the browser. The URL carries ?project=<repo root> so the session list knows
+// which project to show; it must match how SessionService stores projectPath.
 
+import com.lore.git.GitService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import picocli.CommandLine.Command;
 
 import java.awt.*;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 @Component
 @Command(name="ui", description = "See your session")
 public class UICommand implements Runnable{
 
+    private final GitService gitService;
+    private final int port;
+
+    public UICommand(GitService gitService, @Value("${server.port:8080}") int port) {
+        this.gitService = gitService;
+        this.port = port;
+    }
+
     @Override
     public void run() {
+        String url = "http://127.0.0.1:" + port + "/";
+        try {
+            Path cwd = Path.of(System.getProperty("user.dir"));
+            String projectPath = gitService.repoRoot(cwd).toAbsolutePath().toString();
+            url += "?project=" + URLEncoder.encode(projectPath, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            System.out.println("Not inside a git repository, so no project is selected.");
+            System.out.println("Run lore ui from inside your project folder to see its sessions.");
+        }
+
         try{
-            System.out.println("Lore is running at http://127.0.0.1:8080");
+            System.out.println("Lore is running at " + url);
             if (Desktop.isDesktopSupported()
                     && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI("http://127.0.0.1:8080"));
+                Desktop.getDesktop().browse(new URI(url));
             }
             else {
-                Runtime.getRuntime().exec(new String[]{"open", "http://127.0.0.1:8080"});
-                System.out.println("Open http://127.0.0.1:8080 in your browser.");
+                Runtime.getRuntime().exec(new String[]{"open", url});
+                System.out.println("Open " + url + " in your browser.");
             }
         }
         catch (Exception e){
-            System.out.println(e);
+            System.out.println("Open " + url + " in your browser.");
         }
 
     }

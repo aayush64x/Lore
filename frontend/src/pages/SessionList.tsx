@@ -40,6 +40,18 @@ export default function SessionList() {
     <div className="max-w-3xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-semibold mb-6">Lore</h1>
 
+      {!project && (
+        <div className="text-gray-500 text-center py-12">
+          <p>
+            No project selected. Run{" "}
+            <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">
+              lore ui
+            </code>{" "}
+            from inside your project folder to see its sessions.
+          </p>
+        </div>
+      )}
+
       {loading && (
         <div className="text-gray-500 text-center py-12">Loading sessions...</div>
       )}
