@@ -22,6 +22,8 @@ logging:
   level:
     root: WARN
     com.lore: INFO
+    # H2 is newer than Flyway's tested list; the "upgrade recommended" warning is noise for users
+    org.flywaydb.core.internal.database.base.Database: ERROR
 
 lore:
   # Where Lore keeps its database and config.properties. Override with LORE_HOME.

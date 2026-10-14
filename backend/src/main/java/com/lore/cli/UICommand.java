@@ -9,6 +9,7 @@ import com.lore.git.GitService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import java.awt.*;
 import java.net.URI;
@@ -17,11 +18,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 @Component
-@Command(name="ui", description = "See your session")
+@Command(name = "ui", mixinStandardHelpOptions = true, description = "See your session")
 public class UICommand implements Runnable{
 
     private final GitService gitService;
     private final int port;
+
+    // Declared so picocli accepts and documents it; LoreApplication.main
+    // applies it to server.port, which is what this.port reads.
+    @Option(names = "--port", paramLabel = "<port>", defaultValue = "8080",
+            description = "Port for the web UI (default: ${DEFAULT-VALUE})")
+    @SuppressWarnings("unused")
+    private int portOption;
 
     public UICommand(GitService gitService, @Value("${server.port:8080}") int port) {
         this.gitService = gitService;

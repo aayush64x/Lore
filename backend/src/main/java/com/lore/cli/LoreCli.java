@@ -49,6 +49,7 @@ public class LoreCli implements Runnable, CommandLineRunner, ExitCodeGenerator {
             System.out.println("  lore start   Start a recording session");
             System.out.println("  lore stop    Stop the session and summarize changes");
             System.out.println("  lore ui      Open the web UI");
+            System.out.println("  lore key     Set or change your Anthropic API key");
         }
     }
 

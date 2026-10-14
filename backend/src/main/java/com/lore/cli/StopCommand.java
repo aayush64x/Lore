@@ -22,6 +22,11 @@ public class StopCommand implements Runnable {
         try {
             Path cwd = Path.of(System.getProperty("user.dir"));
 
+            if (sessionService.getActive(cwd).isEmpty()) {
+                System.err.println("No session is running. Run lore start first.");
+                return;
+            }
+
             System.out.print("What were you trying to do? ");
             Scanner scanner = new Scanner(System.in);
             String reason = scanner.nextLine().trim();
