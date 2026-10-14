@@ -170,8 +170,8 @@ public class AnthropicAiService implements AiService {
 
     private synchronized AnthropicClient client() {
         String key = keyStore.find().orElseThrow(() -> new AiUnavailableException(
-                "No Anthropic API key. Set " + ApiKeyStore.ENV_VAR + " or add anthropic.api.key to "
-                        + keyStore.configFile() + "."));
+                "No Anthropic API key. Run lore in a terminal to enter one, or set "
+                        + ApiKeyStore.ENV_VAR + "."));
         if (client == null || !key.equals(clientKey)) {
             if (client != null) client.close();
             client = AnthropicOkHttpClient.builder()
