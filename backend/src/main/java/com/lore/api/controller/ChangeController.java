@@ -3,6 +3,7 @@ package com.lore.api.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.AiService;
+import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.ExplanationResponse;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
@@ -62,11 +63,19 @@ public class ChangeController {
 
         try {
             ExplanationResponse result = aiService.explain(change.getFilePath(), change.getDiffContent());
+            if (result == null || result.overview() == null || result.overview().isBlank()) {
+                throw new AiUnavailableException("AI returned an empty explanation.");
+            }
 
             explanation.setOverview(result.overview());
             explanation.setSteps(mapper.writeValueAsString(result.steps()));
             explanation.setConcepts(mapper.writeValueAsString(result.concepts()));
             explanation.setStatus(Explanation.ExplanationStatus.COMPLETE);
+        } catch (AiUnavailableException e) {
+            log.warn("AI explanation not saved for change {}: {}", id, e.getMessage());
+            explanation.setStatus(Explanation.ExplanationStatus.FAILED);
+            explanationRepository.save(explanation);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
         } catch (Exception e) {
             log.error("AI explanation failed for change {}", id, e);
             explanation.setStatus(Explanation.ExplanationStatus.FAILED);

@@ -5,6 +5,7 @@ import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.SummaryResponse;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
+import com.lore.testutil.TestGit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +15,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,10 +61,9 @@ class SessionDescriptionsTest {
 
     @Test
     void each_change_gets_its_own_description(@TempDir Path repo) throws Exception {
-        git(repo, "init");
+        TestGit.git(repo, "init");
         sessionService.start(repo);
-        Files.writeString(repo.resolve(".gitignore"), "node_modules/\n");
-        Files.writeString(repo.resolve("app.js"), "console.log('hi');\n");
+        TestGit.writeTwoFiles(repo);
 
         SessionService.StopResult result = sessionService.stop(repo, "add app");
 
@@ -96,13 +94,5 @@ class SessionDescriptionsTest {
         Change c = new Change(UUID.randomUUID(), null, path, Change.ChangeType.ADDED);
         c.setDisplayOrder(order);
         return c;
-    }
-
-    private static void git(Path dir, String... args) throws IOException, InterruptedException {
-        List<String> cmd = new ArrayList<>(List.of("git"));
-        cmd.addAll(List.of(args));
-        Process p = new ProcessBuilder(cmd).directory(dir.toFile()).redirectErrorStream(true).start();
-        p.getInputStream().readAllBytes();
-        assertEquals(0, p.waitFor());
     }
 }

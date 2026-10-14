@@ -1,6 +1,7 @@
 package com.lore.session;
 
 import com.lore.ai.AiService;
+import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.SummaryResponse;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
@@ -115,13 +116,21 @@ public class SessionService {
                     .toList();
 
             SummaryResponse summary = aiService.summarize(aiInputs, reason);
-            session.setSummary(summary.sessionSummary());
+            if (summary == null || summary.sessionSummary() == null || summary.sessionSummary().isBlank()) {
+                throw new AiUnavailableException("AI returned an empty summary.");
+            }
+            session.setSummary(summary.sessionSummary().strip());
             session.setSummaryStatus(Session.SummaryStatus.COMPLETE);
 
             applyDescriptions(savedChanges, summary.changeDescriptions());
             changeRepository.saveAll(savedChanges);
+        } catch (AiUnavailableException e) {
+            log.warn("AI summary not saved: {}", e.getMessage());
+            session.setSummary(null);
+            session.setSummaryStatus(Session.SummaryStatus.FAILED);
         } catch (Exception e) {
             log.error("AI summarization failed", e);
+            session.setSummary(null);
             session.setSummaryStatus(Session.SummaryStatus.FAILED);
         }
 
