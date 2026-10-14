@@ -8,7 +8,7 @@ export default function DiffView({ diffContent }: DiffViewProps) {
   const lines = diffContent.split("\n");
 
   return (
-    <pre>
+    <pre className="overflow-x-auto text-xs leading-5 py-2">
       {lines.map((line, i) => {
         if (line.startsWith("+")) {
           return (

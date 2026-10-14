@@ -31,7 +31,7 @@ export default function ExplainWalkthrough({ changeId }: ExplainWalkthroughProps
   return (
     <div>
       {!explanation && !loading && !error && (
-        <button onClick={handleExplain}>Explain this</button>
+        <button onClick={handleExplain} className="text-blue-600 hover:underline">Explain this</button>
       )}
 
       {loading && <p>Generating explanation…</p>}
@@ -39,7 +39,7 @@ export default function ExplainWalkthrough({ changeId }: ExplainWalkthroughProps
       {error && (
         <div>
           <p>{error}</p>
-          <button onClick={handleExplain}>Retry</button>
+          <button onClick={handleExplain} className="text-blue-600 hover:underline">Retry</button>
         </div>
       )}
 
