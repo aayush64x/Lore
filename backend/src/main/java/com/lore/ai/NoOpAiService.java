@@ -8,11 +8,11 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Used when AI is turned off. Always fails, so sessions are saved with their summary
+ * Used when AI is turned off (lore.ai.provider=none). Always fails, so sessions are saved with their summary
  * marked FAILED (and retryable) instead of storing placeholder text as a real summary.
  */
 @Service
-@ConditionalOnProperty(name = "lore.ai.enabled", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = "lore.ai.provider", havingValue = "none")
 public class NoOpAiService implements AiService {
 
     static final String MESSAGE = "AI is not set up.";

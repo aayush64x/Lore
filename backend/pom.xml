@@ -21,6 +21,8 @@
     <properties>
         <java.version>21</java.version>
         <picocli.version>4.7.6</picocli.version>
+        <!-- anthropic-java is built against Jackson 2.19; Spring Boot 3.4 defaults to 2.18 -->
+        <jackson-bom.version>2.19.4</jackson-bom.version>
     </properties>
 
     <dependencies>
@@ -52,7 +54,14 @@
             <artifactId>flyway-core</artifactId>
         </dependency>
 
-        <!-- AWS Bedrock (used in later slices) -->
+        <!-- Anthropic API (default AI provider) -->
+        <dependency>
+            <groupId>com.anthropic</groupId>
+            <artifactId>anthropic-java</artifactId>
+            <version>2.72.0</version>
+        </dependency>
+
+        <!-- AWS Bedrock (optional AI provider, lore.ai.provider=bedrock) -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrockruntime</artifactId>

@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "lore.ai.enabled", havingValue = "true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "lore.ai.provider", havingValue = "bedrock")
 public class BedrockAiService implements AiService {
 
     private static final Logger log = LoggerFactory.getLogger(BedrockAiService.class);

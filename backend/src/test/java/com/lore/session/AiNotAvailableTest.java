@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "lore.ai.enabled=false")
+@SpringBootTest(properties = "lore.ai.provider=none")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AiNotAvailableTest {

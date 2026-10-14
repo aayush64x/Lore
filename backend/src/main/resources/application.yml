@@ -2,7 +2,7 @@ spring:
   main:
     banner-mode: off
   datasource:
-    url: jdbc:h2:file:~/.lore/lore;AUTO_SERVER=TRUE
+    url: jdbc:h2:file:${lore.home}/lore;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -24,6 +24,13 @@ logging:
     com.lore: INFO
 
 lore:
+  # Where Lore keeps its database and config.properties. Override with LORE_HOME.
+  home: ${user.home}/.lore
+  ai:
+    # anthropic (default), bedrock, or none
+    provider: anthropic
+  anthropic:
+    model: claude-opus-5-5
   aws:
     region: us-east-1
     model-id: anthropic.claude-3-5-sonnet-20241022-v2:0
