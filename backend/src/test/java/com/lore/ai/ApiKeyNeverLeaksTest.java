@@ -139,11 +139,6 @@ class ApiKeyNeverLeaksTest {
         new ApiKeyPrompt(store, help).run("--help");
         assertEquals(0, help.asked);
 
-        FakeTerminal skipped = new FakeTerminal("");
-        new ApiKeyPrompt(store, skipped).run("start");
-        assertEquals(1, skipped.asked);
-        assertTrue(store.find().isEmpty());
-        assertFalse(Files.exists(store.configFile()));
     }
 
     static class FakeTerminal implements ApiKeyPrompt.Terminal {

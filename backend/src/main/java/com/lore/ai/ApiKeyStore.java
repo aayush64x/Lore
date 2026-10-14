@@ -30,6 +30,8 @@ public class ApiKeyStore {
     public static final String ENV_VAR = "ANTHROPIC_API_KEY";
     static final String PROPERTY = "anthropic.api.key";
     static final String MODEL_PROPERTY = "anthropic.model";
+    /** Set to "skipped" when the user skipped the first-run key prompt, so it isn't shown again. */
+    static final String PROMPT_PROPERTY = "anthropic.api.key.prompt";
 
     private static final Set<PosixFilePermission> OWNER_FILE = PosixFilePermissions.fromString("rw-------");
     private static final Set<PosixFilePermission> OWNER_DIR = PosixFilePermissions.fromString("rwx------");
@@ -68,6 +70,23 @@ public class ApiKeyStore {
                 .filter(m -> !m.isEmpty());
     }
 
+    /** True if ANTHROPIC_API_KEY is set; it takes priority over the saved key. */
+    public boolean envKeyPresent() {
+        String fromEnv = env.apply(ENV_VAR);
+        return fromEnv != null && !fromEnv.isBlank();
+    }
+
+    public boolean promptSkipped() {
+        return "skipped".equals(load().getProperty(PROMPT_PROPERTY));
+    }
+
+    /** Remembers that the user skipped the first-run prompt. */
+    public void markPromptSkipped() throws IOException {
+        Properties props = load();
+        props.setProperty(PROMPT_PROPERTY, "skipped");
+        write(props);
+    }
+
     /** Saves the key to config.properties (owner read/write only), keeping any other settings. */
     public void save(String key) throws IOException {
         if (key == null || key.isBlank()) {
@@ -75,7 +94,11 @@ public class ApiKeyStore {
         }
         Properties props = load();
         props.setProperty(PROPERTY, key.strip());
+        props.remove(PROMPT_PROPERTY);
+        write(props);
+    }
 
+    private void write(Properties props) throws IOException {
         Path dir = configFile.getParent();
         Files.createDirectories(dir);
         boolean posix = FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
