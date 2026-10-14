@@ -42,7 +42,7 @@ public class SessionService {
     }
 
     public Session start(Path projectDir) throws IOException {
-        Path repoRoot = gitService.repoRoot(projectDir);
+        Path repoRoot = requireRepoRoot(projectDir);
         String projectPath = repoRoot.toAbsolutePath().toString();
 
         Optional<Session> active = sessionRepository.findByProjectPathAndStatus(
@@ -60,7 +60,7 @@ public class SessionService {
     }
 
     public StopResult stop(Path projectDir, String reason) throws IOException {
-        Path repoRoot = gitService.repoRoot(projectDir);
+        Path repoRoot = requireRepoRoot(projectDir);
         String projectPath = repoRoot.toAbsolutePath().toString();
 
         Session session = sessionRepository.findByProjectPathAndStatus(
@@ -136,10 +136,18 @@ public class SessionService {
     }
 
     public Optional<Session> getActive(Path projectDir) throws IOException {
-        Path repoRoot = gitService.repoRoot(projectDir);
+        Path repoRoot = requireRepoRoot(projectDir);
         String projectPath = repoRoot.toAbsolutePath().toString();
         return sessionRepository.findByProjectPathAndStatus(
                 projectPath, Session.SessionStatus.ACTIVE);
+    }
+
+    private Path requireRepoRoot(Path projectDir) throws IOException {
+        if (!gitService.isGitRepo(projectDir)) {
+            throw new IllegalStateException(
+                    "This folder isn't a git repository. Run git init first, then lore start.");
+        }
+        return gitService.repoRoot(projectDir);
     }
 
     public record StopResult(Session session, int fileCount, int changeCount, boolean discarded) {}
