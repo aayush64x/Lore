@@ -109,27 +109,8 @@ public class SessionService {
             savedChanges.add(changeRepository.save(change));
         }
 
-        try {
-            List<AiService.ChangeInput> aiInputs = savedChanges.stream()
-                    .map(c -> new AiService.ChangeInput(c.getDisplayOrder(), c.getFilePath(),
-                            c.getChangeType().name(), c.getDiffContent(), c.isBinary()))
-                    .toList();
-
-            SummaryResponse summary = aiService.summarize(aiInputs, reason);
-            if (summary == null || summary.sessionSummary() == null || summary.sessionSummary().isBlank()) {
-                throw new AiUnavailableException("AI returned an empty summary.");
-            }
-            session.setSummary(summary.sessionSummary().strip());
-            session.setSummaryStatus(Session.SummaryStatus.COMPLETE);
-
-            applyDescriptions(savedChanges, summary.changeDescriptions());
-            changeRepository.saveAll(savedChanges);
-        } catch (AiUnavailableException e) {
-            log.warn("AI summary not saved: {}", e.getMessage());
-            session.setSummary(null);
-            session.setSummaryStatus(Session.SummaryStatus.FAILED);
-        } catch (Exception e) {
-            log.error("AI summarization failed", e);
+        String failure = generateSummary(session, savedChanges);
+        if (failure != null) {
             session.setSummary(null);
             session.setSummaryStatus(Session.SummaryStatus.FAILED);
         }
@@ -144,6 +125,61 @@ public class SessionService {
         String projectPath = repoRoot.toAbsolutePath().toString();
         return sessionRepository.findByProjectPathAndStatus(
                 projectPath, Session.SessionStatus.ACTIVE);
+    }
+
+    /**
+     * Runs the AI summary again for a stopped session, using its saved changes.
+     * On failure a previously good summary is kept; otherwise the summary is marked FAILED.
+     *
+     * @throws java.util.NoSuchElementException if the session doesn't exist
+     * @throws IllegalStateException if the session is still running or was discarded
+     */
+    public RetryResult retrySummary(UUID sessionId) {
+        Session session = sessionRepository.findById(sessionId).orElseThrow();
+        if (session.getStatus() != Session.SessionStatus.COMPLETE) {
+            throw new IllegalStateException("Only stopped sessions can be summarized.");
+        }
+        List<Change> changes = changeRepository.findBySessionIdOrderByDisplayOrder(sessionId);
+
+        String failure = generateSummary(session, changes);
+        if (failure != null && session.getSummaryStatus() != Session.SummaryStatus.COMPLETE) {
+            session.setSummary(null);
+            session.setSummaryStatus(Session.SummaryStatus.FAILED);
+        }
+        sessionRepository.save(session);
+        return new RetryResult(session, failure);
+    }
+
+    /**
+     * Asks the AI for a summary and per-change descriptions. On success, saves them on the
+     * session and changes and returns null. On failure, changes nothing and returns a short
+     * reason that is safe to show the user (never contains the API key).
+     */
+    private String generateSummary(Session session, List<Change> changes) {
+        try {
+            List<AiService.ChangeInput> aiInputs = changes.stream()
+                    .map(c -> new AiService.ChangeInput(c.getDisplayOrder(), c.getFilePath(),
+                            c.getChangeType().name(), c.getDiffContent(), c.isBinary()))
+                    .toList();
+
+            SummaryResponse summary = aiService.summarize(aiInputs, session.getReason());
+            if (summary == null || summary.sessionSummary() == null || summary.sessionSummary().isBlank()) {
+                throw new AiUnavailableException("AI returned an empty summary.");
+            }
+            session.setSummary(summary.sessionSummary().strip());
+            session.setSummaryStatus(Session.SummaryStatus.COMPLETE);
+
+            changes.forEach(c -> c.setDescription(null));
+            applyDescriptions(changes, summary.changeDescriptions());
+            changeRepository.saveAll(changes);
+            return null;
+        } catch (AiUnavailableException e) {
+            log.warn("AI summary not saved: {}", e.getMessage());
+            return e.getMessage();
+        } catch (Exception e) {
+            log.error("AI summarization failed", e);
+            return "AI summary failed.";
+        }
     }
 
     /**
@@ -166,6 +202,9 @@ public class SessionService {
             target.setDescription(d.description().strip());
         }
     }
+
+    /** error is null on success, otherwise a short reason safe to show the user. */
+    public record RetryResult(Session session, String error) {}
 
     public record StopResult(Session session, int fileCount, int changeCount, boolean discarded) {}
 }
