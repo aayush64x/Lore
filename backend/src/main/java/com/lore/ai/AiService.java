@@ -11,5 +11,9 @@ public interface AiService {
 
     ExplanationResponse explain(String filePath, String diffContent);
 
-    record ChangeInput(String filePath, String changeType, String diffContent, boolean binary) {}
+    /**
+     * One change sent to the AI. displayOrder is the change's stable id within the
+     * session; the AI must echo it back so each description lands on the right change.
+     */
+    record ChangeInput(int displayOrder, String filePath, String changeType, String diffContent, boolean binary) {}
 }

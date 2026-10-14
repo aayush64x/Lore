@@ -24,9 +24,6 @@ public class BedrockAiService implements AiService {
     private static final Logger log = LoggerFactory.getLogger(BedrockAiService.class);
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private static final int MAX_DIFF_SIZE = 100_000;
-    private static final int MAX_SINGLE_FILE_SIZE = 30_000;
-
     private final BedrockRuntimeClient client;
     private final String modelId;
 
@@ -41,9 +38,8 @@ public class BedrockAiService implements AiService {
 
     @Override
     public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
-        String diffBlock = buildDiffBlock(changes);
-        String systemPrompt = buildSummarySystemPrompt();
-        String userMessage = buildSummaryUserMessage(changes, reason, diffBlock);
+        String systemPrompt = AiPrompts.summarySystemPrompt();
+        String userMessage = AiPrompts.summaryUserMessage(changes, reason);
 
         ToolSpecification toolSpec = ToolSpecification.builder()
                 .name("save_summary")
@@ -66,70 +62,11 @@ public class BedrockAiService implements AiService {
                         .build())
                 .build());
 
-        return parseToolUseResponse(response, changes);
-    }
-
-    private String buildSummarySystemPrompt() {
-        return """
-                You are a code change summarizer for a learning tool called Lore. \
-                Your job is to help developers understand what changed in their coding session.
-
-                When given a set of diffs from a coding session, you must call the save_summary tool with:
-                1. A "session_summary" - a plain-English summary of the whole session (2-4 sentences). \
-                Explain what was accomplished, not just list files. Write for someone who wants to understand \
-                what happened, not someone reviewing a PR.
-                2. A "change_descriptions" array with a one-line description for each change. \
-                Each description should say what the change does in plain English. \
-                Use the display_order from the input to match descriptions to changes.""";
-    }
-
-    private String buildSummaryUserMessage(List<ChangeInput> changes, String reason, String diffBlock) {
-        StringBuilder sb = new StringBuilder();
-        if (reason != null && !reason.isBlank()) {
-            sb.append("The developer said they were trying to: ").append(reason).append("\n\n");
-        }
-        sb.append("Here are the changes from this session:\n\n");
-
-        for (int i = 0; i < changes.size(); i++) {
-            ChangeInput c = changes.get(i);
-            sb.append("--- Change ").append(i).append(": ")
-                    .append(c.changeType()).append(" ").append(c.filePath());
-            if (c.binary()) {
-                sb.append(" [binary file]");
-            }
-            sb.append(" ---\n");
-        }
-
-        sb.append("\n").append(diffBlock);
-        return sb.toString();
-    }
-
-    private String buildDiffBlock(List<ChangeInput> changes) {
-        StringBuilder sb = new StringBuilder();
-        int totalSize = 0;
-
-        for (ChangeInput c : changes) {
-            if (c.binary() || c.diffContent() == null) continue;
-
-            if (c.diffContent().length() > MAX_SINGLE_FILE_SIZE) {
-                sb.append("--- ").append(c.filePath()).append(" [too large to summarize] ---\n");
-                continue;
-            }
-
-            if (totalSize + c.diffContent().length() > MAX_DIFF_SIZE) {
-                sb.append("--- [remaining changes omitted due to size] ---\n");
-                break;
-            }
-
-            sb.append(c.diffContent()).append("\n");
-            totalSize += c.diffContent().length();
-        }
-
-        return sb.toString();
+        return parseToolUseResponse(response);
     }
 
     @SuppressWarnings("unchecked")
-    private SummaryResponse parseToolUseResponse(ConverseResponse response, List<ChangeInput> changes) {
+    private SummaryResponse parseToolUseResponse(ConverseResponse response) {
         for (ContentBlock block : response.output().message().content()) {
             if (block.type() == ContentBlock.Type.TOOL_USE) {
                 try {
@@ -145,11 +82,11 @@ public class BedrockAiService implements AiService {
                     List<SummaryResponse.ChangeDescription> descriptions = new ArrayList<>();
                     if (rawDescriptions != null) {
                         for (Map<String, Object> rd : rawDescriptions) {
-                            int order = rd.get("display_order") instanceof Number n ? n.intValue() : 0;
-                            String filePath = (String) rd.getOrDefault("file_path",
-                                    order < changes.size() ? changes.get(order).filePath() : "unknown");
-                            String desc = (String) rd.getOrDefault("description", "No description available");
-                            descriptions.add(new SummaryResponse.ChangeDescription(filePath, order, desc));
+                            // Skip entries without a display_order rather than defaulting to 0,
+                            // which would attach them to whichever change happens to be first.
+                            if (!(rd.get("display_order") instanceof Number n)) continue;
+                            descriptions.add(new SummaryResponse.ChangeDescription(
+                                    (String) rd.get("file_path"), n.intValue(), (String) rd.get("description")));
                         }
                     }
 
@@ -166,9 +103,8 @@ public class BedrockAiService implements AiService {
 
     @Override
     public ExplanationResponse explain(String filePath, String diffContent) {
-        String numberedDiff = numberDiffLines(diffContent);
-        String systemPrompt = buildExplainSystemPrompt();
-        String userMessage = "File: " + filePath + "\n\n" + numberedDiff;
+        String systemPrompt = AiPrompts.explainSystemPrompt();
+        String userMessage = AiPrompts.explainUserMessage(filePath, diffContent);
 
         ToolSpecification toolSpec = ToolSpecification.builder()
                 .name("save_explanation")
@@ -192,35 +128,6 @@ public class BedrockAiService implements AiService {
                 .build());
 
         return parseExplainResponse(response);
-    }
-
-    private String numberDiffLines(String diffContent) {
-        String[] lines = diffContent.split("\n", -1);
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < lines.length; i++) {
-            sb.append(i + 1).append(": ").append(lines[i]).append("\n");
-        }
-        return sb.toString();
-    }
-
-    private String buildExplainSystemPrompt() {
-        return """
-                You are a code tutor for a learning tool called Lore. \
-                A developer made a code change and wants to understand it step by step.
-
-                You will receive a diff with each line numbered sequentially (1, 2, 3...). \
-                Call the save_explanation tool with:
-                1. An "overview" — one sentence saying what this change does overall.
-                2. A "steps" array — walk through the change in logical order. Each step has:
-                   - "text": a plain-English explanation of what these lines do and why
-                   - "diff_line_start": the first numbered line this step covers
-                   - "diff_line_end": the last numbered line this step covers
-                3. A "concepts" array — programming concepts used in this change. Each has:
-                   - "name": the concept name (e.g. "dependency injection", "array destructuring")
-                   - "meaning": a one-sentence explanation a beginner would understand
-
-                Write for someone who can read code but doesn't fully understand it yet. \
-                Be concrete — say what the code does, not just that it exists.""";
     }
 
     @SuppressWarnings("unchecked")

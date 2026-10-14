@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -107,24 +109,17 @@ public class SessionService {
         }
 
         try {
-            List<AiService.ChangeInput> aiInputs = parsed.stream()
-                    .map(pc -> new AiService.ChangeInput(
-                            pc.filePath(), pc.changeType(), pc.diffContent(), pc.binary()))
+            List<AiService.ChangeInput> aiInputs = savedChanges.stream()
+                    .map(c -> new AiService.ChangeInput(c.getDisplayOrder(), c.getFilePath(),
+                            c.getChangeType().name(), c.getDiffContent(), c.isBinary()))
                     .toList();
 
             SummaryResponse summary = aiService.summarize(aiInputs, reason);
             session.setSummary(summary.sessionSummary());
             session.setSummaryStatus(Session.SummaryStatus.COMPLETE);
 
-            for (SummaryResponse.ChangeDescription cd : summary.changeDescriptions()) {
-                savedChanges.stream()
-                        .filter(c -> c.getDisplayOrder() == cd.displayOrder())
-                        .findFirst()
-                        .ifPresent(c -> {
-                            c.setDescription(cd.description());
-                            changeRepository.save(c);
-                        });
-            }
+            applyDescriptions(savedChanges, summary.changeDescriptions());
+            changeRepository.saveAll(savedChanges);
         } catch (Exception e) {
             log.error("AI summarization failed", e);
             session.setSummaryStatus(Session.SummaryStatus.FAILED);
@@ -140,6 +135,27 @@ public class SessionService {
         String projectPath = repoRoot.toAbsolutePath().toString();
         return sessionRepository.findByProjectPathAndStatus(
                 projectPath, Session.SessionStatus.ACTIVE);
+    }
+
+    /**
+     * Puts each AI description on the change it was written for. A description is
+     * matched by display_order, and only kept if its file_path agrees with that change,
+     * so a confused or shuffled AI reply can't put one file's description on another.
+     * Changes with no trustworthy description keep a null description.
+     */
+    static void applyDescriptions(List<Change> changes, List<SummaryResponse.ChangeDescription> descriptions) {
+        if (descriptions == null) return;
+        Map<Integer, Change> byOrder = new HashMap<>();
+        for (Change c : changes) {
+            byOrder.put(c.getDisplayOrder(), c);
+        }
+        for (SummaryResponse.ChangeDescription d : descriptions) {
+            if (d == null || d.description() == null || d.description().isBlank()) continue;
+            Change target = byOrder.get(d.displayOrder());
+            if (target == null) continue;
+            if (d.filePath() != null && !d.filePath().equals(target.getFilePath())) continue;
+            target.setDescription(d.description().strip());
+        }
     }
 
     public record StopResult(Session session, int fileCount, int changeCount, boolean discarded) {}

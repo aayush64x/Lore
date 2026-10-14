@@ -15,7 +15,7 @@ public class NoOpAiService implements AiService {
     public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
         List<SummaryResponse.ChangeDescription> descriptions = changes.stream()
                 .map((ChangeInput c) -> new SummaryResponse.ChangeDescription(
-                        c.filePath(), 0, c.changeType() + " " + c.filePath()))
+                        c.filePath(), c.displayOrder(), c.changeType() + " " + c.filePath()))
                 .toList();
         return new SummaryResponse("AI summary not available — configure AWS credentials to enable.", descriptions);
     }
