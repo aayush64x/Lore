@@ -121,3 +121,15 @@ export async function explainChange(id: string): Promise<ExplanationData> {
   }
   return response.json();
 }
+// POST /api/sessions/{id}/retry-summary
+// On success the server sends back the whole session with its new summary.
+// On failure it sends { error } with a reason that's safe to show the user.
+export async function retrySummary(id: string): Promise<SessionDetailResponse> {
+  const response = await fetch(`/api/sessions/${id}/retry-summary`, { method: "POST" });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Couldn't create the summary. Try again.");
+  }
+  return response.json();
+}

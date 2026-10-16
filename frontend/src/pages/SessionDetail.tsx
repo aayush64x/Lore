@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchSession, toggleUnderstood } from "../api/client";
+import { fetchSession, retrySummary, toggleUnderstood } from "../api/client";
 import type { SessionDetailResponse, ChangeResponse } from "../api/client";
 import DiffView from "../components/DiffView";
 import ExplainWalkthrough from "../components/ExplainWalkthrough";
@@ -12,6 +12,8 @@ export default function SessionDetail() {
   const [session, setSession] = useState<SessionDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +57,16 @@ export default function SessionDetail() {
     toggleUnderstood(changeId).catch(() => setSession(flip));
   }
 
+  function handleRetrySummary() {
+    if (!id) return;
+    setRetrying(true);
+    setRetryError(null);
+    retrySummary(id)
+      .then((data) => setSession(data))
+      .catch((err: Error) => setRetryError(err.message))
+      .finally(() => setRetrying(false));
+  }
+
   const changesByFile: Record<string, ChangeResponse[]> = {};
   for (const change of session.changes) {
     const key = change.filePath;
@@ -86,9 +98,19 @@ export default function SessionDetail() {
         </div>
       ) : (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-sm text-gray-500">
-          {session.summaryStatus === "FAILED"
-            ? "The AI summary couldn't be created for this session."
-            : "No AI summary for this session yet."}
+          <p>
+            {session.summaryStatus === "FAILED"
+              ? "The AI summary couldn't be created for this session."
+              : "No AI summary for this session yet."}
+          </p>
+          {retryError && <p className="text-red-600 mt-2">{retryError}</p>}
+          <button
+            onClick={handleRetrySummary}
+            disabled={retrying}
+            className="mt-2 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+          >
+            {retrying ? "Creating summary..." : "Retry"}
+          </button>
         </div>
       )}
 
