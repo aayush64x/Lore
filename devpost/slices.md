@@ -10,12 +10,12 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 
 ## Make what's there work smoothly
 
-- [ ] **1. Tidy up `lore stop` output.** Hide the raw `WARN ...` log line. Say "1 file", not "1 files".
+- [x] **1. Tidy up `lore stop` output.** Hide the raw `WARN ...` log line. Say "1 file", not "1 files".
 - [ ] **2. Retry button for a failed summary** on the session page. The endpoint `POST /api/sessions/{id}/retry-summary` already exists.
 - [ ] **3. "Unreviewed only" filter** on the session page. Hides changes marked as understood.
 - [ ] **4. Highlight a range of lines in the diff.** `DiffView` can color given lines blue.
 - [ ] **5. Hover a step to highlight its lines.** Connects explain steps to the diff from slice 4.
-- [ ] **6. Fix the lint error in `SessionList.tsx`** and show an error message if the session list fails to load.
+- [x] **6. Fix the lint error in `SessionList.tsx`** and show an error message if the session list fails to load.
 - [ ] **6b. API controller tests + fixes.** Tests for `SessionController` and `ChangeController` endpoints. Fix whatever they find.
 
 ## Make it usable by other people
