@@ -19,9 +19,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchSessions } from "../api/client";
 import type { SessionResponse } from "../api/client";
 
+// The result remembers which project it was loaded for, so "loading" can be worked
+// out during render instead of being set inside the effect.
+type LoadResult =
+  | { project: string; sessions: SessionResponse[]; error: null }
+  | { project: string; sessions: null; error: string };
+
 export default function SessionList() {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [sessions, setSessions] = useState<SessionResponse[] | null>(null);
+  const [result, setResult] = useState<LoadResult | null>(null);
 
   const [searchParams] = useSearchParams();
   const project = searchParams.get("project");
@@ -30,11 +35,29 @@ export default function SessionList() {
   useEffect(() => {
     if (!project) return;
 
-    setLoading(true);
+    let ignore = false;
     fetchSessions(project)
-      .then((data) => setSessions(data))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!ignore) setResult({ project, sessions: data, error: null });
+      })
+      .catch(() => {
+        if (!ignore) {
+          setResult({
+            project,
+            sessions: null,
+            error: "Couldn't load sessions. Make sure lore ui is still running, then refresh.",
+          });
+        }
+      });
+    return () => {
+      ignore = true;
+    };
   }, [project]);
+
+  const current = project && result?.project === project ? result : null;
+  const loading = !!project && current === null;
+  const sessions = current?.sessions ?? null;
+  const error = current?.error ?? null;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -54,6 +77,10 @@ export default function SessionList() {
 
       {loading && (
         <div className="text-gray-500 text-center py-12">Loading sessions...</div>
+      )}
+
+      {error && (
+        <div className="text-red-600 text-center py-12">{error}</div>
       )}
 
       {!loading && sessions && sessions.length === 0 && (
