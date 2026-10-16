@@ -78,3 +78,22 @@ One entry per slice. Newest at the bottom.
 **How to check:**
 1. In the `backend` folder, run `mvn test`. You should see `Tests run: 79, Failures: 0`.
 2. With a real API key: run `./scripts/lore ui`, click **Explain this** on a change. Each step should start with real numbers, like "Lines 3–4:".
+
+---
+
+## Slice 7: Open the browser on Linux and Windows
+
+**Commit:** `ebc365b`
+
+- `lore ui` tries to open your browser by itself.
+- Before, the backup way only worked on a Mac. Now it knows the right command for each system: `open` on Mac, `xdg-open` on Linux, and `rundll32` on Windows.
+- If nothing works (for example, a computer with no screen), it prints "Open http://... in your browser" so you can copy the link.
+- It only prints that line when the browser really didn't open.
+- Why: people on Linux and Windows will use Lore too.
+
+**Files:** `backend/src/main/java/com/lore/cli/UICommand.java`, `backend/src/test/java/com/lore/cli/UICommandTest.java` (new)
+
+**How to check:**
+1. Run `./scripts/lore ui` on your Mac. Your browser should open by itself.
+2. In the `backend` folder, run `mvn test`. The 3 `UICommandTest` tests check the command for Mac, Windows and Linux.
+3. If you have a Linux or Windows computer, try `lore ui` there too.
