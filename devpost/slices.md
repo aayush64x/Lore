@@ -4,9 +4,9 @@ Feature freeze: Oct 23, 2026. Deadline: Oct 26, 2026.
 
 Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Report with /simple. Wait for "next".
 
-## Before slice 1
+## Real-key test
 
-- [ ] **0. Real-key test** (Aayush): run `lore key`, enter a real Anthropic API key, then start → edit → stop → ui → Explain. Check the summary and explanation are real.
+- [ ] **0. Real-key test: no later than Oct 20** (Aayush): run `lore key`, enter a real Anthropic API key, then start → edit → stop → ui → Explain in a test repo. Check the summary and explanation are real.
 
 ## Make what's there work smoothly
 
