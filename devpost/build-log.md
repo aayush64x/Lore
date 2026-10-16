@@ -39,3 +39,24 @@ One entry per slice. Newest at the bottom.
 1. Run `./scripts/lore ui` and open a session with a few changes.
 2. Mark one change as understood.
 3. Tick **Unreviewed only**. That change should disappear. Untick it and it comes back.
+
+---
+
+## Slices 4 + 5: Highlight lines when you hover a step
+
+**Commit:** `3163b68`
+
+- The diff can now light up a range of lines in blue.
+- When you move your mouse over an explain step (like "Lines 3–4: ..."), those lines light up in the diff above it.
+- Move the mouse away and the highlight goes away.
+- The step you're on also gets a blue bar on its left. You can use the Tab key instead of the mouse.
+- Only that change's diff lights up. Other changes on the page stay the same.
+- Why: your eyes go straight to the code the step is talking about.
+
+**Files:** `frontend/src/components/DiffView.tsx`, `frontend/src/components/ExplainWalkthrough.tsx`, `frontend/src/pages/SessionDetail.tsx`
+
+**How to check (needs a real API key):**
+1. Run `./scripts/lore ui`, open a session, and click **Explain this** on a change.
+2. Move your mouse over a step that says "Lines 3–4".
+3. Count down the diff: lines 3 and 4 should be blue with an outline. (The `@@` line at the top counts as line 1.)
+4. Move the mouse away. The blue goes away.
