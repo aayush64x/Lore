@@ -85,7 +85,7 @@ public class SessionService {
             sessionRepository.save(session);
             gitService.deleteRef(repoRoot, session.getStartRef());
             gitService.deleteRef(repoRoot, stopRef);
-            return new StopResult(session, 0, 0, true);
+            return new StopResult(session, 0, 0, true, null);
         }
 
         session.setReason(reason);
@@ -117,7 +117,7 @@ public class SessionService {
 
         sessionRepository.save(session);
 
-        return new StopResult(session, fileCount, parsed.size(), false);
+        return new StopResult(session, fileCount, parsed.size(), false, failure);
     }
 
     public Optional<Session> getActive(Path projectDir) throws IOException {
@@ -174,7 +174,8 @@ public class SessionService {
             changeRepository.saveAll(changes);
             return null;
         } catch (AiUnavailableException e) {
-            log.warn("AI summary not saved: {}", e.getMessage());
+            // Expected (e.g. no key yet). The reason goes back to the caller, which shows it.
+            log.debug("AI summary not saved: {}", e.getMessage());
             return e.getMessage();
         } catch (Exception e) {
             log.error("AI summarization failed", e);
@@ -214,5 +215,7 @@ public class SessionService {
         return gitService.repoRoot(projectDir);
     }
 
-    public record StopResult(Session session, int fileCount, int changeCount, boolean discarded) {}
+    /** summaryError is null when the AI summary was saved, otherwise a reason safe to show the user. */
+    public record StopResult(Session session, int fileCount, int changeCount, boolean discarded,
+                             String summaryError) {}
 }

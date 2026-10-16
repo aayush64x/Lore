@@ -118,6 +118,7 @@ class SessionServiceTest {
         SessionService.StopResult r = sessionService.stop(repo, "tidy up");
 
         assertFalse(r.discarded());
+        assertNull(r.summaryError());
         assertEquals(3, r.fileCount());
         assertEquals(3, r.changeCount());
         Session saved = sessionRepository.findById(r.session().getId()).orElseThrow();
@@ -206,9 +207,12 @@ class SessionServiceTest {
         sessionService.start(repo);
         Files.writeString(repo.resolve("a.txt"), "a\n");
 
-        Session s = sessionService.stop(repo, "r").session();
+        SessionService.StopResult r = sessionService.stop(repo, "r");
 
-        assertFailedWithNoText(s.getId());
+        assertFailedWithNoText(r.session().getId());
+        // The CLI shows this reason instead of a raw log line.
+        assertNotNull(r.summaryError());
+        assertFalse(r.summaryError().isBlank());
     }
 
     @Test
@@ -217,9 +221,11 @@ class SessionServiceTest {
         sessionService.start(repo);
         Files.writeString(repo.resolve("a.txt"), "a\n");
 
-        Session s = sessionService.stop(repo, "r").session();
+        SessionService.StopResult r = sessionService.stop(repo, "r");
+        Session s = r.session();
 
         assertFailedWithNoText(s.getId());
+        assertEquals("AI summary failed.", r.summaryError());
         // Changes are still saved so the user can study them.
         assertEquals(1, changeRepository.countBySessionId(s.getId()));
     }

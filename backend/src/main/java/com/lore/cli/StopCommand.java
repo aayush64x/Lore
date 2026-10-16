@@ -44,12 +44,13 @@ public class StopCommand implements Runnable {
                 String reasonText = result.session().getReason() != null
                         ? result.session().getReason() : "(no reason)";
                 System.out.println("Session saved: " + reasonText
-                        + ". " + result.fileCount() + " files changed, "
-                        + result.changeCount() + " changes to review."
+                        + ". " + plural(result.fileCount(), "file") + " changed, "
+                        + plural(result.changeCount(), "change") + " to review."
                         + " Run lore ui to study them.");
 
-                if (result.session().getSummaryStatus() == com.lore.session.Session.SummaryStatus.FAILED) {
-                    System.out.println("(Summary generation failed — you can retry from the web UI.)");
+                if (result.summaryError() != null) {
+                    System.out.println("(No AI summary: " + result.summaryError()
+                            + " You can retry from the web UI.)");
                 }
             }
         } catch (IllegalStateException e) {
@@ -57,5 +58,9 @@ public class StopCommand implements Runnable {
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         }
+    }
+
+    static String plural(int count, String noun) {
+        return count + " " + noun + (count == 1 ? "" : "s");
     }
 }
