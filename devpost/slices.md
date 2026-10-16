@@ -16,7 +16,7 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 - [x] **4. Highlight a range of lines in the diff.** `DiffView` can color given lines blue.
 - [x] **5. Hover a step to highlight its lines.** Connects explain steps to the diff from slice 4.
 - [x] **6. Fix the lint error in `SessionList.tsx`** and show an error message if the session list fails to load.
-- [ ] **6b. API controller tests + fixes.** Tests for `SessionController` and `ChangeController` endpoints. Fix whatever they find.
+- [x] **6b. API controller tests + fixes.** Tests for `SessionController` and `ChangeController` endpoints. Fix whatever they find.
 
 ## Make it usable by other people
 
