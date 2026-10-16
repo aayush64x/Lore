@@ -48,20 +48,48 @@ public class UICommand implements Runnable{
             System.out.println("Run lore ui from inside your project folder to see its sessions.");
         }
 
-        try{
-            System.out.println("Lore is running at " + url);
+        System.out.println("Lore is running at " + url);
+        if (!openBrowser(url)) {
+            System.out.println("Open " + url + " in your browser.");
+        }
+    }
+
+    /** Tries Java's built-in browser support, then the system's own command. */
+    private static boolean openBrowser(String url) {
+        try {
             if (Desktop.isDesktopSupported()
                     && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(url));
+                return true;
             }
-            else {
-                Runtime.getRuntime().exec(new String[]{"open", url});
-                System.out.println("Open " + url + " in your browser.");
-            }
+        } catch (Exception ignored) {
+            // Fall through to the system command.
         }
-        catch (Exception e){
-            System.out.println("Open " + url + " in your browser.");
+        try {
+            new ProcessBuilder(browserCommand(System.getProperty("os.name", ""), url))
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+            return true;
+        } catch (Exception e) {
+            // Command not installed (e.g. no xdg-open on a server). The caller prints the URL.
+            return false;
         }
+    }
 
+    /**
+     * The command that opens a URL in the default browser on each OS.
+     * Windows uses rundll32 rather than "cmd /c start" so characters in the URL
+     * are passed through as-is instead of being read by cmd.
+     */
+    static String[] browserCommand(String osName, String url) {
+        String os = osName.toLowerCase();
+        if (os.contains("mac")) {
+            return new String[]{"open", url};
+        }
+        if (os.contains("win")) {
+            return new String[]{"rundll32", "url.dll,FileProtocolHandler", url};
+        }
+        return new String[]{"xdg-open", url};
     }
 }
