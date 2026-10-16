@@ -20,3 +20,22 @@ One entry per slice. Newest at the bottom.
 1. Run `./scripts/lore ui` and open a session with no summary.
 2. Click **Retry**.
 3. No API key: you see a red "No Anthropic API key" message. With a real key: the summary appears.
+
+---
+
+## Slice 3: "Unreviewed only" filter
+
+**Commit:** `bb20882`
+
+- The session page has a new **Unreviewed only** checkbox next to "Changes".
+- When it's ticked, changes you marked as understood are hidden.
+- If every change is understood, it says "Nothing left to review".
+- If you mark a change as understood while the box is ticked, that change disappears right away. This is on purpose.
+- Why: so you only see what you still need to study.
+
+**Files:** `frontend/src/pages/SessionDetail.tsx`
+
+**How to check:**
+1. Run `./scripts/lore ui` and open a session with a few changes.
+2. Mark one change as understood.
+3. Tick **Unreviewed only**. That change should disappear. Untick it and it comes back.
