@@ -15,6 +15,8 @@ export default function SessionDetail() {
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [unreviewedOnly, setUnreviewedOnly] = useState(false);
+  // Which diff lines to highlight, and in which change (each change has its own diff).
+  const [highlight, setHighlight] = useState<{ changeId: string; start: number; end: number } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -160,10 +162,18 @@ export default function SessionDetail() {
                     {change.understood ? "Understood" : "Not understood"}
                   </button>
                 </div>
-                <DiffView diffContent={change.diffContent} />
+                <DiffView
+                  diffContent={change.diffContent}
+                  highlightStart={highlight?.changeId === change.id ? highlight.start : undefined}
+                  highlightEnd={highlight?.changeId === change.id ? highlight.end : undefined}
+                />
                 {!change.binary && (
                   <div className="px-4 py-3 border-t border-gray-100 text-sm">
-                    <ExplainWalkthrough changeId={change.id} />
+                    <ExplainWalkthrough
+                      changeId={change.id}
+                      onHighlight={(start, end) => setHighlight({ changeId: change.id, start, end })}
+                      onClearHighlight={() => setHighlight(null)}
+                    />
                   </div>
                 )}
               </div>

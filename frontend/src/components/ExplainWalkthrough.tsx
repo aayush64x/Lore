@@ -3,13 +3,28 @@ import type { ExplanationData } from "../api/client";
 import { useState } from "react";
 interface ExplainWalkthroughProps {
   changeId: string;
+  // Tell the parent which diff lines a step is about, so DiffView can highlight them.
+  onHighlight?: (start: number, end: number) => void;
+  onClearHighlight?: () => void;
 }
 
-export default function ExplainWalkthrough({ changeId }: ExplainWalkthroughProps) {
+export default function ExplainWalkthrough({ changeId, onHighlight, onClearHighlight }: ExplainWalkthroughProps) {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null> (null);
   const [explanation,setExplanation] = useState<ExplanationData|null>(null);
+  const [activeStep, setActiveStep] = useState<number | null>(null);
+
+  function showStep(i: number, start: number, end: number) {
+    setActiveStep(i);
+    // The AI can send 0 when it couldn't point at lines; nothing to highlight then.
+    if (start >= 1 && end >= start) onHighlight?.(start, end);
+  }
+
+  function clearStep() {
+    setActiveStep(null);
+    onClearHighlight?.();
+  }
 
   const handleExplain = async() => {
     setLoading(true);
@@ -47,7 +62,17 @@ export default function ExplainWalkthrough({ changeId }: ExplainWalkthroughProps
         <div>
           <div>{explanation.overview}</div>
           {explanation.steps.map((step, i) => (
-            <div key={i}>
+            <div
+              key={i}
+              tabIndex={0}
+              onMouseEnter={() => showStep(i, step.diff_line_start, step.diff_line_end)}
+              onMouseLeave={clearStep}
+              onFocus={() => showStep(i, step.diff_line_start, step.diff_line_end)}
+              onBlur={clearStep}
+              className={`pl-2 py-1 my-1 border-l-2 cursor-default outline-none ${
+                activeStep === i ? "border-blue-500 bg-blue-50" : "border-transparent"
+              }`}
+            >
               <span>Lines {step.diff_line_start}–{step.diff_line_end}: </span>
               <span>{step.text}</span>
             </div>
