@@ -14,6 +14,7 @@ export default function SessionDetail() {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [unreviewedOnly, setUnreviewedOnly] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -67,8 +68,12 @@ export default function SessionDetail() {
       .finally(() => setRetrying(false));
   }
 
+  const visibleChanges = unreviewedOnly
+    ? session.changes.filter((c) => !c.understood)
+    : session.changes;
+
   const changesByFile: Record<string, ChangeResponse[]> = {};
-  for (const change of session.changes) {
+  for (const change of visibleChanges) {
     const key = change.filePath;
     if (!changesByFile[key]) changesByFile[key] = [];
     changesByFile[key].push(change);
@@ -115,7 +120,23 @@ export default function SessionDetail() {
       )}
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Changes</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Changes</h2>
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={unreviewedOnly}
+              onChange={(e) => setUnreviewedOnly(e.target.checked)}
+            />
+            Unreviewed only
+          </label>
+        </div>
+
+        {unreviewedOnly && visibleChanges.length === 0 && (
+          <p className="text-sm text-gray-500 py-6 text-center">
+            Nothing left to review. You've marked every change as understood.
+          </p>
+        )}
 
         {Object.entries(changesByFile).map(([filePath, changes]) => (
           <div key={filePath} className="mb-6">
