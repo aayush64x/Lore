@@ -190,6 +190,34 @@ class ApiControllerTest {
     }
 
     @Test
+    void detail_includes_the_goal_check_when_there_is_one() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "add login");
+        s.setGoalGaps("[\"password reset\"]");
+        sessionRepository.save(s);
+        Change c = change(s, "login.js", 0);
+        c.setGoalMatch(Change.GoalMatch.PARTLY);
+        c.setGoalReason("Also restyles the page.");
+        changeRepository.save(c);
+        change(s, "old.js", 1);
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.goalGaps[0]").value("password reset"))
+                .andExpect(jsonPath("$.changes[0].goalMatch").value("partly"))
+                .andExpect(jsonPath("$.changes[0].goalReason").value("Also restyles the page."))
+                .andExpect(jsonPath("$.changes[1].goalMatch").value(nullValue()));
+    }
+
+    @Test
+    void detail_has_no_goal_check_for_older_sessions() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "work");
+        change(s, "a.js", 0);
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.goalGaps").value(nullValue()))
+                .andExpect(jsonPath("$.changes[0].goalMatch").value(nullValue()));
+    }
+
+    @Test
     void detail_unknown_session_is_404() throws Exception {
         mvc.perform(get("/api/sessions/" + UUID.randomUUID())).andExpect(status().isNotFound());
     }

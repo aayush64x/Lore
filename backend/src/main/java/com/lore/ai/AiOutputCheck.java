@@ -69,6 +69,12 @@ public final class AiOutputCheck {
             for (int i = 0; i < r.changeDescriptions().size(); i++) {
                 SummaryResponse.ChangeDescription d = r.changeDescriptions().get(i);
                 if (d != null && isDamaged(d.description())) bad.add("change_descriptions[" + i + "].description");
+                if (d != null && isDamaged(d.goalReason())) bad.add("change_descriptions[" + i + "].goal_reason");
+            }
+        }
+        if (r.goalPartsNotDone() != null) {
+            for (int i = 0; i < r.goalPartsNotDone().size(); i++) {
+                if (isDamaged(r.goalPartsNotDone().get(i))) bad.add("goal_parts_not_done[" + i + "]");
             }
         }
         return bad;

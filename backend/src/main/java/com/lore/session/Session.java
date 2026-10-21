@@ -19,6 +19,10 @@ public class Session {
 
     private String summary;
 
+    /** JSON list of the goal's parts no change did ("[]" = all done); null if not checked. */
+    @Column(name = "goal_gaps")
+    private String goalGaps;
+
     @Column(name = "summary_status", nullable = false)
     @Enumerated(EnumType.STRING)
     private SummaryStatus summaryStatus = SummaryStatus.PENDING;
@@ -55,6 +59,8 @@ public class Session {
     public void setReason(String reason) { this.reason = reason; }
     public String getSummary() { return summary; }
     public void setSummary(String summary) { this.summary = summary; }
+    public String getGoalGaps() { return goalGaps; }
+    public void setGoalGaps(String goalGaps) { this.goalGaps = goalGaps; }
     public SummaryStatus getSummaryStatus() { return summaryStatus; }
     public void setSummaryStatus(SummaryStatus summaryStatus) { this.summaryStatus = summaryStatus; }
     public String getStartRef() { return startRef; }

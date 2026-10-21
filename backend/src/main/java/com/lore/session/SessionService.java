@@ -1,5 +1,7 @@
 package com.lore.session;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.AiOutputCheck;
 import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
@@ -25,6 +27,7 @@ import java.util.UUID;
 @Service
 public class SessionService {
 
+    private static final ObjectMapper JSON = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
     private final SessionRepository sessionRepository;
@@ -172,8 +175,15 @@ public class SessionService {
             }
             session.setSummary(summary.sessionSummary().strip());
             session.setSummaryStatus(Session.SummaryStatus.COMPLETE);
+            // null = goal not checked (no goal given); a list, maybe empty, = checked.
+            session.setGoalGaps(summary.goalPartsNotDone() == null ? null : toJson(summary.goalPartsNotDone()));
 
-            changes.forEach(c -> c.setDescription(null));
+            // Cleared first, so a retry never leaves an earlier answer on a change.
+            changes.forEach(c -> {
+                c.setDescription(null);
+                c.setGoalMatch(null);
+                c.setGoalReason(null);
+            });
             applyDescriptions(changes, summary.changeDescriptions());
             changeRepository.saveAll(changes);
             return null;
@@ -205,6 +215,28 @@ public class SessionService {
             if (target == null) continue;
             if (d.filePath() != null && !d.filePath().equals(target.getFilePath())) continue;
             target.setDescription(d.description().strip());
+            target.setGoalMatch(goalMatch(d.goalMatch()));
+            target.setGoalReason(target.getGoalMatch() == null || d.goalReason() == null || d.goalReason().isBlank()
+                    ? null : d.goalReason().strip());
+        }
+    }
+
+    /** "yes" / "partly" / "no" from the AI; anything else counts as not checked. */
+    private static Change.GoalMatch goalMatch(String value) {
+        if (value == null) return null;
+        return switch (value.strip().toLowerCase()) {
+            case "yes" -> Change.GoalMatch.YES;
+            case "partly" -> Change.GoalMatch.PARTLY;
+            case "no" -> Change.GoalMatch.NO;
+            default -> null;
+        };
+    }
+
+    private static String toJson(List<String> items) {
+        try {
+            return JSON.writeValueAsString(items);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(e);
         }
     }
 

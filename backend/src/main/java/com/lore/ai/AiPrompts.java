@@ -35,6 +35,26 @@ public final class AiPrompts {
     }
 
     /**
+     * The summary prompt plus the goal check, used only when the developer said what
+     * they were trying to do. Without a goal the plain prompt is used and the AI never
+     * sees these fields, so it can't make a goal up.
+     */
+    public static String summaryWithGoalSystemPrompt() {
+        return summarySystemPrompt() + """
+
+
+                GOAL CHECK: the developer's goal is quoted at the top of the message ("In their own \
+                words, the developer was trying to"). Judge only against that goal as written. Never \
+                guess at a goal they didn't state.
+                3. For each entry in "change_descriptions" also return:
+                   - "matches_goal": YES if the change directly serves the goal, PARTLY if it only \
+                supports it or mixes in unrelated edits, NO if it has nothing to do with the goal
+                   - "goal_reason": one short line saying why
+                4. "goal_parts_not_done": the parts of the goal that no change does, each as a short \
+                phrase. An empty list if every part was done.""";
+    }
+
+    /**
      * Lists every change with its display_order, type, path and diff together, so the
      * model never has to line up a list of names with a separate block of diffs.
      */

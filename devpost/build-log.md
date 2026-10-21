@@ -499,3 +499,25 @@ One entry per slice. Newest at the bottom.
 1. Start `lore ui`. In another terminal, run `./scripts/install.sh`. It says "Lore is running...".
 2. Press Ctrl+C in the `lore ui` terminal. There's no `NoClassDefFoundError`.
 3. Run `lore ui` again. It's the new version and your sessions are all there.
+
+---
+
+## Step 1 (slice 20): intent check
+
+- At `lore stop`, if you said what you were trying to do, the same summary call (no extra AI call) now also returns:
+  - per change: does it serve your goal? `YES` / `PARTLY` / `NO`, plus one short line why
+  - per session: the parts of your goal that no change did
+- **No goal → no check.** The AI gets the old request without these fields, so it can't make up a goal.
+- **Retry** on the summary redoes the check and clears the old answers first.
+- **New migration `V5__goal_check.sql`:** `changes.goal_match`, `changes.goal_reason`, `sessions.goal_gaps` (a JSON list). Old sessions have NULL there and show nothing.
+- **Page:** an amber "Not part of your goal" badge on `NO` changes, and a grey "Partly your goal" badge on `PARTLY`. Hover a badge to see why. An amber box under the stats lists "Not done yet from your goal". Everything is hidden when empty.
+- The new texts get the same stray-`}]}` check as the rest.
+- Anthropic provider only. Bedrock sessions simply have no goal check.
+- **Bug caught by a test:** the SDK writes the enum into the schema as `YES/PARTLY/NO`, but my first version only accepted lowercase when reading the answer. Every real answer would have failed. Fixed, and the test now pins the schema.
+
+**Files:** `ai/AnthropicAiService.java`, `ai/AiPrompts.java`, `ai/AiOutputCheck.java`, `ai/dto/SummaryResponse.java`, `change/Change.java`, `session/Session.java`, `session/SessionService.java`, `api/controller/SessionController.java`, `api/dto/ChangeResponse.java`, `api/dto/SessionDetailResponse.java`, `db/migration/V5__goal_check.sql` (new), `frontend/src/api/client.ts`, `components/ChangeDiff.tsx`, `components/SessionHeader.tsx`; tests in `AnthropicAiServiceTest`, `SessionServiceTest`, `ApiControllerTest`, `AiOutputCheckTest`, `FakeAi`
+
+**How to check (one AI call, at lore stop):**
+1. Stop `lore ui`, run `./scripts/install.sh`, start it again.
+2. In a test project: `lore start`, make one change for a goal and one unrelated change, then `lore stop` with a goal that has two parts, for example "add a reverse function and a test for it".
+3. Open the session. The unrelated change has "Not part of your goal", and the box lists "a test for it" if you didn't write one.

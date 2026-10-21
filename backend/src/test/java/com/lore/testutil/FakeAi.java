@@ -22,6 +22,8 @@ public class FakeAi implements AiService {
     public volatile int explainCalls;
     public volatile String lastExplainReason;
     public volatile UserProfile lastExplainProfile;
+    /** Goal check answer: parts of the goal not done. A file named "unrelated…" gets "no", "partly…" gets "partly". */
+    public volatile List<String> goalGaps = List.of("Add a test");
     /** How many of the next answers (summary or explanation) end a text with stray "}]}". */
     public volatile int garbledAnswers;
 
@@ -30,6 +32,7 @@ public class FakeAi implements AiService {
         summarizeCalls = 0;
         explainCalls = 0;
         garbledAnswers = 0;
+        goalGaps = List.of("Add a test");
     }
 
     /** "}]}" while garbledAnswers lasts, then nothing. */
@@ -43,9 +46,17 @@ public class FakeAi implements AiService {
     public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
         summarizeCalls++;
         fail();
-        return new SummaryResponse("Summary for: " + reason + tail(), changes.stream()
-                .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath()))
-                .toList());
+        String summary = "Summary for: " + reason + tail();
+        // Like the real service: the goal check only when a goal was given.
+        if (reason == null || reason.isBlank()) {
+            return new SummaryResponse(summary, changes.stream()
+                    .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath()))
+                    .toList());
+        }
+        return new SummaryResponse(summary, changes.stream()
+                .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath(),
+                        goalMatch(c.filePath()), "because of " + c.filePath()))
+                .toList(), goalGaps);
     }
 
     @Override
@@ -57,6 +68,13 @@ public class FakeAi implements AiService {
         return new ExplanationResponse("Explains " + filePath,
                 List.of(new ExplanationResponse.Step("First line" + tail(), 1, 2)),
                 List.of(new ExplanationResponse.Concept("logging", "printing text")));
+    }
+
+    private static String goalMatch(String path) {
+        String name = path.substring(path.lastIndexOf('/') + 1);
+        if (name.startsWith("unrelated")) return "no";
+        if (name.startsWith("partly")) return "partly";
+        return "yes";
     }
 
     private void fail() {

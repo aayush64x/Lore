@@ -169,6 +169,52 @@ class SessionServiceTest {
     }
 
     @Test
+    void stop_with_a_goal_saves_the_goal_check() throws Exception {
+        sessionService.start(repo);
+        Files.writeString(repo.resolve("login.js"), "x\n");
+        Files.writeString(repo.resolve("unrelated.css"), "y\n");
+        ai.goalGaps = List.of("password reset");
+
+        SessionService.StopResult r = sessionService.stop(repo, "add login with password reset");
+
+        Session saved = sessionRepository.findById(r.session().getId()).orElseThrow();
+        assertEquals("[\"password reset\"]", saved.getGoalGaps());
+        List<Change> changes = changeRepository.findBySessionIdOrderByDisplayOrder(saved.getId());
+        assertEquals(Change.GoalMatch.YES, find(changes, "login.js").getGoalMatch());
+        assertEquals("because of login.js", find(changes, "login.js").getGoalReason());
+        assertEquals(Change.GoalMatch.NO, find(changes, "unrelated.css").getGoalMatch());
+    }
+
+    @Test
+    void stop_without_a_goal_saves_no_goal_check() throws Exception {
+        sessionService.start(repo);
+        Files.writeString(repo.resolve("a.txt"), "hi\n");
+
+        SessionService.StopResult r = sessionService.stop(repo, null);
+
+        Session saved = sessionRepository.findById(r.session().getId()).orElseThrow();
+        assertNull(saved.getGoalGaps());
+        Change c = changeRepository.findBySessionIdOrderByDisplayOrder(saved.getId()).get(0);
+        assertNull(c.getGoalMatch());
+        assertNull(c.getGoalReason());
+    }
+
+    @Test
+    void retrying_the_summary_redoes_the_goal_check() throws Exception {
+        sessionService.start(repo);
+        Files.writeString(repo.resolve("partly.js"), "x\n");
+        ai.goalGaps = List.of("tests", "docs");
+        UUID id = sessionService.stop(repo, "add tests and docs").session().getId();
+
+        ai.goalGaps = List.of();
+        assertNull(sessionService.retrySummary(id).error());
+
+        assertEquals("[]", sessionRepository.findById(id).orElseThrow().getGoalGaps());
+        assertEquals(Change.GoalMatch.PARTLY,
+                changeRepository.findBySessionIdOrderByDisplayOrder(id).get(0).getGoalMatch());
+    }
+
+    @Test
     void stop_saves_a_long_reason_with_paragraphs() throws Exception {
         sessionService.start(repo);
         Files.writeString(repo.resolve("a.txt"), "hi\n");

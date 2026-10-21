@@ -12,5 +12,7 @@ public record SessionDetailResponse(
         String summaryStatus,
         Instant startedAt,
         Instant stoppedAt,
-        List<ChangeResponse> changes
+        List<ChangeResponse> changes,
+        // Parts of the goal no change did; empty = all done; null = not checked.
+        List<String> goalGaps
 ) {}

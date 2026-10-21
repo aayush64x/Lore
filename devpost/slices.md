@@ -43,7 +43,17 @@ Order: 15 → 16 → 17 → 18. Then 19 only as a stretch, with a hard cutoff.
 - [ ] **16. One summary, one status.** *(On hold Oct 21: Aayush is undecided. Middle option: drop only the overview paragraph and the card-header status.)* The session summary becomes one sentence under the goal. Remove the change summary and overview from the panel. Status only in the top bar and the sidebar dots. Keep one Mark as understood button.
 - [x] **17. Concepts only for what the diff changes.** Prompt fix (no tags for code the diff didn't touch, like "Regex trimming").
 - [x] **18. Collapsible files sidebar.** Button on the sidebar plus the `b` key. Thin rail with status dots, file-count badge and filename tooltips. Saved in localStorage (try/catch). Animated width, no jump.
-- [ ] **19. Stretch: questions.** 1–2 multiple-choice questions (3–4 options) per substantive change, plus one edge-case question only if a real one exists. The server checks answers; retry allowed. The explanation shows after answering. A change is understood when its questions are answered correctly. **Hard cutoff: Oct 23 noon.** If it isn't working by then, keep the current Mark as understood.
+- [ ] ~~**19. Stretch: questions.**~~ *(Replaced by teach-back, 20–24.)* 1–2 multiple-choice questions (3–4 options) per substantive change, plus one edge-case question only if a real one exists. The server checks answers; retry allowed. The explanation shows after answering. A change is understood when its questions are answered correctly. **Hard cutoff: Oct 23 noon.** If it isn't working by then, keep the current Mark as understood.
+
+## Intent check + teach-back (Oct 21 plan, freeze Oct 23 noon)
+
+Replaces slice 19 (no multiple-choice quiz). Steps, one at a time:
+
+- [x] **20. Intent check.** The `lore stop` summary also says, per change, whether it serves your goal (yes / partly / no + why), and which parts of the goal weren't done. Only when a goal was given. Badges plus a warning box.
+- [ ] **21. key_points + testable in explanations.**
+- [ ] **22. Grading endpoint, attempts table, server rules** (Haiku grader, 3 tries, key points shown after 2 fails, pass = understood_by teach_back).
+- [ ] **23. Teach-back UI** (Test me, Skip test = understood_by self, passed vs self-marked).
+- [ ] **24. Remaining tests.**
 
 ## Cut first if time runs short
 

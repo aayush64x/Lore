@@ -43,6 +43,14 @@ class AiOutputCheckTest {
     }
 
     @Test
+    void goal_check_text_is_checked_too() {
+        SummaryResponse s = new SummaryResponse("Fine.",
+                List.of(new SummaryResponse.ChangeDescription("a.js", 0, "fine", "no", "Styling only.}]}")),
+                List.of("ok", "tests\"]"));
+        assertEquals(List.of("change_descriptions[0].goal_reason", "goal_parts_not_done[1]"), AiOutputCheck.problems(s));
+    }
+
+    @Test
     void a_damaged_answer_is_asked_for_once_more() {
         AtomicInteger calls = new AtomicInteger();
         String result = AiOutputCheck.askWithRetry(

@@ -23,6 +23,7 @@ export interface SessionDetailResponse {
   startedAt: string;
   stoppedAt: string | null;
   changes: ChangeResponse[];
+  goalGaps: string[] | null; // parts of the goal no change did; [] = all done; null = not checked
 }
 
 // One hunk from a diff — a single chunk of modified code
@@ -41,6 +42,8 @@ export interface ChangeResponse {
   understood: boolean;
   displayOrder: number;
   explanation: ExplanationData | null; // saved explanation, if this change was explained before
+  goalMatch: "yes" | "partly" | "no" | null; // against the goal given at lore stop; null = not checked
+  goalReason: string | null;
 }
 
 // --- API functions (your turn) ---

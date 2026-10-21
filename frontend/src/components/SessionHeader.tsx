@@ -88,6 +88,17 @@ export default function SessionHeader({
         </div>
       </div>
 
+      {session.goalGaps && session.goalGaps.length > 0 && (
+        <div role="note" className="mt-3 max-w-4xl px-3 py-2 rounded-md border border-amber-300 bg-amber-50 text-sm text-amber-900">
+          <span className="font-medium">Not done yet from your goal:</span>
+          <ul className="list-disc pl-5 mt-1">
+            {session.goalGaps.map((gap, i) => (
+              <li key={i}>{gap}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-3">
         <button
           onClick={() => setSummaryOpen(!summaryOpen)}

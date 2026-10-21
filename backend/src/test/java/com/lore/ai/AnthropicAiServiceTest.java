@@ -88,6 +88,45 @@ class AnthropicAiServiceTest {
     }
 
     @Test
+    void summarize_with_a_goal_asks_for_the_goal_check_and_reads_it(@TempDir Path home) throws Exception {
+        responseBody = message("""
+                {"session_summary": "Added login.", "goal_parts_not_done": ["password reset"], "change_descriptions": [
+                  {"display_order": 0, "file_path": "login.js", "description": "Adds login.", "matches_goal": "YES", "goal_reason": "It is the login."},
+                  {"display_order": 1, "file_path": "theme.css", "description": "Dark mode.", "matches_goal": "NO", "goal_reason": "Styling only."}]}""");
+
+        SummaryResponse r = service(home, FAKE_KEY).summarize(List.of(
+                new AiService.ChangeInput(0, "login.js", "ADDED", "+login()\n", false),
+                new AiService.ChangeInput(1, "theme.css", "MODIFIED", "+.dark{}\n", false)), "add login with password reset");
+
+        assertEquals(List.of("password reset"), r.goalPartsNotDone());
+        assertEquals(new SummaryResponse.ChangeDescription("login.js", 0, "Adds login.", "yes", "It is the login."), r.changeDescriptions().get(0));
+        assertEquals("no", r.changeDescriptions().get(1).goalMatch());
+
+        JsonNode schema = seenBody.get().at("/output_config/format/schema");
+        assertTrue(schema.at("/properties").has("goal_parts_not_done"), schema.toString());
+        assertEquals("[\"YES\",\"PARTLY\",\"NO\"]",
+                schema.at("/properties/change_descriptions/items/properties/matches_goal/enum").toString(), schema.toString());
+        assertTrue(seenBody.get().at("/system").toString().contains("GOAL CHECK"));
+    }
+
+    @Test
+    void summarize_without_a_goal_never_asks_for_the_goal_check(@TempDir Path home) throws Exception {
+        responseBody = message("""
+                {"session_summary": "Tidied up.", "change_descriptions": [
+                  {"display_order": 0, "file_path": "a.js", "description": "Renames x."}]}""");
+
+        SummaryResponse r = service(home, FAKE_KEY).summarize(List.of(
+                new AiService.ChangeInput(0, "a.js", "MODIFIED", "-x\n+y\n", false)), "  ");
+
+        assertNull(r.goalPartsNotDone());
+        assertNull(r.changeDescriptions().get(0).goalMatch());
+        String body = seenBody.get().toString();
+        assertFalse(body.contains("goal_parts_not_done"), body);
+        assertFalse(body.contains("matches_goal"), body);
+        assertFalse(body.contains("GOAL CHECK"), body);
+    }
+
+    @Test
     void falls_back_to_config_file_when_env_var_missing(@TempDir Path home) throws Exception {
         Files.writeString(home.resolve("config.properties"), "anthropic.api.key=" + FAKE_KEY + "\n");
         responseBody = message("{\"session_summary\": \"ok\", \"change_descriptions\": []}");

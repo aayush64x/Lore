@@ -39,6 +39,22 @@ export default function ChangeDiff({ change, rows, active, highlight, onSelect }
         >
           {change.changeType}
         </span>
+        {change.goalMatch === "no" && (
+          <span
+            title={change.goalReason ?? undefined}
+            className="text-[11px] font-medium px-1.5 py-0.5 rounded border bg-amber-50 text-amber-800 border-amber-300"
+          >
+            Not part of your goal
+          </span>
+        )}
+        {change.goalMatch === "partly" && (
+          <span
+            title={change.goalReason ?? undefined}
+            className="text-[11px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-600 border-gray-200"
+          >
+            Partly your goal
+          </span>
+        )}
         <span className="font-mono text-xs text-gray-400">
           Lines {change.newStart}–{change.newStart + Math.max(change.newCount - 1, 0)}
         </span>

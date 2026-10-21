@@ -4,6 +4,8 @@ import com.lore.api.dto.ChangeResponse;
 import com.lore.api.dto.SessionDetailResponse;
 import com.lore.api.dto.SessionResponse;
 import com.lore.change.Change;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.ApiKeyStore;
 import com.lore.ai.UserProfile;
 import com.lore.change.ChangeRepository;
@@ -27,6 +29,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api")
 public class SessionController {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final SessionService sessionService;
     private final SessionRepository sessionRepository;
@@ -123,7 +127,9 @@ public class SessionController {
                         c.getDisplayOrder(),
                         explanations.containsKey(c.getId())
                                 ? ExplanationView.toMap(explanations.get(c.getId()), profile)
-                                : null
+                                : null,
+                        c.getGoalMatch() == null ? null : c.getGoalMatch().name().toLowerCase(),
+                        c.getGoalReason()
                 ))
                 .toList();
 
@@ -135,7 +141,18 @@ public class SessionController {
                 session.getSummaryStatus().toString(),
                 session.getStartedAt(),
                 session.getStoppedAt(),
-                changeResponses
+                changeResponses,
+                goalGaps(session.getGoalGaps())
         );
+    }
+
+    /** The saved JSON list; null if the goal wasn't checked or the value can't be read. */
+    private static List<String> goalGaps(String json) {
+        if (json == null) return null;
+        try {
+            return JSON.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

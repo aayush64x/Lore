@@ -42,6 +42,14 @@ public class Change {
 
     private String description;
 
+    /** Whether this change serves the goal given at lore stop; null if not checked. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "goal_match")
+    private GoalMatch goalMatch;
+
+    @Column(name = "goal_reason")
+    private String goalReason;
+
     @Column(name = "is_binary", nullable = false)
     private boolean binary;
 
@@ -78,6 +86,10 @@ public class Change {
     public void setDiffContent(String diffContent) { this.diffContent = diffContent; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public GoalMatch getGoalMatch() { return goalMatch; }
+    public void setGoalMatch(GoalMatch goalMatch) { this.goalMatch = goalMatch; }
+    public String getGoalReason() { return goalReason; }
+    public void setGoalReason(String goalReason) { this.goalReason = goalReason; }
     public boolean isBinary() { return binary; }
     public void setBinary(boolean binary) { this.binary = binary; }
     public boolean isUnderstood() { return understood; }
@@ -86,4 +98,6 @@ public class Change {
     public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
 
     public enum ChangeType { ADDED, MODIFIED, DELETED, RENAMED }
+
+    public enum GoalMatch { YES, PARTLY, NO }
 }

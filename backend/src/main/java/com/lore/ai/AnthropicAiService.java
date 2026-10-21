@@ -74,6 +74,37 @@ public class AnthropicAiService implements AiService {
             @JsonPropertyDescription("One line saying what this change does")
             String description) {}
 
+    /** The schema lists these names as they are, so the prompt uses them too. */
+    enum GoalMatch { YES, PARTLY, NO }
+
+    /** The summary plus the goal check, asked for only when the developer gave a goal. */
+    record GoalSummaryOutput(
+            @JsonProperty("session_summary")
+            @JsonPropertyDescription("Plain-English summary of the whole session, 2-4 sentences")
+            String sessionSummary,
+            @JsonProperty("change_descriptions")
+            @JsonPropertyDescription("Exactly one entry per change")
+            List<GoalChangeOutput> changeDescriptions,
+            @JsonProperty("goal_parts_not_done")
+            @JsonPropertyDescription("Parts of the stated goal that no change does; empty if all were done")
+            List<String> goalPartsNotDone) {}
+
+    record GoalChangeOutput(
+            @JsonProperty("display_order")
+            @JsonPropertyDescription("display_order copied from the change's header")
+            int displayOrder,
+            @JsonProperty("file_path")
+            @JsonPropertyDescription("file path copied from the change's header")
+            String filePath,
+            @JsonPropertyDescription("One line saying what this change does")
+            String description,
+            @JsonProperty("matches_goal")
+            @JsonPropertyDescription("Whether this change serves the stated goal")
+            GoalMatch matchesGoal,
+            @JsonProperty("goal_reason")
+            @JsonPropertyDescription("One short line saying why")
+            String goalReason) {}
+
     record ExplanationOutput(
             @JsonPropertyDescription("One sentence saying what this change does overall")
             String overview,
@@ -93,6 +124,8 @@ public class AnthropicAiService implements AiService {
 
     @Override
     public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
+        if (reason != null && !reason.isBlank()) return summarizeWithGoal(changes, reason);
+
         SummaryOutput out = call(SummaryOutput.class,
                 AiPrompts.summarySystemPrompt(),
                 AiPrompts.summaryUserMessage(changes, reason));
@@ -104,6 +137,24 @@ public class AnthropicAiService implements AiService {
                         .map(d -> new SummaryResponse.ChangeDescription(d.filePath(), d.displayOrder(), d.description()))
                         .toList();
         return new SummaryResponse(out.sessionSummary(), descriptions);
+    }
+
+    private SummaryResponse summarizeWithGoal(List<ChangeInput> changes, String reason) {
+        GoalSummaryOutput out = call(GoalSummaryOutput.class,
+                AiPrompts.summaryWithGoalSystemPrompt(),
+                AiPrompts.summaryUserMessage(changes, reason));
+
+        List<SummaryResponse.ChangeDescription> descriptions = out.changeDescriptions() == null
+                ? List.of()
+                : out.changeDescriptions().stream()
+                        .filter(Objects::nonNull)
+                        .map(d -> new SummaryResponse.ChangeDescription(d.filePath(), d.displayOrder(), d.description(),
+                                d.matchesGoal() == null ? null : d.matchesGoal().name().toLowerCase(),
+                                d.goalReason()))
+                        .toList();
+        List<String> gaps = out.goalPartsNotDone() == null ? List.of()
+                : out.goalPartsNotDone().stream().filter(g -> g != null && !g.isBlank()).map(String::strip).toList();
+        return new SummaryResponse(out.sessionSummary(), descriptions, gaps);
     }
 
     @Override

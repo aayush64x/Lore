@@ -18,5 +18,8 @@ public record ChangeResponse(
         boolean understood,
         int displayOrder,
         // The saved explanation (same shape as POST /changes/{id}/explain), or null.
-        Map<String, Object> explanation
+        Map<String, Object> explanation,
+        // "yes" / "partly" / "no" against the goal given at lore stop; null if not checked.
+        String goalMatch,
+        String goalReason
 ) {}
