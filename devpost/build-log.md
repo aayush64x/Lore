@@ -211,4 +211,4 @@ One entry per slice. Newest at the bottom.
 1. In the `backend` folder, run `mvn package`. You should see `Tests run: 115, Failures: 0`.
 2. Run `lore config` and pick **New to coding** and **Understand what my app does**.
 3. Do a new `lore start`, change some code, `lore stop`, then `lore ui`. Click **Explain this**. It should talk about what the app does, in plain words.
-4. Run `lore config` again and pick **I'm a developer**. Restart `lore ui`, reload the page, and click **Explain this** on the same change. It should be shorter and more technical.
+4. Run `lore config` again and pick **I'm a developer**. Reload the page (no need to restart `lore ui`) and click **Explain this** on the same change. It should be shorter and more technical.
