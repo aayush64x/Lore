@@ -16,6 +16,7 @@ export interface Crumb {
 interface NavbarProps {
   project: string | null; // full project folder path, if known
   crumbs?: Crumb[];       // after the project crumb
+  wide?: boolean;         // match a page that uses the wider layout
 }
 
 // The session list's address for a project.
@@ -28,7 +29,7 @@ function projectName(project: string): string {
   return project.split(/[\\/]/).filter(Boolean).pop() ?? project;
 }
 
-export default function Navbar({ project, crumbs = [] }: NavbarProps) {
+export default function Navbar({ project, crumbs = [], wide = false }: NavbarProps) {
   const all: Crumb[] = [
     ...(project ? [{ label: projectName(project), to: sessionsUrl(project) }] : []),
     ...crumbs,
@@ -38,7 +39,7 @@ export default function Navbar({ project, crumbs = [] }: NavbarProps) {
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <nav
         aria-label="Breadcrumb"
-        className="max-w-3xl mx-auto px-4 h-12 flex items-center gap-3 text-sm"
+        className={`${wide ? "max-w-6xl" : "max-w-3xl"} mx-auto px-4 h-12 flex items-center gap-3 text-sm`}
       >
         <Link to={sessionsUrl(project)} className="font-semibold text-base text-gray-900 shrink-0">
           Lore

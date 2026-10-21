@@ -45,7 +45,7 @@ export default function DiffView({ rows, highlightStart, highlightEnd, plainCode
           const highlighted = isHighlighted(i) ? " diff-line-highlighted" : "";
           const kind = plainCode ? "" : ROW_CLASS[row.kind];
           return (
-            <div key={i} className={`flex ${kind}${highlighted}`}>
+            <div key={i} data-diff-line={i + 1} className={`flex ${kind}${highlighted}`}>
               {!plainCode && <Gutter value={row.oldLine} />}
               <Gutter value={row.newLine} />
               <span className="pl-3 pr-4">{(row.kind === "header" ? row.text : row.text.slice(1)) || " "}</span>

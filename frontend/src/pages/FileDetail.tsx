@@ -20,7 +20,6 @@ export default function FileDetail() {
   const [session, setSession] = useState<SessionDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [highlight, setHighlight] = useState<{ changeId: string; start: number; end: number } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -41,6 +40,7 @@ export default function FileDetail() {
   // project › session title › this file
   const navbar = (
     <Navbar
+      wide
       project={session?.projectPath ?? null}
       crumbs={[
         ...(session ? [{ label: sessionTitle(session.reason), to: `/sessions/${id}` }] : []),
@@ -95,7 +95,7 @@ export default function FileDetail() {
   return (
     <>
     {navbar}
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="mb-4">
         <h1 className="font-mono text-lg font-semibold break-all">{filePath}</h1>
         {oldFilePath && (
@@ -112,9 +112,6 @@ export default function FileDetail() {
           key={change.id}
           change={change}
           onToggleUnderstood={() => handleToggleUnderstood(change.id)}
-          highlight={highlight?.changeId === change.id ? highlight : null}
-          onHighlight={(start, end) => setHighlight({ changeId: change.id, start, end })}
-          onClearHighlight={() => setHighlight(null)}
         />
       ))}
 

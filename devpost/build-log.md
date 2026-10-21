@@ -283,3 +283,28 @@ One entry per slice. Newest at the bottom.
 2. Open a session. You see the "AI summary" label and a green progress bar.
 3. Open a file. Each card has the file name, a type tag, the orange pill and an **Explain this** button.
 4. The diff has two grey number columns. Click **Explain this** and hover a step. The whole row turns blue with a blue bar on the left. The step's line numbers match the gutter.
+
+---
+
+## Split view: diff left, explanation right
+
+- Each change on the file page is now split: the diff on the left (~60%), a panel on the right (~40%).
+- The panel stays on screen (sticky, just under the navbar) while you scroll a long diff.
+- Below 1000px wide, the panel goes under the diff.
+- **Before Explain:** the panel shows the AI summary, the status pill, and a big blue **Explain this** button.
+- **After Explain:** the panel shows the steps. One step is active: bold, blue bar, its lines lit in the diff. The others are grey.
+- **Back / Next** buttons and the ← → keys move between steps. "Step 2 of 3" shows where you are.
+- Clicking a step makes it active and scrolls the diff so its lines are in the middle of the screen.
+- Hovering a step still lights up its lines for a moment.
+- On the last step: **Got it? Mark as understood**.
+- Concepts show as small tags under the steps. Click one to read what it means.
+- No backend changes.
+
+**Files:** `frontend/src/components/ChangeCard.tsx`, `ExplainWalkthrough.tsx`, `DiffView.tsx`, `Navbar.tsx`, `frontend/src/pages/FileDetail.tsx`
+
+**How to check:**
+1. Restart `lore ui` (Ctrl+C, then run it again).
+2. Open a file. The diff is on the left and the panel on the right, with a big **Explain this** button.
+3. Click it. Step 1 is bold and its lines are blue. Press → and ←. The active step and the blue lines move.
+4. Open a long file (300+ lines), explain it, and click the last step. The page scrolls to those lines and the panel stays in view.
+5. Make the window narrow. The panel moves under the diff.
