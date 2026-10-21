@@ -31,7 +31,7 @@ export default function ExplainWalkthrough({
 
   return (
     <div>
-      <p className="text-sm text-gray-600 mb-3">{explanation.overview}</p>
+      {/* No overview paragraph: it repeated the change summary above it. The steps say it all. */}
 
       <ol className="space-y-1">
         {steps.map((step, i) => (

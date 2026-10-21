@@ -21,7 +21,8 @@ const TYPE_TAG: Record<string, string> = {
   RENAMED: "bg-purple-50 text-purple-700 border-purple-200",
 };
 
-// One change in the diff box: a slim header (file, type, lines, status) and its diff.
+// One change in the diff box: a slim header (file, type, badges, lines) and its diff.
+// Status isn't repeated here: it's in the panel, the sidebar dot and the top bar.
 // Clicking it shows it in the explain panel.
 export default function ChangeDiff({ change, rows, active, highlight, onSelect, issue }: ChangeDiffProps) {
   const [issueOpen, setIssueOpen] = useState(false);
@@ -78,10 +79,6 @@ export default function ChangeDiff({ change, rows, active, highlight, onSelect, 
         )}
         <span className="font-mono text-xs text-gray-400">
           Lines {change.newStart}–{change.newStart + Math.max(change.newCount - 1, 0)}
-        </span>
-        <span className="flex-1" />
-        <span className={`text-xs font-medium ${change.understood ? "text-green-700" : "text-orange-700"}`}>
-          {change.understood ? "✓ Understood" : "Not understood yet"}
         </span>
       </div>
       {issue && !onLine && issueOpen && (

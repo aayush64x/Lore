@@ -540,3 +540,15 @@ One entry per slice. Newest at the bottom.
 **How to check (one AI call):**
 1. Stop `lore ui`, run `./scripts/install.sh`, start it again.
 2. Open the `truncate` session and click **Explain again**. The AI should flag `maxLength - 3` going negative when `maxLength` is under 3, as a red badge on that line. Click it for the reason.
+
+---
+
+## Slice 16 (middle option): less repeated text
+
+- Removed the **overview paragraph** at the top of an explanation. It repeated the change summary right above it.
+- Removed the **status text** ("Not understood yet" / "✓ Understood") on the right of each change's header. The status still shows in the panel pill, the sidebar dot and the top-bar progress.
+- Nothing else changed. The session's AI summary and the change summary stay, and so does the overview in the saved data.
+
+**Files:** `frontend/src/components/ExplainWalkthrough.tsx`, `frontend/src/components/ChangeDiff.tsx`
+
+**How to check:** install, open a session, click a change that has an explanation. The panel goes straight from "Change summary" to the steps, and the change header has no status text.
