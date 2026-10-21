@@ -56,9 +56,25 @@ if [ -z "$JAR" ]; then
 fi
 
 mkdir -p "$LIB_DIR" "$BIN_DIR"
-cp "$JAR" "$LIB_DIR/lore.jar"
 
-cat > "$BIN_DIR/lore" <<EOF
+# Never write into the files a running Lore is using. A running Java program keeps
+# reading classes from its JAR; overwriting it in place made `lore ui` crash on
+# Ctrl+C (NoClassDefFoundError) and once lost data. So: write a temp file in the
+# same folder, then rename it over the old one. The rename swaps which file the
+# name points to; a running Lore keeps the old file open until it exits.
+JAR_TMP="$LIB_DIR/.lore.jar.tmp.$$"
+BIN_TMP="$BIN_DIR/.lore.tmp.$$"
+trap 'rm -f "$JAR_TMP" "$BIN_TMP"' EXIT
+
+RUNNING=""
+if command -v pgrep &>/dev/null && pgrep -f "$LIB_DIR/lore.jar" &>/dev/null; then
+  RUNNING=1
+fi
+
+cp "$JAR" "$JAR_TMP"
+mv -f "$JAR_TMP" "$LIB_DIR/lore.jar"
+
+cat > "$BIN_TMP" <<EOF
 #!/usr/bin/env bash
 if ! command -v java &>/dev/null; then
   echo "Error: Java not found. Java 21+ is required." >&2
@@ -66,9 +82,13 @@ if ! command -v java &>/dev/null; then
 fi
 exec java -jar "$LIB_DIR/lore.jar" "\$@"
 EOF
-chmod +x "$BIN_DIR/lore"
+chmod +x "$BIN_TMP"
+mv -f "$BIN_TMP" "$BIN_DIR/lore"
 
 echo "Installed: $BIN_DIR/lore"
+if [ -n "$RUNNING" ]; then
+  echo "Lore is running. It keeps using the old version until you stop it and start it again."
+fi
 
 case ":$PATH:" in
   *":$BIN_DIR:"*)

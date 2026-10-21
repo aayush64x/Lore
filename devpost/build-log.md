@@ -479,3 +479,23 @@ One entry per slice. Newest at the bottom.
 1. Stop `lore ui`, run `./scripts/install.sh`, start `lore ui`.
 2. Open the `truncate` session ("idk ask claude…") and click **Explain again** in the garbled note.
 3. The concept tags shouldn't include "Regex trimming". The regex line has no `+` or `-`. Also no step should end with `}]}`.
+
+---
+
+## Slice 13: updating Lore while it runs no longer crashes it
+
+- **What was wrong:** `install.sh` copied the new JAR **over** `~/.lore/lib/lore.jar`. A running Java program keeps loading code from its JAR as it needs it. After the file changed under it, `lore ui` crashed on Ctrl+C with `NoClassDefFoundError`. Seen twice on Oct 21. The morning one most likely crashed while saving the database and lost two sessions.
+- **Fix:** the installer writes the new JAR to a temp file in the same folder, then **renames** it over `lore.jar`. A rename only changes which file the name points to. A running Lore keeps its old file open until it exits. The `lore` command file is written the same way.
+- If Lore is running, the installer says: "Lore is running. It keeps using the old version until you stop it and start it again."
+- Temp files are removed even if the install fails partway.
+
+**Test (scratch data, both installers, same steps):** install v1 → record a session → start `lore ui` → install a different v2 while it runs → stop it.
+- Old installer: `NoClassDefFoundError: ch/qos/logback/classic/spi/LoggingEvent`, the same crash as on Aayush's screen.
+- New installer: no crash. The session is still there, v2 is installed, and no temp files are left behind.
+
+**Files:** `scripts/install.sh`, `devpost/slices.md`
+
+**How to check:**
+1. Start `lore ui`. In another terminal, run `./scripts/install.sh`. It says "Lore is running...".
+2. Press Ctrl+C in the `lore ui` terminal. There's no `NoClassDefFoundError`.
+3. Run `lore ui` again. It's the new version and your sessions are all there.
