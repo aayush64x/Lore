@@ -6,9 +6,12 @@ interface ExplainWalkthroughProps {
   // Tell the parent which diff lines a step is about, so DiffView can highlight them.
   onHighlight?: (start: number, end: number) => void;
   onClearHighlight?: () => void;
+  // Turns the AI's diff line number into the number shown next to the code.
+  // Without it, the diff line number is shown as is.
+  lineLabel?: (diffLine: number) => number;
 }
 
-export default function ExplainWalkthrough({ changeId, onHighlight, onClearHighlight }: ExplainWalkthroughProps) {
+export default function ExplainWalkthrough({ changeId, onHighlight, onClearHighlight, lineLabel = (n) => n }: ExplainWalkthroughProps) {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null> (null);
@@ -73,7 +76,7 @@ export default function ExplainWalkthrough({ changeId, onHighlight, onClearHighl
                 activeStep === i ? "border-blue-500 bg-blue-50" : "border-transparent"
               }`}
             >
-              <span>Lines {step.diff_line_start}–{step.diff_line_end}: </span>
+              <span>Lines {lineLabel(step.diff_line_start)}–{lineLabel(step.diff_line_end)}: </span>
               <span>{step.text}</span>
             </div>
           ))}

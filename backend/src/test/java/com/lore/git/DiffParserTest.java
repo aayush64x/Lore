@@ -256,4 +256,54 @@ class DiffParserTest {
         assertEquals(0, parser.parse("").size());
         assertEquals(0, parser.parse(null).size());
     }
+
+    private static String newFileDiff(String path, int lines, boolean noNewlineAtEnd) {
+        StringBuilder sb = new StringBuilder()
+                .append("diff --git a/").append(path).append(" b/").append(path).append('\n')
+                .append("new file mode 100644\n--- /dev/null\n+++ b/").append(path).append('\n')
+                .append("@@ -0,0 +1,").append(lines).append(" @@\n");
+        for (int i = 1; i <= lines; i++) {
+            // A new function every 25 lines, each after an empty line.
+            sb.append('+').append(i % 25 == 0 ? "" : (i % 25 == 1 ? "function f" + i + "() {" : "  x();")).append('\n');
+        }
+        if (noNewlineAtEnd) sb.append("\\ No newline at end of file\n");
+        return sb.toString();
+    }
+
+    @Test
+    void long_new_file_is_split_into_chunks_with_their_own_headers() {
+        List<DiffParser.ParsedChange> changes = parser.parse(newFileDiff("app.js", 200, true)
+                + "diff --git a/b.txt b/b.txt\n--- a/b.txt\n+++ b/b.txt\n@@ -1 +1 @@\n-a\n+b\n");
+
+        List<DiffParser.ParsedChange> chunks = changes.stream().filter(c -> c.filePath().equals("app.js")).toList();
+        assertTrue(chunks.size() >= 3, "chunks: " + chunks.size());
+
+        int expectedStart = 1;
+        for (int i = 0; i < chunks.size(); i++) {
+            DiffParser.ParsedChange c = chunks.get(i);
+            assertEquals("ADDED", c.changeType());
+            assertEquals(i, c.displayOrder());
+            assertEquals(expectedStart, c.newStart());
+            assertTrue(c.newCount() >= 30 && c.newCount() <= 80, "count " + c.newCount());
+            assertTrue(c.diffContent().startsWith("@@ -0,0 +" + c.newStart() + "," + c.newCount() + " @@\n"));
+            // header + one "+" line per counted line (+ the no-newline marker on the last chunk)
+            long plusLines = c.diffContent().lines().filter(l -> l.startsWith("+")).count();
+            assertEquals(c.newCount(), plusLines);
+            if (i > 0) assertTrue(c.diffContent().lines().skip(1).findFirst().orElseThrow().startsWith("+function"));
+            expectedStart += c.newCount();
+        }
+        assertEquals(201, expectedStart, "chunks cover every line exactly once");
+        assertTrue(chunks.get(chunks.size() - 1).diffContent().endsWith("\\ No newline at end of file\n"));
+        assertFalse(chunks.get(0).diffContent().contains("No newline"));
+
+        // The file after it keeps going with the next display order.
+        assertEquals(chunks.size(), changes.get(changes.size() - 1).displayOrder());
+    }
+
+    @Test
+    void new_file_of_80_lines_stays_one_change() {
+        List<DiffParser.ParsedChange> changes = parser.parse(newFileDiff("small.js", 80, false));
+        assertEquals(1, changes.size());
+        assertEquals(80, changes.get(0).newCount());
+    }
 }

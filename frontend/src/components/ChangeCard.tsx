@@ -12,6 +12,12 @@ interface ChangeCardProps {
 }
 
 // One change: its line range, the understood button, the diff, and Explain this.
+// In plain code, diff line 1 is the hidden @@ header and diff line 2 is the
+// chunk's first file line (newStart).
+function fileLine(change: ChangeResponse, diffLine: number): number {
+  return change.newStart + Math.max(diffLine - 2, 0);
+}
+
 export default function ChangeCard({
   change,
   onToggleUnderstood,
@@ -19,6 +25,7 @@ export default function ChangeCard({
   onHighlight,
   onClearHighlight,
 }: ChangeCardProps) {
+  const plain = change.changeType === "ADDED";
   return (
     <div className="bg-white border border-gray-200 rounded-lg mb-2 overflow-hidden">
       <div className="px-4 py-3 flex gap-3 items-center text-sm">
@@ -41,6 +48,7 @@ export default function ChangeCard({
         diffContent={change.diffContent}
         highlightStart={highlight?.start}
         highlightEnd={highlight?.end}
+        plainCode={plain ? { newStart: change.newStart } : undefined}
       />
       {!change.binary && (
         <div className="px-4 py-3 border-t border-gray-100 text-sm">
@@ -48,6 +56,7 @@ export default function ChangeCard({
             changeId={change.id}
             onHighlight={onHighlight}
             onClearHighlight={onClearHighlight}
+            lineLabel={plain ? (n) => fileLine(change, n) : undefined}
           />
         </div>
       )}

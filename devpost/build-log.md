@@ -212,3 +212,30 @@ One entry per slice. Newest at the bottom.
 2. Run `lore config` and pick **New to coding** and **Understand what my app does**.
 3. Do a new `lore start`, change some code, `lore stop`, then `lore ui`. Click **Explain this**. It should talk about what the app does, in plain words.
 4. Run `lore config` again and pick **I'm a developer**. Reload the page (no need to restart `lore ui`) and click **Explain this** on the same change. It should be shorter and more technical.
+
+---
+
+## Long new files are split into chunks
+
+- A new file used to be one giant change. If it had 300 lines, you got one 300-line diff with one **Explain this**.
+- Now, a new file longer than 80 lines is split into chunks of about 30–80 lines.
+- Each chunk has its own **Explain this** and its own **Understood** button.
+- Where it cuts (works for any language, because it looks at the layout, not the code itself):
+  - Always right after an empty line, at the least indented spot. That's usually where a function, class or heading starts, including the comment above it.
+  - Never at a line that closes something, like `}` or `</div>`.
+  - If there are no empty lines, it cuts every 80 lines.
+  - It never leaves a tiny last chunk.
+- New files now show as plain code with line numbers, without a `+` on every line.
+- Explain steps for new files use those same line numbers, so "Lines 12–15" matches the numbers next to the code.
+- Files you change (not new) look the same as before.
+- Sessions saved before this update keep their one big change.
+- Tested on two real files: a Java file was cut at its methods, and a React page was cut at its main sections.
+
+**Files:** `backend/src/main/java/com/lore/git/NewFileChunker.java` (new), `backend/src/main/java/com/lore/git/DiffParser.java`, `frontend/src/components/DiffView.tsx`, `frontend/src/components/ChangeCard.tsx`, `frontend/src/components/ExplainWalkthrough.tsx`, `backend/src/test/java/com/lore/git/NewFileChunkerTest.java` (new), `backend/src/test/java/com/lore/git/DiffParserTest.java`
+
+**How to check:**
+1. In the `backend` folder, run `mvn package`. You should see `Tests run: 124, Failures: 0`.
+2. In your test repo: `lore start`, then copy in a long file (for example `cp ~/Desktop/Projects/Lore/frontend/src/pages/SessionDetail.tsx .`), then `lore stop`.
+3. Run `lore ui` and open that file. You should see 3 chunks (lines 1–79, 80–123, 124–178), each with its own buttons.
+4. The code has line numbers and no `+` signs.
+5. Click **Explain this** on the second chunk. Hover a step. The line numbers in the step match the numbers next to the highlighted code.
