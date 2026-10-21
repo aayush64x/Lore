@@ -308,3 +308,30 @@ One entry per slice. Newest at the bottom.
 3. Click it. Step 1 is bold and its lines are blue. Press → and ←. The active step and the blue lines move.
 4. Open a long file (300+ lines), explain it, and click the last step. The page scrolls to those lines and the panel stays in view.
 5. Make the window narrow. The panel moves under the diff.
+
+---
+
+## File page: full screen, file navigation in the navbar
+
+- The file page uses the whole screen width, with 24px on each side.
+- The diff takes the space on the left. The explain panel on the right is 420–480px wide.
+- Both fill the screen under the navbar. The diff scrolls in its own box (up/down, and sideways for long lines). The panel stays put.
+- If a file has several changes, they're all in the diff box. Click one to show it in the panel. The panel also has "← Prev change · Change 2 of 3 · Next change →".
+- The navbar sticks to the top and gets a soft shadow once you scroll. It has:
+  - **Lore** → home, then project › session › file (all clickable). Only the long session title gets cut short.
+  - Middle: **← Prev file · File 1 of 5 · Next file →**, turned off at the ends.
+  - Right: a small progress bar, "N of M understood" for the whole session, and **Unreviewed only**.
+- **Unreviewed only** is now saved in the page address, so it carries over between the session page and the file page. On the file page it skips files that are all understood and hides understood changes (but not the one you're looking at).
+- Removed: the big file-name title, the old wide progress bar, and the "That's the last file" link at the bottom.
+- Keys: **[** and **]** go to the previous/next file. **←** and **→** still move between explain steps.
+- Explanations stay when you move between files and come back.
+- Under 1000px wide, the panel goes under the diff and the page scrolls normally. The navbar wraps onto two rows instead of overlapping.
+
+**Files:** `frontend/src/pages/FileDetail.tsx`, `frontend/src/pages/SessionDetail.tsx`, `frontend/src/components/Navbar.tsx`, `ChangeDiff.tsx` (new), `ExplainPanel.tsx` (new), `ChangeCard.tsx` (removed)
+
+**How to check:**
+1. Restart `lore ui`.
+2. Open a session with several files, then a file. The diff and panel fill the screen. Scroll the diff: the panel stays and the navbar gets a shadow.
+3. Press **]** and **[**. "File X of Y" changes. On the first file, "Prev file" is grey.
+4. Click **Explain this**, then press **→**. The diff scrolls to the step's lines inside its box.
+5. Tick **Unreviewed only**, then click the session name in the navbar. The session page has it ticked too.

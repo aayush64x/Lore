@@ -2,9 +2,12 @@
 //
 // Shows "Lore" (goes to the session list) and a breadcrumb trail:
 //   project › session title › file
-// Every crumb but the last is a link. Long names are cut off with "…";
-// hover one to see it in full.
+// Every crumb with a link is clickable. Long names are cut off with "…";
+// hover one to see it in full. Pages can add their own items in the
+// middle and on the right. A soft shadow shows once the page is scrolled.
 
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 export interface Crumb {
@@ -16,7 +19,11 @@ export interface Crumb {
 interface NavbarProps {
   project: string | null; // full project folder path, if known
   crumbs?: Crumb[];       // after the project crumb
-  wide?: boolean;         // match a page that uses the wider layout
+  fullWidth?: boolean;    // match a page that uses the whole screen width
+  center?: ReactNode;
+  right?: ReactNode;
+  // Show the shadow even if the window isn't scrolled (a page's own scroll box is).
+  scrolled?: boolean;
 }
 
 // The session list's address for a project.
@@ -29,18 +36,31 @@ function projectName(project: string): string {
   return project.split(/[\\/]/).filter(Boolean).pop() ?? project;
 }
 
-export default function Navbar({ project, crumbs = [], wide = false }: NavbarProps) {
+export default function Navbar({ project, crumbs = [], fullWidth = false, center, right, scrolled = false }: NavbarProps) {
+  const [windowScrolled, setWindowScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setWindowScrolled(window.scrollY > 0);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const all: Crumb[] = [
     ...(project ? [{ label: projectName(project), to: sessionsUrl(project) }] : []),
     ...crumbs,
   ];
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <nav
-        aria-label="Breadcrumb"
-        className={`${wide ? "max-w-6xl" : "max-w-3xl"} mx-auto px-4 h-12 flex items-center gap-3 text-sm`}
+    <header
+      className={`bg-white border-b border-gray-200 sticky top-0 z-10 transition-shadow ${
+        scrolled || windowScrolled ? "shadow-sm" : ""
+      }`}
+    >
+      <div
+        className={`${fullWidth ? "px-6" : "max-w-3xl mx-auto px-4"} min-h-12 py-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}
       >
+      <nav aria-label="Breadcrumb" className="flex items-center gap-3 min-w-0 flex-1 basis-80">
         <Link to={sessionsUrl(project)} className="font-semibold text-base text-gray-900 shrink-0">
           Lore
         </Link>
@@ -50,11 +70,14 @@ export default function Navbar({ project, crumbs = [], wide = false }: NavbarPro
         <ol className="flex items-center gap-1.5 min-w-0">
           {all.map((crumb, i) => {
             const last = i === all.length - 1;
+            // The project and the file stay whole (up to a limit); the session
+            // title in between is what gets cut short when space runs out.
+            const edge = i === 0 || last;
             const text = `truncate ${crumb.mono ? "font-mono text-xs" : ""}`;
             return (
-              <li key={i} className={`flex items-center gap-1.5 min-w-0 ${last ? "" : "shrink-[2]"}`}>
+              <li key={i} className={`flex items-center gap-1.5 min-w-0 ${edge ? "shrink-0 max-w-[16rem]" : "shrink"}`}>
                 {i > 0 && <span className="text-gray-400 shrink-0" aria-hidden="true">›</span>}
-                {crumb.to && !last ? (
+                {crumb.to ? (
                   <Link to={crumb.to} title={crumb.label} className={`${text} text-blue-600 hover:underline`}>
                     {crumb.label}
                   </Link>
@@ -68,6 +91,9 @@ export default function Navbar({ project, crumbs = [], wide = false }: NavbarPro
           })}
         </ol>
       </nav>
+      {center && <div className="shrink-0">{center}</div>}
+      {right && <div className="shrink-0 ml-auto">{right}</div>}
+      </div>
     </header>
   );
 }

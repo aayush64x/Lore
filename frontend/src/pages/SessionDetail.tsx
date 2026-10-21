@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { fetchSession, retrySummary, sessionDetails, sessionTitle } from "../api/client";
 import type { SessionDetailResponse, ChangeResponse } from "../api/client";
@@ -20,7 +20,9 @@ export default function SessionDetail() {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
-  const [unreviewedOnly, setUnreviewedOnly] = useState(false);
+  // In the URL, so it carries over to the file page and back.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const unreviewedOnly = searchParams.get("unreviewed") === "1";
 
   useEffect(() => {
     if (!id) return;
@@ -131,7 +133,7 @@ export default function SessionDetail() {
             <input
               type="checkbox"
               checked={unreviewedOnly}
-              onChange={(e) => setUnreviewedOnly(e.target.checked)}
+              onChange={(e) => setSearchParams(e.target.checked ? { unreviewed: "1" } : {}, { replace: true })}
             />
             Unreviewed only
           </label>
@@ -149,7 +151,7 @@ export default function SessionDetail() {
             return (
               <li key={file.filePath}>
                 <button
-                  onClick={() => navigate(`/sessions/${id}/file?path=${encodeURIComponent(file.filePath)}`)}
+                  onClick={() => navigate(`/sessions/${id}/file?path=${encodeURIComponent(file.filePath)}${unreviewedOnly ? "&unreviewed=1" : ""}`)}
                   className="w-full text-left p-4 border border-gray-200 rounded-lg bg-white hover:border-blue-500 transition-colors flex items-center gap-3"
                 >
                   <span className="flex-1 min-w-0">
