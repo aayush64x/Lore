@@ -107,10 +107,10 @@ public class AnthropicAiService implements AiService {
     }
 
     @Override
-    public ExplanationResponse explain(String filePath, String diffContent) {
+    public ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile) {
         ExplanationOutput out = call(ExplanationOutput.class,
-                AiPrompts.explainSystemPrompt(),
-                AiPrompts.explainUserMessage(filePath, diffContent));
+                AiPrompts.explainSystemPrompt(profile),
+                AiPrompts.explainUserMessage(filePath, diffContent, reason));
 
         List<ExplanationResponse.Step> steps = out.steps() == null ? List.of()
                 : out.steps().stream().filter(Objects::nonNull)

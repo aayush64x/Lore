@@ -35,6 +35,11 @@ public record UserProfile(Level level, Goal goal) {
         @Override public String label() { return label; }
     }
 
+    /** Saved with each explanation, so a profile change can be noticed. */
+    public String key() {
+        return level.name() + "/" + goal.name();
+    }
+
     /** Parses a saved enum name; empty if missing or not a known value. */
     static <E extends Enum<E>> Optional<E> parse(Class<E> type, String saved) {
         if (saved == null) return Optional.empty();

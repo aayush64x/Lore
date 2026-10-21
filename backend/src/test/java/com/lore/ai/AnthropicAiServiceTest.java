@@ -127,7 +127,7 @@ class AnthropicAiServiceTest {
         responseBody = "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}}";
 
         AiUnavailableException e = assertThrows(AiUnavailableException.class,
-                () -> service(home, FAKE_KEY).explain("app.js", "+x\n"));
+                () -> service(home, FAKE_KEY).explain("app.js", "+x\n", null, UserProfile.DEFAULT));
         assertTrue(e.getMessage().contains("401"), e.getMessage());
         assertFalse(e.getMessage().contains(FAKE_KEY));
     }

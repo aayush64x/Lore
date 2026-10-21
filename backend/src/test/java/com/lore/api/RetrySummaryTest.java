@@ -46,7 +46,7 @@ class RetrySummaryTest {
         }
 
         @Override
-        public ExplanationResponse explain(String filePath, String diffContent) {
+        public ExplanationResponse explain(String filePath, String diffContent, String reason, com.lore.ai.UserProfile profile) {
             throw new UnsupportedOperationException();
         }
     }

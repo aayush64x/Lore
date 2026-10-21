@@ -23,7 +23,7 @@ public class NoOpAiService implements AiService {
     }
 
     @Override
-    public ExplanationResponse explain(String filePath, String diffContent) {
+    public ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile) {
         throw new AiUnavailableException(MESSAGE);
     }
 }

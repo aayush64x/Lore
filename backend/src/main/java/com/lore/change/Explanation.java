@@ -23,6 +23,9 @@ public class Explanation {
     @Column(columnDefinition = "TEXT")
     private String concepts;
 
+    /** The profile it was written for (UserProfile.key()); null for old rows. */
+    private String profile;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ExplanationStatus status = ExplanationStatus.PENDING;
@@ -46,6 +49,8 @@ public class Explanation {
     public void setSteps(String steps) { this.steps = steps; }
     public String getConcepts() { return concepts; }
     public void setConcepts(String concepts) { this.concepts = concepts; }
+    public String getProfile() { return profile; }
+    public void setProfile(String profile) { this.profile = profile; }
     public ExplanationStatus getStatus() { return status; }
     public void setStatus(ExplanationStatus status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }

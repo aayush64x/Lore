@@ -83,7 +83,7 @@ class ApiKeyNeverLeaksTest {
         }
         AnthropicAiService ai = new AnthropicAiService(storeWithEnvKey(home), "claude-sonnet-5-5",
                 "http://127.0.0.1:" + closedPort);
-        AiUnavailableException e = assertThrows(AiUnavailableException.class, () -> ai.explain("a.js", "+x"));
+        AiUnavailableException e = assertThrows(AiUnavailableException.class, () -> ai.explain("a.js", "+x", null, UserProfile.DEFAULT));
         assertNoKey(everything(e));
         assertNoKey(output.getAll());
     }

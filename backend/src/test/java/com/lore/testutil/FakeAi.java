@@ -1,5 +1,7 @@
 package com.lore.testutil;
 
+import com.lore.ai.UserProfile;
+
 import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.ExplanationResponse;
@@ -18,6 +20,8 @@ public class FakeAi implements AiService {
     public volatile Mode mode = Mode.WORKING;
     public volatile int summarizeCalls;
     public volatile int explainCalls;
+    public volatile String lastExplainReason;
+    public volatile UserProfile lastExplainProfile;
 
     public void reset(Mode mode) {
         this.mode = mode;
@@ -35,8 +39,10 @@ public class FakeAi implements AiService {
     }
 
     @Override
-    public ExplanationResponse explain(String filePath, String diffContent) {
+    public ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile) {
         explainCalls++;
+        lastExplainReason = reason;
+        lastExplainProfile = profile;
         fail();
         return new ExplanationResponse("Explains " + filePath,
                 List.of(new ExplanationResponse.Step("First line", 1, 2)),

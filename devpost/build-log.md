@@ -191,3 +191,24 @@ One entry per slice. Newest at the bottom.
 3. Open a session, then a file. The bar shows `Lore | your-project › session title › file`.
 4. Click the session title, then the project name, then **Lore**. Each one takes you to the right page.
 5. Refresh on a file page. The bar still shows the full path.
+
+---
+
+## Explanations that fit you
+
+- **Explain this** now writes for the person reading it, using the level and goal from setup (`lore config`).
+- **New to coding + understand my app:** first says what the code does for the app, in plain words, like "The checkout page now adds tax before showing the total." Then lists at most 3 coding ideas, briefly.
+- **New to coding + learn to code:** says what the code does, then how. Names and explains each coding idea the first time it shows up.
+- **Know some:** normal code words, with the less common ones explained. The "learn" goal also points out patterns worth learning.
+- **Developer:** short and technical. Points out edge cases, possible bugs and security issues. The "learn" goal also suggests better ways to write it.
+- The AI also gets what you wrote at `lore stop`, so it can say "You asked for X. This part does that by...".
+- Each explanation remembers which profile it was written for. If you change your profile, **Explain this** makes a new one in the new style. If nothing changed, it reuses the saved one, so no extra AI call.
+- Explanations made before this update are kept as they are.
+
+**Files:** `backend/src/main/java/com/lore/ai/AiPrompts.java`, `backend/src/main/java/com/lore/ai/AiService.java`, `backend/src/main/java/com/lore/ai/AnthropicAiService.java`, `backend/src/main/java/com/lore/ai/BedrockAiService.java`, `backend/src/main/java/com/lore/ai/NoOpAiService.java`, `backend/src/main/java/com/lore/ai/UserProfile.java`, `backend/src/main/java/com/lore/api/controller/ChangeController.java`, `backend/src/main/java/com/lore/change/Explanation.java`, `backend/src/main/resources/db/migration/V4__explanation_profile.sql` (new), tests in `AiPromptsTest`, `ApiControllerTest` and `FakeAi`
+
+**How to check (needs your real key):**
+1. In the `backend` folder, run `mvn package`. You should see `Tests run: 115, Failures: 0`.
+2. Run `lore config` and pick **New to coding** and **Understand what my app does**.
+3. Do a new `lore start`, change some code, `lore stop`, then `lore ui`. Click **Explain this**. It should talk about what the app does, in plain words.
+4. Run `lore config` again and pick **I'm a developer**. Restart `lore ui`, reload the page, and click **Explain this** on the same change. It should be shorter and more technical.

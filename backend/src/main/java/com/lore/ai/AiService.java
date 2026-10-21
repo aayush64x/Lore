@@ -9,7 +9,8 @@ public interface AiService {
 
     SummaryResponse summarize(List<ChangeInput> changes, String reason);
 
-    ExplanationResponse explain(String filePath, String diffContent);
+    /** reason is what the user said they were trying to do (may be null). */
+    ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile);
 
     /**
      * One change sent to the AI. displayOrder is the change's stable id within the

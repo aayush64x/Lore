@@ -1,5 +1,7 @@
 package com.lore.api;
 
+import com.lore.ai.ApiKeyStore;
+import com.lore.ai.UserProfile;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.change.Explanation;
@@ -7,6 +9,7 @@ import com.lore.change.ExplanationRepository;
 import com.lore.session.Session;
 import com.lore.session.SessionRepository;
 import com.lore.testutil.FakeAi;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,7 @@ class ApiControllerTest {
     @Autowired SessionRepository sessionRepository;
     @Autowired ChangeRepository changeRepository;
     @Autowired ExplanationRepository explanationRepository;
+    @Autowired ApiKeyStore settings;
 
     /** Unique per test so tests don't see each other's sessions. */
     String project;
@@ -50,6 +54,11 @@ class ApiControllerTest {
     void setUp() {
         ai.reset(FakeAi.Mode.WORKING);
         project = "/tmp/api-test-" + UUID.randomUUID();
+    }
+
+    @AfterEach
+    void resetProfile() throws Exception {
+        java.nio.file.Files.deleteIfExists(settings.configFile());
     }
 
     private Session session(String projectPath, Session.SessionStatus status, String reason) {
@@ -244,5 +253,42 @@ class ApiControllerTest {
                 .andExpect(jsonPath("$.steps[0].diff_line_end").value(4))
                 .andExpect(jsonPath("$.concepts", hasSize(0)));
         assertEquals(0, ai.explainCalls);
+    }
+
+    @Test
+    void explain_sends_the_session_reason_and_the_users_profile() throws Exception {
+        UserProfile dev = new UserProfile(UserProfile.Level.DEVELOPER, UserProfile.Goal.LEARN_TO_CODE);
+        settings.saveProfile(dev);
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "Add login\n\nWith a form."), "a.js", 0);
+
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain")).andExpect(status().isOk());
+
+        assertEquals("Add login\n\nWith a form.", ai.lastExplainReason);
+        assertEquals(dev, ai.lastExplainProfile);
+        assertEquals("DEVELOPER/LEARN_TO_CODE", explanationRepository.findByChangeId(c.getId()).orElseThrow().getProfile());
+    }
+
+    @Test
+    void explain_uses_the_default_profile_when_none_is_saved() throws Exception {
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain")).andExpect(status().isOk());
+        assertEquals(UserProfile.DEFAULT, ai.lastExplainProfile);
+    }
+
+    @Test
+    void changing_the_profile_makes_a_new_explanation_once() throws Exception {
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
+        String url = "/api/changes/" + c.getId() + "/explain";
+
+        mvc.perform(post(url)).andExpect(status().isOk());
+        assertEquals(1, ai.explainCalls);
+
+        settings.saveProfile(new UserProfile(UserProfile.Level.NEW_TO_CODING, UserProfile.Goal.UNDERSTAND_APP));
+        mvc.perform(post(url)).andExpect(status().isOk());
+        mvc.perform(post(url)).andExpect(status().isOk());
+
+        assertEquals(2, ai.explainCalls);
+        assertEquals(1, explanationRepository.findAll().stream()
+                .filter(e -> e.getChange().getId().equals(c.getId())).count());
     }
 }

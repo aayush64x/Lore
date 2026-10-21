@@ -4,11 +4,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
+import com.lore.ai.ApiKeyStore;
+import com.lore.ai.UserProfile;
 import com.lore.ai.dto.ExplanationResponse;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
+import com.lore.session.Session;
+import com.lore.session.SessionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -30,14 +34,20 @@ public class ChangeController {
 
     private final ChangeRepository changeRepository;
     private final ExplanationRepository explanationRepository;
+    private final SessionRepository sessionRepository;
     private final AiService aiService;
+    private final ApiKeyStore settings;
 
     public ChangeController(ChangeRepository changeRepository,
                             ExplanationRepository explanationRepository,
-                            AiService aiService) {
+                            SessionRepository sessionRepository,
+                            AiService aiService,
+                            ApiKeyStore settings) {
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
+        this.sessionRepository = sessionRepository;
         this.aiService = aiService;
+        this.settings = settings;
     }
 
     @PutMapping("/changes/{id}/understood")
@@ -59,15 +69,20 @@ public class ChangeController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Binary files can't be explained.");
         }
 
+        UserProfile profile = settings.profile().orElse(UserProfile.DEFAULT);
         var existing = explanationRepository.findByChangeId(id);
-        if (existing.isPresent() && existing.get().getStatus() == Explanation.ExplanationStatus.COMPLETE) {
+        if (existing.isPresent() && isCurrent(existing.get(), profile)) {
             return buildExplanationMap(existing.get());
         }
 
         Explanation explanation = existing.orElseGet(() -> new Explanation(UUID.randomUUID(), change));
+        // getId() on the lazy session doesn't load it; look it up for the reason.
+        String reason = sessionRepository.findById(change.getSession().getId())
+                .map(Session::getReason).orElse(null);
 
         try {
-            ExplanationResponse result = aiService.explain(change.getFilePath(), change.getDiffContent());
+            ExplanationResponse result = aiService.explain(
+                    change.getFilePath(), change.getDiffContent(), reason, profile);
             if (result == null || result.overview() == null || result.overview().isBlank()) {
                 throw new AiUnavailableException("AI returned an empty explanation.");
             }
@@ -75,6 +90,7 @@ public class ChangeController {
             explanation.setOverview(result.overview());
             explanation.setSteps(mapper.writeValueAsString(stepsForStorage(result.steps())));
             explanation.setConcepts(mapper.writeValueAsString(conceptsForStorage(result.concepts())));
+            explanation.setProfile(profile.key());
             explanation.setStatus(Explanation.ExplanationStatus.COMPLETE);
         } catch (AiUnavailableException e) {
             log.warn("AI explanation not saved for change {}: {}", id, e.getMessage());
@@ -90,6 +106,16 @@ public class ChangeController {
 
         explanationRepository.save(explanation);
         return buildExplanationMap(explanation);
+    }
+
+    /**
+     * A saved explanation is reused unless it failed or was written for a different
+     * profile. Rows from before profiles existed (null) are kept, to avoid paying for
+     * new explanations nobody asked for.
+     */
+    private static boolean isCurrent(Explanation explanation, UserProfile profile) {
+        return explanation.getStatus() == Explanation.ExplanationStatus.COMPLETE
+                && (explanation.getProfile() == null || explanation.getProfile().equals(profile.key()));
     }
 
     /**

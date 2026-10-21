@@ -102,9 +102,9 @@ public class BedrockAiService implements AiService {
     }
 
     @Override
-    public ExplanationResponse explain(String filePath, String diffContent) {
-        String systemPrompt = AiPrompts.explainSystemPrompt();
-        String userMessage = AiPrompts.explainUserMessage(filePath, diffContent);
+    public ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile) {
+        String systemPrompt = AiPrompts.explainSystemPrompt(profile);
+        String userMessage = AiPrompts.explainUserMessage(filePath, diffContent, reason);
 
         ToolSpecification toolSpec = ToolSpecification.builder()
                 .name("save_explanation")
