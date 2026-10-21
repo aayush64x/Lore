@@ -259,3 +259,27 @@ One entry per slice. Newest at the bottom.
 1. In the Lore folder, run `./scripts/install.sh`. It should say `Installed: /Users/you/.local/bin/lore` and `Done.`
 2. Open a new terminal, `cd` into any other git project, and run `lore`. It should show the session status.
 3. Run `which lore`. It should print `~/.local/bin/lore`.
+
+---
+
+## UI polish: diff, card header, pill, fonts
+
+- **Hover highlight bug fixed.** It used to stop partway across long lines. Now it fills the whole row, with a 3px blue bar on the left.
+- **Line numbers like GitHub.** The `+`/`-` column is gone. Two grey columns show old | new line numbers.
+  - Unchanged lines have both. Removed lines have only the old number. Added lines have only the new one.
+  - Added rows have a thin green left edge, removed rows a red one, so you don't need to tell red from green.
+- **Explain step labels use real file line numbers**, the same as the gutter. A step about removed lines says "Removed lines X–Y".
+- **Status pill:** orange "Not understood yet" / green "✓ Understood". Click to toggle.
+- **"Explain this" is a real button** at the top right of each card.
+- **Card header:** file name in bold, plus a small ADDED / MODIFIED / DELETED / RENAMED tag.
+- **AI summary:** a small "AI summary" label, with smaller grey text.
+- **Progress bar:** green fill, bold count.
+- **Fonts:** Inter for the page, JetBrains Mono for code. Bundled with the app, so they work offline. Joined symbols are off, so `!==` shows as three characters.
+
+**Files:** `frontend/src/components/diffLines.ts` (new), `DiffView.tsx`, `ChangeCard.tsx`, `ExplainWalkthrough.tsx`, `ProgressBar.tsx`, `frontend/src/pages/SessionDetail.tsx`, `frontend/src/index.css`, `frontend/src/main.tsx`, `frontend/package.json`
+
+**How to check:**
+1. Stop `lore ui` (Ctrl+C) and start it again, so it uses the new build.
+2. Open a session. You see the "AI summary" label and a green progress bar.
+3. Open a file. Each card has the file name, a type tag, the orange pill and an **Explain this** button.
+4. The diff has two grey number columns. Click **Explain this** and hover a step. The whole row turns blue with a blue bar on the left. The step's line numbers match the gutter.

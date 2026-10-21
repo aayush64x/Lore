@@ -1,7 +1,55 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* JetBrains Mono joins "!==" or "=>" into one symbol. Show the real characters. */
+pre,
+code,
+.font-mono {
+  font-variant-ligatures: none;
+}
+
+/* Thin colored left edge, so added/removed rows don't rely on red/green alone.
+   Drawn as its own layer so the grey gutter doesn't cover it. */
+.diff-row-added,
+.diff-row-removed,
 .diff-line-highlighted {
-  outline: 2px solid #3b82f6;
-  outline-offset: -2px;
+  position: relative;
+}
+
+.diff-row-added::before,
+.diff-row-removed::before,
+.diff-line-highlighted::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  z-index: 1;
+}
+
+.diff-row-added::before {
+  background-color: #16a34a;
+}
+
+.diff-row-removed::before {
+  background-color: #dc2626;
+}
+
+/* Lines an explain step is about: the whole row, with a 3px blue bar on the left. */
+.diff-line-highlighted {
   background-color: #dbeafe !important;
+}
+
+.diff-line-highlighted::before {
+  width: 3px;
+  background-color: #3b82f6;
+}
+
+.diff-line-highlighted .diff-gutter {
+  background-color: transparent;
 }

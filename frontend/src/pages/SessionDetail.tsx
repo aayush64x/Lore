@@ -101,7 +101,8 @@ export default function SessionDetail() {
 
       {session.summary ? (
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-          <p className="text-gray-700">{session.summary}</p>
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">AI summary</div>
+          <p className="text-sm text-gray-500">{session.summary}</p>
         </div>
       ) : (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-sm text-gray-500">
