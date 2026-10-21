@@ -335,3 +335,22 @@ One entry per slice. Newest at the bottom.
 3. Press **]** and **[**. "File X of Y" changes. On the first file, "Prev file" is grey.
 4. Click **Explain this**, then press **→**. The diff scrolls to the step's lines inside its box.
 5. Tick **Unreviewed only**, then click the session name in the navbar. The session page has it ticked too.
+
+---
+
+## Database backup on every start
+
+- Every time Lore starts (any command: `lore`, `start`, `stop`, `ui`, ...), it copies `~/.lore/lore.mv.db` to `~/.lore/backups/lore-<date-time>.mv.db`.
+- It keeps the newest 3 and deletes older ones. Other files in that folder are left alone.
+- It runs before the database is opened.
+- If there's no database yet (first run), it does nothing.
+- If the copy fails, it prints one line (`Warning: couldn't back up the Lore database (...). Continuing anyway.`) and Lore starts as normal.
+- Why: on Oct 21 a crash while saving wiped two sessions and there was no backup.
+- To restore: stop Lore, then copy a backup over `~/.lore/lore.mv.db`.
+
+**Files:** `backend/src/main/java/com/lore/DbBackup.java` (new), `backend/src/main/java/com/lore/LoreApplication.java`, `backend/src/test/java/com/lore/DbBackupTest.java` (new), `devpost/slices.md`
+
+**How to check:**
+1. Run `lore` twice.
+2. Run `ls ~/.lore/backups`. You should see dated `lore-....mv.db` files.
+3. Run `lore` 3 more times. There are still only 3 files.

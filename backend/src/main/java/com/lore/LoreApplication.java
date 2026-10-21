@@ -8,6 +8,9 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 public class LoreApplication {
 
     public static void main(String[] args) {
+        // Before Spring starts, so the database isn't open yet.
+        DbBackup.run();
+
         WebApplicationType webType = WebApplicationType.NONE;
         boolean help = false;
         String port = null;

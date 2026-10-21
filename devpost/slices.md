@@ -33,7 +33,7 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 - [ ] **13. Don't lose data when the JAR is replaced while Lore runs.** On Oct 21 the JAR was rebuilt while `lore ui` ran from it. On Ctrl+C, H2 crashed while saving (`NoClassDefFoundError: Chunk$PositionComparator` in `~/.lore/lore.trace.db`), and two sessions were lost. Real users hit the same thing if they re-run `install.sh` (or update) while `lore ui` is open. Fix:
   - `scripts/install.sh`: copy the new JAR to a temp file, then `mv` it over `lore.jar`. The running program keeps the old file until it exits.
   - Test: start `lore ui`, re-run the installer, press Ctrl+C, then check that every session is still there.
-  - Also consider: back up `lore.mv.db` before Lore opens it after an update, so one bad shutdown can't wipe everything.
+  - (The database backup on every start was moved out of this item and done on Oct 21.)
 
 ## Cut first if time runs short
 
