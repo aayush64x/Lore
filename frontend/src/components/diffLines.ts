@@ -46,3 +46,14 @@ export function stepLabel(rows: DiffRow[], diffStart: number, diffEnd: number): 
   if (oldNums.length > 0) return range(oldNums, "Removed line");
   return `Lines ${diffStart}–${diffEnd}`;
 }
+
+// How many lines a change adds and removes, for "+12 −3" counts.
+export function lineCounts(diffContent: string | null): { added: number; removed: number } {
+  let added = 0;
+  let removed = 0;
+  for (const line of (diffContent ?? "").split("\n")) {
+    if (line.startsWith("+")) added++;
+    else if (line.startsWith("-")) removed++;
+  }
+  return { added, removed };
+}

@@ -63,7 +63,7 @@ export default function SessionList() {
   return (
     <>
     <Navbar project={project} />
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="px-6 py-6">
       <h1 className="text-xl font-semibold mb-4">Sessions</h1>
 
       {!project && (

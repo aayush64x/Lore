@@ -35,6 +35,8 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
   - Test: start `lore ui`, re-run the installer, press Ctrl+C, then check that every session is still there.
   - (The database backup on every start was moved out of this item and done on Oct 21.)
 
+- [ ] **14. Stray `}]}` at the end of some explain steps.** Seen Oct 21 on a real explanation ("...matching the code.}]}"). The AI's answer is read wrong somewhere (`AnthropicAiService` / `ExplanationResponse` parsing). Fix the parsing and add a test with that output.
+
 ## Cut first if time runs short
 
 - [ ] **12. Warning for sessions left open too long**, in the terminal and on the web page.

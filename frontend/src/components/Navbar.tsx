@@ -19,7 +19,6 @@ export interface Crumb {
 interface NavbarProps {
   project: string | null; // full project folder path, if known
   crumbs?: Crumb[];       // after the project crumb
-  fullWidth?: boolean;    // match a page that uses the whole screen width
   center?: ReactNode;
   right?: ReactNode;
   // Show the shadow even if the window isn't scrolled (a page's own scroll box is).
@@ -36,7 +35,7 @@ function projectName(project: string): string {
   return project.split(/[\\/]/).filter(Boolean).pop() ?? project;
 }
 
-export default function Navbar({ project, crumbs = [], fullWidth = false, center, right, scrolled = false }: NavbarProps) {
+export default function Navbar({ project, crumbs = [], center, right, scrolled = false }: NavbarProps) {
   const [windowScrolled, setWindowScrolled] = useState(false);
 
   useEffect(() => {
@@ -58,7 +57,7 @@ export default function Navbar({ project, crumbs = [], fullWidth = false, center
       }`}
     >
       <div
-        className={`${fullWidth ? "px-6" : "max-w-3xl mx-auto px-4"} min-h-12 py-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}
+        className={`px-6 min-h-12 py-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}
       >
       <nav aria-label="Breadcrumb" className="flex items-center gap-3 min-w-0 flex-1 basis-80">
         <Link to={sessionsUrl(project)} className="font-semibold text-base text-gray-900 shrink-0">

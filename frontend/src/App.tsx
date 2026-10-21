@@ -2,24 +2,24 @@
 //
 // Routes:
 //   /              → SessionList (home page, shows all sessions)
-//   /sessions/:id  → SessionDetail (one session's summary and the files it changed)
-//   /sessions/:id/file?path=... → FileDetail (every change in one file)
+//   /sessions/:id  → SessionPage (one session: goal, files, diff and explanations)
+//   /sessions/:id/file?path=... → the same page, with that file selected
+//   One route with an optional "file" part, so moving between files keeps the page
+//   (and anything already explained) instead of loading it again.
 //
 // The project path is passed as a URL query param: ?project=/path/to/project
 // Both pages can read it from the URL.
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import SessionList from './pages/SessionList';
-import SessionDetail from './pages/SessionDetail';
-import FileDetail from './pages/FileDetail';
+import SessionPage from './pages/SessionPage';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<SessionList />} />
-        <Route path="/sessions/:id" element={<SessionDetail />} />
-        <Route path="/sessions/:id/file" element={<FileDetail />} />
+        <Route path="/sessions/:id/file?" element={<SessionPage />} />
       </Routes>
     </BrowserRouter>
   );

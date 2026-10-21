@@ -1,31 +1,39 @@
-// File page — every change in one file of a session.
+// Session page — one session: its goal and numbers on top, the changed files on
+// the left, and the selected file's diff and explain panel on the right.
 //
-// URL: /sessions/:id/file?path=src/App.tsx (&unreviewed=1 to skip understood changes)
+// URLs (both show this page; the second one opens with that file selected):
+//   /sessions/:id
+//   /sessions/:id/file?path=src/App.tsx
+// Add &unreviewed=1 (or ?unreviewed=1) to hide what's already understood.
 // The path is a query param because file paths contain slashes.
 //
-// Wide screens: the diffs scroll in their own box on the left, and the explain
-// panel for the selected change sits on the right. Both fill the screen under
-// the navbar. Below 1000px the panel goes under the diffs and the page scrolls.
+// Wide screens: everything fits the screen and the diff scrolls in its own box.
+// Below 1000px the columns stack and the page scrolls.
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { explainChange, fetchSession, sessionTitle, toggleUnderstood } from "../api/client";
-import type { ExplanationData, SessionDetailResponse } from "../api/client";
+import { explainChange, fetchSession, retrySummary, sessionTitle, toggleUnderstood } from "../api/client";
+import type { ChangeResponse, ExplanationConcept, ExplanationData, SessionDetailResponse } from "../api/client";
 import ChangeDiff from "../components/ChangeDiff";
 import ExplainPanel from "../components/ExplainPanel";
+import FileSidebar from "../components/FileSidebar";
+import type { FileSummary } from "../components/FileSidebar";
 import ProgressBar from "../components/ProgressBar";
 import Navbar from "../components/Navbar";
-import { diffRows, stepLabel } from "../components/diffLines";
+import SessionHeader from "../components/SessionHeader";
+import { diffRows, lineCounts, stepLabel } from "../components/diffLines";
 
-export default function FileDetail() {
+export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const filePath = searchParams.get("path");
+  const pathParam = searchParams.get("path");
   const unreviewedOnly = searchParams.get("unreviewed") === "1";
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   // Per change, so switching changes (or files) keeps what was already explained.
   // Saved explanations come with the session; this holds ones made on this visit.
@@ -37,6 +45,8 @@ export default function FileDetail() {
   const [hoverStep, setHoverStep] = useState<number | null>(null);
   const [diffScrolled, setDiffScrolled] = useState(false);
   const diffBoxRef = useRef<HTMLDivElement>(null);
+  // A change to scroll to once its file is on screen (it may be in another file).
+  const pendingScroll = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -47,45 +57,89 @@ export default function FileDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const fileChanges = useMemo(
-    () => session?.changes.filter((c) => c.filePath === filePath) ?? [],
-    [session, filePath]
-  );
-  // Unreviewed only hides understood changes, but never the one you're looking at,
+  const allChanges = useMemo(() => session?.changes ?? [], [session]);
+
+  // Files in the order they were changed, each with its changes and counts.
+  const files = useMemo(() => {
+    const byPath = new Map<string, ChangeResponse[]>();
+    for (const c of allChanges) {
+      if (!byPath.has(c.filePath)) byPath.set(c.filePath, []);
+      byPath.get(c.filePath)!.push(c);
+    }
+    return [...byPath].map(([path, changes]) => {
+      const counts = changes.map((c) => lineCounts(c.diffContent));
+      return {
+        path,
+        changes,
+        total: changes.length,
+        understood: changes.filter((c) => c.understood).length,
+        added: counts.reduce((n, c) => n + c.added, 0),
+        removed: counts.reduce((n, c) => n + c.removed, 0),
+      };
+    });
+  }, [allChanges]);
+  // The order "Start learning" walks through: file by file, top to bottom.
+  const learningOrder = useMemo(() => files.flatMap((f) => f.changes), [files]);
+
+  // No file in the URL: open the first one with something left to learn.
+  const filePath = pathParam ?? (files.find((f) => f.understood < f.total) ?? files[0])?.path ?? null;
+  const currentFile = files.find((f) => f.path === filePath) ?? null;
+
+  // Unreviewed only skips files that are all understood, but keeps the current one
+  // so "File X of Y" makes sense.
+  const sidebarFiles: FileSummary[] = unreviewedOnly
+    ? files.filter((f) => f.path === filePath || f.understood < f.total)
+    : files;
+  const fileIndex = sidebarFiles.findIndex((f) => f.path === filePath);
+  const prevFile = fileIndex > 0 ? sidebarFiles[fileIndex - 1].path : null;
+  const nextFile = fileIndex >= 0 && fileIndex < sidebarFiles.length - 1 ? sidebarFiles[fileIndex + 1].path : null;
+
+  const fileChanges = currentFile?.changes ?? [];
+  // Unreviewed only also hides understood changes, but never the one you're looking at,
   // so marking it understood doesn't make it vanish from under you.
   const changes = unreviewedOnly
     ? fileChanges.filter((c) => !c.understood || c.id === selectedId)
     : fileChanges;
   const rowsById = useMemo(() => {
     const map: Record<string, ReturnType<typeof diffRows>> = {};
-    for (const c of fileChanges) map[c.id] = c.diffContent ? diffRows(c.diffContent, c.oldStart, c.newStart) : [];
+    for (const c of allChanges) map[c.id] = c.diffContent ? diffRows(c.diffContent, c.oldStart, c.newStart) : [];
     return map;
-  }, [fileChanges]);
+  }, [allChanges]);
 
-  const selected = changes.find((c) => c.id === selectedId) ?? changes[0] ?? null;
+  const selected =
+    changes.find((c) => c.id === selectedId) ?? changes.find((c) => !c.understood) ?? changes[0] ?? null;
   const selectedIndex = selected ? changes.indexOf(selected) : -1;
-  const explanation = selected ? explanations[selected.id] ?? selected.explanation ?? null : null;
+  const explanationOf = (c: ChangeResponse) => explanations[c.id] ?? c.explanation ?? null;
+  const explanation = selected ? explanationOf(selected) : null;
   const activeStep = selected ? activeSteps[selected.id] ?? 0 : 0;
 
-  // Files in the same order as the file list. Unreviewed only skips files that
-  // are all understood, but keeps the current one so "File X of Y" makes sense.
-  const files = useMemo(() => {
-    if (!session) return [];
-    const all = [...new Set(session.changes.map((c) => c.filePath))];
-    if (!unreviewedOnly) return all;
-    return all.filter(
-      (f) => f === filePath || session.changes.some((c) => c.filePath === f && !c.understood)
-    );
-  }, [session, unreviewedOnly, filePath]);
-  const fileIndex = filePath ? files.indexOf(filePath) : -1;
-  const prevFile = fileIndex > 0 ? files[fileIndex - 1] : null;
-  const nextFile = fileIndex >= 0 && fileIndex < files.length - 1 ? files[fileIndex + 1] : null;
+  // Every concept from the session's explanations, once each (by name, ignoring case).
+  const concepts = useMemo(() => {
+    const seen = new Map<string, ExplanationConcept>();
+    for (const c of allChanges) {
+      for (const concept of (explanations[c.id] ?? c.explanation)?.concepts ?? []) {
+        const key = concept.name.trim().toLowerCase();
+        if (key && !seen.has(key)) seen.set(key, concept);
+      }
+    }
+    return [...seen.values()];
+  }, [allChanges, explanations]);
+
+  // After a change is picked (maybe in another file), scroll to it once it's drawn.
+  useEffect(() => {
+    if (!pendingScroll.current) return;
+    const el = diffBoxRef.current?.querySelector(`[data-change="${pendingScroll.current}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      pendingScroll.current = null;
+    }
+  });
 
   function fileUrl(path: string, unreviewed = unreviewedOnly) {
     return `/sessions/${id}/file?path=${encodeURIComponent(path)}${unreviewed ? "&unreviewed=1" : ""}`;
   }
 
-  // replace: Back in the browser still returns to the file list, not the previous file.
+  // replace: Back in the browser still leaves the session, not the previous file.
   function goToFile(path: string | null) {
     if (!path) return;
     setSelectedId(null);
@@ -94,14 +148,33 @@ export default function FileDetail() {
     navigate(fileUrl(path), { replace: true });
   }
 
-  function selectChange(changeId: string, scroll: boolean) {
-    setSelectedId(changeId);
+  function goToChange(change: ChangeResponse) {
+    setSelectedId(change.id);
     setHoverStep(null);
-    if (scroll) {
-      diffBoxRef.current
-        ?.querySelector(`[data-change="${changeId}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    pendingScroll.current = change.id;
+    if (change.filePath !== filePath) navigate(fileUrl(change.filePath), { replace: true });
+  }
+
+  // The next change not yet understood after `afterId`, wrapping round to the start.
+  function nextToLearn(afterId: string | null): ChangeResponse | null {
+    const start = afterId ? learningOrder.findIndex((c) => c.id === afterId) + 1 : 0;
+    const ordered = [...learningOrder.slice(start), ...learningOrder.slice(0, start)];
+    return ordered.find((c) => !c.understood && c.id !== afterId) ?? null;
+  }
+
+  function startLearning() {
+    const first = nextToLearn(null);
+    if (first) goToChange(first);
+  }
+
+  function handleRetrySummary() {
+    if (!id) return;
+    setRetrying(true);
+    setRetryError(null);
+    retrySummary(id)
+      .then((data) => setSession(data))
+      .catch((err: Error) => setRetryError(err.message))
+      .finally(() => setRetrying(false));
   }
 
   async function handleExplain(changeId: string) {
@@ -150,6 +223,13 @@ export default function FileDetail() {
     toggleUnderstood(changeId).catch(() => setSession(flip));
   }
 
+  // "Got it? Mark as understood": mark it, then go straight to the next one to learn.
+  function handleMarkUnderstood(change: ChangeResponse) {
+    if (!change.understood) handleToggleUnderstood(change.id);
+    const next = nextToLearn(change.id);
+    if (next) goToChange(next);
+  }
+
   // [ and ] move between files; ← and → between explain steps.
   // Ignored while typing or with a modifier key held (so browser shortcuts still work).
   // Re-attached after every render so it always sees the current file and step.
@@ -176,18 +256,18 @@ export default function FileDetail() {
       ? { start: shownStep.diff_line_start, end: shownStep.diff_line_end }
       : null;
 
-  const total = session?.changes.length ?? 0;
-  const understood = session?.changes.filter((c) => c.understood).length ?? 0;
+  const total = allChanges.length;
+  const understood = allChanges.filter((c) => c.understood).length;
 
   const navButton = "text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-default";
-  const fileNav = files.length > 0 && fileIndex >= 0 && (
+  const fileNav = fileIndex >= 0 && (
     <div className="flex items-center gap-3 text-sm whitespace-nowrap">
       <button onClick={() => goToFile(prevFile)} disabled={!prevFile} title="Previous file ( [ )" className={navButton}>
         ← Prev file
       </button>
       <span className="text-gray-400">·</span>
       <span className="text-gray-700">
-        File {fileIndex + 1} of {files.length}
+        File {fileIndex + 1} of {sidebarFiles.length}
       </span>
       <span className="text-gray-400">·</span>
       <button onClick={() => goToFile(nextFile)} disabled={!nextFile} title="Next file ( ] )" className={navButton}>
@@ -204,7 +284,11 @@ export default function FileDetail() {
         <input
           type="checkbox"
           checked={unreviewedOnly}
-          onChange={(e) => navigate(fileUrl(filePath ?? "", e.target.checked), { replace: true })}
+          onChange={(e) =>
+            navigate(filePath ? fileUrl(filePath, e.target.checked) : `/sessions/${id}${e.target.checked ? "?unreviewed=1" : ""}`, {
+              replace: true,
+            })
+          }
         />
         Unreviewed only
       </label>
@@ -214,7 +298,6 @@ export default function FileDetail() {
   // project › session title › this file
   const navbar = (
     <Navbar
-      fullWidth
       scrolled={diffScrolled}
       project={session?.projectPath ?? null}
       crumbs={[
@@ -230,17 +313,17 @@ export default function FileDetail() {
     return (
       <>
         {navbar}
-        <div className="px-6 py-6 text-gray-500">Loading file...</div>
+        <div className="px-6 py-6 text-gray-500">Loading session...</div>
       </>
     );
   }
 
-  if (error || !session || fileChanges.length === 0) {
+  if (error || !session) {
     return (
       <>
-        {navbar}
+        <Navbar project={null} crumbs={[{ label: "Session not found" }]} />
         <div className="px-6 py-6">
-          <p className="text-red-600">{error ?? "This file has no changes in this session."}</p>
+          <p className="text-red-600">{error ?? "Session not found."}</p>
         </div>
       </>
     );
@@ -249,13 +332,33 @@ export default function FileDetail() {
   return (
     <div className="min-[1000px]:h-screen min-[1000px]:flex min-[1000px]:flex-col">
       {navbar}
-      <main className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid min-[1000px]:grid-cols-[minmax(0,1fr)_clamp(420px,32vw,480px)]">
+      <SessionHeader
+        session={session}
+        fileCount={files.length}
+        added={files.reduce((n, f) => n + f.added, 0)}
+        removed={files.reduce((n, f) => n + f.removed, 0)}
+        understood={understood}
+        total={total}
+        onStartLearning={startLearning}
+        onRetrySummary={handleRetrySummary}
+        retrying={retrying}
+        retryError={retryError}
+      />
+      <main className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid min-[1000px]:grid-cols-[280px_minmax(0,1fr)_clamp(400px,30vw,480px)]">
+        <aside className="bg-white border-b border-gray-200 min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto">
+          <FileSidebar files={sidebarFiles} selected={filePath} onSelect={goToFile} concepts={concepts} />
+        </aside>
+
         <div
           ref={diffBoxRef}
           onScroll={(e) => setDiffScrolled(e.currentTarget.scrollTop > 0)}
           className="min-w-0 px-6 py-5 min-[1000px]:overflow-y-auto"
         >
-          {changes.length === 0 ? (
+          {!currentFile ? (
+            <p className="text-sm text-gray-500 py-10 text-center">
+              {pathParam ? "This file has no changes in this session." : "This session has no changes."}
+            </p>
+          ) : changes.length === 0 ? (
             <p className="text-sm text-gray-500 py-10 text-center">
               Every change in this file is understood.{" "}
               {nextFile && (
@@ -272,7 +375,7 @@ export default function FileDetail() {
                 rows={rowsById[change.id] ?? []}
                 active={change.id === selected?.id}
                 highlight={change.id === selected?.id ? highlight : null}
-                onSelect={() => change.id !== selected?.id && selectChange(change.id, false)}
+                onSelect={() => change.id !== selected?.id && setSelectedId(change.id)}
               />
             ))
           )}
@@ -284,10 +387,8 @@ export default function FileDetail() {
               change={selected}
               index={selectedIndex}
               count={changes.length}
-              onPrevChange={() => selectedIndex > 0 && selectChange(changes[selectedIndex - 1].id, true)}
-              onNextChange={() =>
-                selectedIndex < changes.length - 1 && selectChange(changes[selectedIndex + 1].id, true)
-              }
+              onPrevChange={() => selectedIndex > 0 && goToChange(changes[selectedIndex - 1])}
+              onNextChange={() => selectedIndex < changes.length - 1 && goToChange(changes[selectedIndex + 1])}
               explanation={explanation}
               loading={explainingId === selected.id}
               error={explainErrors[selected.id] ?? null}
@@ -297,6 +398,7 @@ export default function FileDetail() {
               onHoverStep={setHoverStep}
               stepLabel={(start, end) => stepLabel(rowsById[selected.id] ?? [], start, end)}
               onToggleUnderstood={() => handleToggleUnderstood(selected.id)}
+              onMarkUnderstood={() => handleMarkUnderstood(selected)}
             />
           )}
         </aside>

@@ -17,6 +17,8 @@ interface ExplainPanelProps {
   onHoverStep: (i: number | null) => void;
   stepLabel: (diffStart: number, diffEnd: number) => string;
   onToggleUnderstood: () => void;
+  // "Got it? Mark as understood" at the last step: marks it and moves on.
+  onMarkUnderstood: () => void;
 }
 
 // The right side of the file page: summary, understood pill, and the
@@ -36,6 +38,7 @@ export default function ExplainPanel({
   onHoverStep,
   stepLabel,
   onToggleUnderstood,
+  onMarkUnderstood,
 }: ExplainPanelProps) {
   return (
     <div className="p-5">
@@ -54,7 +57,7 @@ export default function ExplainPanel({
       )}
 
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">AI summary</div>
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Change summary</div>
         <button
           onClick={onToggleUnderstood}
           title="Click to change"
@@ -104,7 +107,7 @@ export default function ExplainPanel({
             onHoverStep={onHoverStep}
             stepLabel={stepLabel}
             understood={change.understood}
-            onMarkUnderstood={onToggleUnderstood}
+            onMarkUnderstood={onMarkUnderstood}
           />
           <p className="text-xs text-gray-400 mt-4">Keys: ← → steps · [ ] files</p>
         </div>

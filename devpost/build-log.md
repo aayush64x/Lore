@@ -383,3 +383,25 @@ One entry per slice. Newest at the bottom.
 - Red/green diff, step keys (← →) and line highlighting worked.
 - The explanation was still there after a page reload, and after restarting `lore ui`.
 - Backups appeared in `~/.lore/backups`.
+
+---
+
+## One session page: files on the left, goal and stats on top
+
+- The session page and the file page are now one page. A session address opens the first file with something left to learn. A file address (`/sessions/<id>/file?path=...`) opens that file. Old links still work.
+- Moving between files doesn't reload the page, so explanations and your place stay.
+- **Left sidebar (280px):** every changed file with an orange (something left) or green (all understood) dot, and `+N −M` line counts. Click to open.
+- Under the files: **Concepts in this session**, gathered from the saved explanations (each concept once). Click one for its meaning. Hidden when there are none.
+- **Top:** a small "GOAL" label, then what you asked for as the title, then: duration · files · +lines −lines · N of M understood. Then the **AI summary**, which can be folded away (with Retry if it failed).
+- **Start learning →** opens the first change not yet understood. After **Got it? Mark as understood**, it jumps to the next one, even in another file. When everything is done, the button becomes **All understood 🎉**.
+- Every page is now full width (24px sides) with the sticky navbar.
+- The panel's label is now "Change summary", so it isn't mixed up with the session's "AI summary".
+- No backend changes.
+
+**Files:** `frontend/src/pages/SessionPage.tsx` (new; replaces `SessionDetail.tsx` and `FileDetail.tsx`), `frontend/src/components/SessionHeader.tsx` (new), `FileSidebar.tsx` (new), `ExplainPanel.tsx`, `Navbar.tsx`, `diffLines.ts`, `frontend/src/pages/SessionList.tsx`, `frontend/src/App.tsx`, `devpost/slices.md` (new item 14)
+
+**How to check:**
+1. Stop `lore ui`, then run `./scripts/install.sh` in the Lore folder, then `lore ui` again.
+2. Open a session. You land on the first file with something left to learn. The sidebar shows dots and `+N −M`.
+3. Click **Start learning →**, explain the change, go to the last step and click **Got it**. It jumps to the next change.
+4. When all are understood, the button says **All understood 🎉**.
