@@ -405,3 +405,19 @@ One entry per slice. Newest at the bottom.
 2. Open a session. You land on the first file with something left to learn. The sidebar shows dots and `+N −M`.
 3. Click **Start learning →**, explain the change, go to the last step and click **Got it**. It jumps to the next change.
 4. When all are understood, the button says **All understood 🎉**.
+
+---
+
+## Start learning always does something
+
+- Bug: in a session with one change, the page already opens on that change, so **Start learning →** seemed to do nothing.
+- Now it also starts the walkthrough on the first change not yet understood:
+  - If it has a saved explanation, it jumps to step 1 and lights up those lines.
+  - If not, it runs **Explain** for you (one AI call).
+
+**Files:** `frontend/src/pages/SessionPage.tsx`
+
+**How to check:**
+1. Stop `lore ui`, run `./scripts/install.sh`, start `lore ui`.
+2. Open a session with one change you haven't explained. Click **Start learning →**. It starts explaining.
+3. On a change that has an explanation, go to step 2, then click **Start learning →**. It goes back to step 1.

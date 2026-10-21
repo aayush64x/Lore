@@ -162,9 +162,15 @@ export default function SessionPage() {
     return ordered.find((c) => !c.understood && c.id !== afterId) ?? null;
   }
 
+  // Opens the first change not yet understood and starts its walkthrough at step 1,
+  // explaining it first if it has no explanation yet. Something always visibly
+  // happens, even when that change is already on screen.
   function startLearning() {
     const first = nextToLearn(null);
-    if (first) goToChange(first);
+    if (!first) return;
+    goToChange(first);
+    setActiveSteps((prev) => ({ ...prev, [first.id]: 0 }));
+    if (!explanationOf(first) && !first.binary && explainingId !== first.id) handleExplain(first.id);
   }
 
   function handleRetrySummary() {
