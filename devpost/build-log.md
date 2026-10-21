@@ -629,3 +629,14 @@ Most of the list was already covered by steps 1–4. Added for the gaps:
 **Files:** `backend/src/test/java/com/lore/db/MigrationTest.java` (new), `TeachBackTest.java`, `AnthropicAiServiceTest.java`
 
 **How to check:** in `backend`, run `mvn package` (with `lore ui` stopped). You should see `Tests run: 187, Failures: 0`.
+
+---
+
+## Teach-back: keep the answer on screen (from the end-to-end test)
+
+- **Found in testing:** after **Check my answer**, the answer box disappeared and only the grade showed, so you couldn't see what you wrote next to its grade.
+- Now the question and **your answer stay visible** (locked) with the **grade underneath**. **Retry (edit your answer)** unlocks it.
+- **Cmd+Enter** (Ctrl+Enter) sends the answer. A plain Enter is a new line.
+- End-to-end so far (real key, `testProject`, goal "Add a countWords helper and a test for it"): the summary, the goal gap ("Write a test for countWords"), "Not part of your goal" on `styles.css`, the issue badge on `split(" ")` (`""` → 1, double spaces), the concept tags, hints that didn't give the answer, and a pass despite deliberate typos (then it moved on) were all correct.
+
+**Files:** `frontend/src/components/TeachBackPanel.tsx`

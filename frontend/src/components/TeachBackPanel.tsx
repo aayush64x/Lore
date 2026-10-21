@@ -59,21 +59,33 @@ export default function TeachBackPanel({
         In your own words, what does this change do and why?
       </label>
 
+      {/* The answer stays on screen after checking (read-only), with the grade under it.
+          With no tries left and no answer from this visit, there's nothing to show. */}
+      {(!outOfTries || result) && (
+        <textarea
+          id="teach-back-answer"
+          value={answer}
+          onChange={(e) => onAnswerChange(e.target.value)}
+          onKeyDown={(e) => {
+            // Cmd/Ctrl+Enter sends; a plain Enter is a new line.
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !result && !busy && answer.trim() !== "") {
+              e.preventDefault();
+              onSubmit();
+            }
+          }}
+          maxLength={MAX_ANSWER}
+          rows={6}
+          autoFocus
+          readOnly={!!result || busy}
+          placeholder="Plain words are fine. Spelling doesn't count."
+          className="w-full text-sm p-3 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none read-only:bg-gray-50 read-only:text-gray-700"
+        />
+      )}
+
       {!result && !outOfTries && (
         <>
-          <textarea
-            id="teach-back-answer"
-            value={answer}
-            onChange={(e) => onAnswerChange(e.target.value)}
-            maxLength={MAX_ANSWER}
-            rows={6}
-            autoFocus
-            disabled={busy}
-            placeholder="Plain words are fine. Spelling doesn't count."
-            className="w-full text-sm p-3 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-gray-50"
-          />
           <div className="flex items-center justify-between mt-1 mb-3 text-xs text-gray-400">
-            <span>The code stays on the left. Look at it as much as you like.</span>
+            <span>Cmd+Enter to check. The code stays on the left.</span>
             <span>
               {answer.length}/{MAX_ANSWER}
             </span>
@@ -96,7 +108,7 @@ export default function TeachBackPanel({
       {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
       {result && (
-        <div className={`mt-1 p-3 rounded-md border ${VERDICT[result.verdict].box}`}>
+        <div className={`mt-3 p-3 rounded-md border ${VERDICT[result.verdict].box}`}>
           <p className="text-sm font-semibold">{VERDICT[result.verdict].title}</p>
           {result.gotRight.length > 0 && (
             <ul className="mt-2 space-y-1 text-sm">
@@ -127,7 +139,7 @@ export default function TeachBackPanel({
             onClick={onRetry}
             className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
           >
-            Retry
+            Retry (edit your answer)
           </button>
           <button onClick={onCancel} className="text-sm text-gray-600 hover:text-gray-900">
             Back to the explanation
