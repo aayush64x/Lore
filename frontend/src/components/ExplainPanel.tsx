@@ -113,7 +113,7 @@ export default function ExplainPanel({
             understood={change.understood}
             onMarkUnderstood={onMarkUnderstood}
           />
-          <p className="text-xs text-gray-400 mt-4">Keys: ← → steps · [ ] files</p>
+          <p className="text-xs text-gray-400 mt-4">Keys: ← → steps · [ ] files · b sidebar</p>
         </div>
       )}
     </div>

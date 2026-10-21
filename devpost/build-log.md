@@ -439,3 +439,27 @@ One entry per slice. Newest at the bottom.
 **How to check:**
 1. In `backend`, run `mvn package` (with `lore ui` stopped). `Tests run: 143, Failures: 0`.
 2. Install and open your "idk ask claude" session. Its explanation shows the garbled note. Click **Explain again**. The new steps have no `}]}`.
+
+---
+
+## Slice 18: collapsible files sidebar
+
+- A **‹** button at the top of the files list folds it into a thin 52px rail. The **›** button on the rail opens it again. The **b** key does the same.
+- The rail shows a file icon with the file count, and one orange/green dot per file. Hover a dot to see the file name and status. Click it to open that file. The current file's dot is boxed.
+- The diff grows into the freed space (728px → 956px on a 1440px screen).
+- The width animates over 0.2s. It's off if you've asked your computer for reduced motion.
+- Lore remembers your choice in this browser (localStorage). If the browser blocks storage, the page still works: it starts open and just won't remember.
+- Below 1000px wide, the full list always shows, because there it sits above the diff.
+
+**How it works (for learning):**
+- The grid's first column width is a CSS variable, `--sidebar-w` (280px or 52px). Changing the variable makes the browser animate `grid-template-columns`.
+- The full list keeps a minimum width of 280px, so its text doesn't re-wrap while the column shrinks. The sidebar just clips it.
+- The open/closed state lives in `SessionPage`. `readSidebarCollapsed()` reads it once at start, and `toggleSidebar()` saves it. Both are wrapped in try/catch.
+
+**Files:** `frontend/src/components/FileSidebar.tsx`, `frontend/src/pages/SessionPage.tsx`, `frontend/src/components/ExplainPanel.tsx` (key hint)
+
+**How to check:**
+1. Stop `lore ui`, run `./scripts/install.sh`, start `lore ui`.
+2. Open a session. Click **‹** next to FILES. The list folds to dots and the diff gets wider.
+3. Hover a dot to see its file name. Click one to open that file.
+4. Press **b** to open and close it. Reload the page: it stays the way you left it.

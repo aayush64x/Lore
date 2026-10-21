@@ -15,6 +15,10 @@ interface FileSidebarProps {
   onSelect: (path: string) => void;
   // Gathered from every saved explanation in the session. Hidden when empty.
   concepts: ExplanationConcept[];
+  // Wide screens only: a thin rail with just the status dots. Narrow screens always
+  // show the full list, since the sidebar sits above the diff there.
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
 // "src/pages/App.tsx" → name "App.tsx", folder "src/pages" (works with "\" too).
@@ -23,15 +27,80 @@ function splitPath(path: string): { name: string; folder: string } {
   return i < 0 ? { name: path, folder: "" } : { name: path.slice(i + 1), folder: path.slice(0, i) };
 }
 
+function Chevron({ left }: { left: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d={left ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5"} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FileIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.25">
+      <path d="M4 1.5h5.5L13 5v9.5H4z" strokeLinejoin="round" />
+      <path d="M9.5 1.5V5H13" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const toggleButton = "p-1 rounded text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors";
+
 // Left column of the session page: every changed file, then the session's concepts.
-export default function FileSidebar({ files, selected, onSelect, concepts }: FileSidebarProps) {
+// Collapsed (wide screens): a thin rail with a file count and one status dot per file.
+export default function FileSidebar({ files, selected, onSelect, concepts, collapsed, onToggle }: FileSidebarProps) {
   const [openConcept, setOpenConcept] = useState<string | null>(null);
   const concept = concepts.find((c) => c.name === openConcept);
 
   return (
-    <nav aria-label="Changed files" className="py-3">
-      <div className="px-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        Files <span className="font-normal">({files.length})</span>
+    <>
+    {collapsed && (
+      <nav aria-label="Changed files" className="hidden min-[1000px]:flex flex-col items-center gap-3 py-3 w-[52px]">
+        <button onClick={onToggle} title="Show files (b)" aria-label="Show files" aria-expanded="false" className={toggleButton}>
+          <Chevron left={false} />
+        </button>
+        <span className="relative text-gray-500" title={`${files.length} ${files.length === 1 ? "file" : "files"}`}>
+          <FileIcon />
+          <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-gray-700 text-white text-[10px] leading-4 text-center">
+            {files.length}
+          </span>
+        </span>
+        <ul className="flex flex-col items-center gap-1">
+          {files.map((file) => {
+            const done = file.understood === file.total;
+            const active = file.path === selected;
+            return (
+              <li key={file.path}>
+                <button
+                  onClick={() => onSelect(file.path)}
+                  title={`${file.path} · ${done ? "understood" : "not understood yet"}`}
+                  aria-label={file.path}
+                  aria-current={active ? "page" : undefined}
+                  className={`w-8 h-7 flex items-center justify-center rounded ${active ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-gray-100"}`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${done ? "bg-green-500" : "bg-orange-400"}`} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    )}
+    {/* min-w keeps the text from re-wrapping while the column animates; the aside clips it. */}
+    <nav aria-label="Changed files" className={`py-3 min-[1000px]:min-w-[280px] ${collapsed ? "min-[1000px]:hidden" : ""}`}>
+      <div className="px-4 pb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Files <span className="font-normal">({files.length})</span>
+        </span>
+        <button
+          onClick={onToggle}
+          title="Hide files (b)"
+          aria-label="Hide files"
+          aria-expanded="true"
+          className={`hidden min-[1000px]:block ${toggleButton}`}
+        >
+          <Chevron left={true} />
+        </button>
       </div>
       {files.length === 0 && (
         <p className="px-4 py-2 text-sm text-gray-500">Nothing left to review.</p>
@@ -92,5 +161,6 @@ export default function FileSidebar({ files, selected, onSelect, concepts }: Fil
         </div>
       )}
     </nav>
+    </>
   );
 }

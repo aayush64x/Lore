@@ -11,6 +11,7 @@
 // Below 1000px the columns stack and the page scrolls.
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import type { CSSProperties } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { explainChange, fetchSession, retrySummary, sessionTitle, toggleUnderstood } from "../api/client";
 import type { ChangeResponse, ExplanationConcept, ExplanationData, SessionDetailResponse } from "../api/client";
@@ -22,6 +23,17 @@ import ProgressBar from "../components/ProgressBar";
 import Navbar from "../components/Navbar";
 import SessionHeader from "../components/SessionHeader";
 import { diffRows, lineCounts, stepLabel } from "../components/diffLines";
+
+const SIDEBAR_KEY = "lore.sidebarCollapsed";
+
+// Storage can be blocked or empty (private window, cleared data); then it starts open.
+function readSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +57,8 @@ export default function SessionPage() {
   const [hoverStep, setHoverStep] = useState<number | null>(null);
   const [diffScrolled, setDiffScrolled] = useState(false);
   const diffBoxRef = useRef<HTMLDivElement>(null);
+  // Files sidebar folded to a thin rail (wide screens). Remembered in this browser.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   // A change to scroll to once its file is on screen (it may be in another file).
   const pendingScroll = useRef<string | null>(null);
 
@@ -134,6 +148,16 @@ export default function SessionPage() {
       pendingScroll.current = null;
     }
   });
+
+  function toggleSidebar() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    try {
+      localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+    } catch {
+      // Storage blocked (private window, etc.): it just won't be remembered.
+    }
+  }
 
   function fileUrl(path: string, unreviewed = unreviewedOnly) {
     return `/sessions/${id}/file?path=${encodeURIComponent(path)}${unreviewed ? "&unreviewed=1" : ""}`;
@@ -236,7 +260,7 @@ export default function SessionPage() {
     if (next) goToChange(next);
   }
 
-  // [ and ] move between files; ← and → between explain steps.
+  // [ and ] move between files; ← and → between explain steps; b folds the files sidebar.
   // Ignored while typing or with a modifier key held (so browser shortcuts still work).
   // Re-attached after every render so it always sees the current file and step.
   useEffect(() => {
@@ -247,6 +271,7 @@ export default function SessionPage() {
       else if (e.key === "]") goToFile(nextFile);
       else if (e.key === "ArrowLeft" && explanation) activateStep(activeStep - 1);
       else if (e.key === "ArrowRight" && explanation) activateStep(activeStep + 1);
+      else if (e.key === "b") toggleSidebar();
       else return;
       e.preventDefault();
     };
@@ -350,9 +375,21 @@ export default function SessionPage() {
         retrying={retrying}
         retryError={retryError}
       />
-      <main className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid min-[1000px]:grid-cols-[280px_minmax(0,1fr)_clamp(400px,30vw,480px)]">
-        <aside className="bg-white border-b border-gray-200 min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto">
-          <FileSidebar files={sidebarFiles} selected={filePath} onSelect={goToFile} concepts={concepts} />
+      {/* The sidebar's width is a CSS variable in the grid, so changing it animates the
+          column and the diff grows into the space instead of jumping. */}
+      <main
+        style={{ "--sidebar-w": sidebarCollapsed ? "52px" : "280px" } as CSSProperties}
+        className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid min-[1000px]:grid-cols-[var(--sidebar-w)_minmax(0,1fr)_clamp(400px,30vw,480px)] transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none"
+      >
+        <aside className="bg-white border-b border-gray-200 min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto min-[1000px]:overflow-x-hidden">
+          <FileSidebar
+            files={sidebarFiles}
+            selected={filePath}
+            onSelect={goToFile}
+            concepts={concepts}
+            collapsed={sidebarCollapsed}
+            onToggle={toggleSidebar}
+          />
         </aside>
 
         <div
