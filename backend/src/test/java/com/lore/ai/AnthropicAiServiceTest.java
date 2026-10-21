@@ -2,6 +2,7 @@ package com.lore.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.SummaryResponse;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -124,6 +125,34 @@ class AnthropicAiServiceTest {
         assertFalse(body.contains("goal_parts_not_done"), body);
         assertFalse(body.contains("matches_goal"), body);
         assertFalse(body.contains("GOAL CHECK"), body);
+    }
+
+    @Test
+    void explain_asks_for_key_points_testable_and_an_issue_and_reads_them(@TempDir Path home) throws Exception {
+        responseBody = message("""
+                {"overview": "Cuts 3 earlier.", "steps": [{"text": "Cuts.", "diff_line_start": 2, "diff_line_end": 3}],
+                 "concepts": [], "key_points": ["\\"...\\" is 3 characters", " room for the dots "], "testable": true,
+                 "possible_issue": [{"diff_line": 3, "text": "If maxLength < 3 the slice index is negative."}]}""");
+
+        ExplanationResponse r = service(home, FAKE_KEY).explain("helpers.js", "@@ -1 +1 @@\n-a\n+b\n", null, UserProfile.DEFAULT);
+
+        assertEquals(List.of("\"...\" is 3 characters", "room for the dots"), r.keyPoints());
+        assertEquals(Boolean.TRUE, r.testable());
+        assertEquals(new ExplanationResponse.Issue(3, "If maxLength < 3 the slice index is negative."), r.possibleIssue());
+        JsonNode props = seenBody.get().at("/output_config/format/schema/properties");
+        assertTrue(props.has("key_points") && props.has("testable") && props.has("possible_issue"), props.toString());
+        assertTrue(seenBody.get().at("/system").toString().contains("Never invent a problem"));
+    }
+
+    @Test
+    void explain_with_no_issue_gives_null(@TempDir Path home) throws Exception {
+        responseBody = message("""
+                {"overview": "Renames x.", "steps": [], "concepts": [], "key_points": [], "testable": false, "possible_issue": []}""");
+
+        ExplanationResponse r = service(home, FAKE_KEY).explain("a.js", "-x\n+y\n", null, UserProfile.DEFAULT);
+
+        assertNull(r.possibleIssue());
+        assertEquals(Boolean.FALSE, r.testable());
     }
 
     @Test

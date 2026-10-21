@@ -50,6 +50,12 @@ public final class AiOutputCheck {
                 if (s != null && isDamaged(s.text())) bad.add("steps[" + i + "].text");
             }
         }
+        if (r.keyPoints() != null) {
+            for (int i = 0; i < r.keyPoints().size(); i++) {
+                if (isDamaged(r.keyPoints().get(i))) bad.add("key_points[" + i + "]");
+            }
+        }
+        if (r.possibleIssue() != null && isDamaged(r.possibleIssue().text())) bad.add("possible_issue.text");
         if (r.concepts() != null) {
             for (int i = 0; i < r.concepts().size(); i++) {
                 ExplanationResponse.Concept c = r.concepts().get(i);

@@ -2,6 +2,7 @@ package com.lore.api;
 
 import com.lore.ai.ApiKeyStore;
 import com.lore.ai.UserProfile;
+import com.lore.ai.dto.ExplanationResponse;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.change.Explanation;
@@ -402,6 +403,80 @@ class ApiControllerTest {
                 .andExpect(jsonPath("$.steps[0].text").value("First line"))
                 .andExpect(jsonPath("$.damaged").value(false));
         assertEquals(1, ai.explainCalls);
+    }
+
+    @Test
+    void explain_returns_testable_and_the_issue_but_never_the_key_points() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "r");
+        Change c = change(s, "a.js", 0);
+        ai.explainIssue = new ExplanationResponse.Issue(3, "Breaks when the list is empty.");
+
+        String body = mvc.perform(post("/api/changes/" + c.getId() + "/explain"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.testable").value(true))
+                .andExpect(jsonPath("$.hasKeyPoints").value(true))
+                .andExpect(jsonPath("$.possibleIssue.diff_line").value(3))
+                .andExpect(jsonPath("$.possibleIssue.text").value("Breaks when the list is empty."))
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(body.contains("Point one"), body);
+
+        String detail = mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.changes[0].explanation.hasKeyPoints").value(true))
+                .andExpect(jsonPath("$.changes[0].explanation.possibleIssue.diff_line").value(3))
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(detail.contains("Point one"), detail);
+        assertTrue(explanationRepository.findByChangeId(c.getId()).orElseThrow().getKeyPoints().contains("Point one"));
+    }
+
+    @Test
+    void an_issue_on_a_line_outside_the_diff_is_kept_without_a_line() throws Exception {
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
+        ai.explainIssue = new ExplanationResponse.Issue(99, "Off by one.");
+
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain"))
+                .andExpect(jsonPath("$.possibleIssue.diff_line").value(0))
+                .andExpect(jsonPath("$.possibleIssue.text").value("Off by one."));
+    }
+
+    @Test
+    void a_trivial_change_is_not_testable() throws Exception {
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
+        ai.explainTestable = false;
+
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain"))
+                .andExpect(jsonPath("$.testable").value(false))
+                .andExpect(jsonPath("$.hasKeyPoints").value(false))
+                .andExpect(jsonPath("$.possibleIssue").value(nullValue()));
+    }
+
+    @Test
+    void explaining_again_clears_an_old_issue() throws Exception {
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
+        String url = "/api/changes/" + c.getId() + "/explain";
+        ai.explainIssue = new ExplanationResponse.Issue(2, "Old issue.");
+        mvc.perform(post(url)).andExpect(jsonPath("$.possibleIssue.text").value("Old issue."));
+
+        settings.saveProfile(new UserProfile(UserProfile.Level.DEVELOPER, UserProfile.Goal.UNDERSTAND_APP));
+        ai.explainIssue = null;
+        mvc.perform(post(url)).andExpect(jsonPath("$.possibleIssue").value(nullValue()));
+    }
+
+    @Test
+    void an_explanation_from_before_teach_back_has_no_testable_flag() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "r");
+        Change c = change(s, "a.js", 0);
+        Explanation old = new Explanation(UUID.randomUUID(), c);
+        old.setOverview("Old.");
+        old.setSteps("[]");
+        old.setConcepts("[]");
+        old.setStatus(Explanation.ExplanationStatus.COMPLETE);
+        explanationRepository.save(old);
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.changes[0].explanation.testable").value(nullValue()))
+                .andExpect(jsonPath("$.changes[0].explanation.hasKeyPoints").value(false))
+                .andExpect(jsonPath("$.changes[0].explanation.current").value(true));
+        assertEquals(0, ai.explainCalls);
     }
 
     @Test

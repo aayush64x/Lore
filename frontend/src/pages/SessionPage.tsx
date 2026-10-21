@@ -419,6 +419,7 @@ export default function SessionPage() {
                 active={change.id === selected?.id}
                 highlight={change.id === selected?.id ? highlight : null}
                 onSelect={() => change.id !== selected?.id && setSelectedId(change.id)}
+                issue={explanationOf(change)?.possibleIssue ?? null}
               />
             ))
           )}

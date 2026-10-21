@@ -92,6 +92,10 @@ public class ChangeController {
             explanation.setOverview(result.overview());
             explanation.setSteps(mapper.writeValueAsString(stepsForStorage(result.steps())));
             explanation.setConcepts(mapper.writeValueAsString(conceptsForStorage(result.concepts())));
+            // Set every time (null when missing), so explaining again never keeps an old value.
+            explanation.setKeyPoints(result.keyPoints() == null ? null : mapper.writeValueAsString(result.keyPoints()));
+            explanation.setTestable(result.testable());
+            explanation.setPossibleIssue(issueForStorage(result.possibleIssue(), change.getDiffContent()));
             explanation.setProfile(profile.key());
             explanation.setStatus(Explanation.ExplanationStatus.COMPLETE);
         } catch (AiUnavailableException e) {
@@ -127,6 +131,20 @@ public class ChangeController {
             out.add(m);
         }
         return out;
+    }
+
+    /**
+     * {"diff_line": n, "text": "..."} or null. A line outside the diff becomes 0 (no line),
+     * so the page shows the issue on the change instead of on a wrong line.
+     */
+    static String issueForStorage(ExplanationResponse.Issue issue, String diffContent) throws Exception {
+        if (issue == null || issue.text() == null || issue.text().isBlank()) return null;
+        int lines = diffContent == null ? 0 : diffContent.split("\n", -1).length;
+        int line = issue.diffLine() >= 1 && issue.diffLine() <= lines ? issue.diffLine() : 0;
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("diff_line", line);
+        m.put("text", issue.text().strip());
+        return mapper.writeValueAsString(m);
     }
 
     static List<Map<String, Object>> conceptsForStorage(List<ExplanationResponse.Concept> concepts) {

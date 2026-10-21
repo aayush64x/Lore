@@ -43,6 +43,13 @@ class AiOutputCheckTest {
     }
 
     @Test
+    void key_points_and_the_issue_are_checked_too() {
+        ExplanationResponse r = new ExplanationResponse("Fine.", List.of(), List.of(),
+                List.of("ok", "cuts 3 earlier.}]}"), true, new ExplanationResponse.Issue(2, "breaks\"}"));
+        assertEquals(List.of("key_points[1]", "possible_issue.text"), AiOutputCheck.problems(r));
+    }
+
+    @Test
     void goal_check_text_is_checked_too() {
         SummaryResponse s = new SummaryResponse("Fine.",
                 List.of(new SummaryResponse.ChangeDescription("a.js", 0, "fine", "no", "Styling only.}]}")),

@@ -521,3 +521,22 @@ One entry per slice. Newest at the bottom.
 1. Stop `lore ui`, run `./scripts/install.sh`, start it again.
 2. In a test project: `lore start`, make one change for a goal and one unrelated change, then `lore stop` with a goal that has two parts, for example "add a reverse function and a test for it".
 3. Open the session. The unrelated change has "Not part of your goal", and the box lists "a test for it" if you didn't write one.
+
+---
+
+## Step 2 (slice 21): key points, testable, possible issue
+
+- **Explain this** now also returns (same AI call, no extra cost):
+  - `key_points`: 2–3 short things you'd have to say to show you understand the change. Used by teach-back later. **They stay on the server.** The page only learns whether they exist (`hasKeyPoints`).
+  - `testable`: false for changes with nothing to understand (imports, formatting, renames, comments).
+  - `possible_issue`: one real edge case or bug in the change, with its line, or nothing. The prompt says "never invent one; most changes have none".
+- **Page:** a red **⚠ Lore found an issue** badge on that line. Click it to see the reason under the line. If the AI's line is outside the diff, the badge goes on the change's header instead of on a wrong line.
+- **New migration `V6__explanation_teaching.sql`:** `explanations.key_points`, `testable`, `possible_issue`. Older explanations have NULL: no badge, and later "Explain again to enable testing". No automatic backfill.
+- Explaining again replaces all three, so an old issue never sticks around.
+- Key points and the issue text get the same `}]}` check.
+
+**Files:** `ai/dto/ExplanationResponse.java`, `ai/AnthropicAiService.java`, `ai/AiPrompts.java`, `ai/AiOutputCheck.java`, `change/Explanation.java`, `api/controller/ChangeController.java`, `api/controller/ExplanationView.java`, `db/migration/V6__explanation_teaching.sql` (new), `frontend/src/api/client.ts`, `components/DiffView.tsx`, `components/ChangeDiff.tsx`, `pages/SessionPage.tsx`; tests in `AnthropicAiServiceTest`, `ApiControllerTest`, `AiOutputCheckTest`, `FakeAi`
+
+**How to check (one AI call):**
+1. Stop `lore ui`, run `./scripts/install.sh`, start it again.
+2. Open the `truncate` session and click **Explain again**. The AI should flag `maxLength - 3` going negative when `maxLength` is under 3, as a red badge on that line. Click it for the reason.

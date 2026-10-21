@@ -112,6 +112,10 @@ export interface ExplanationConcept{
   name: string; 
   meaning: string; 
 }
+export interface PossibleIssue {
+  diff_line: number; // numbered diff line it's on (like steps); 0 = no line
+  text: string;
+}
 export interface ExplanationData{
   overview: string;
   steps: ExplanationStep[];
@@ -119,6 +123,9 @@ export interface ExplanationData{
   current?: boolean;          // false if written for a different level than the user's now
   writtenFor?: string | null; // that level, like "New to coding" (null for old ones)
   damaged?: boolean;          // saved with stray JSON characters (e.g. "}]}") before they were checked
+  testable?: boolean | null;  // false = nothing to understand (imports, formatting); null = made before teach-back
+  hasKeyPoints?: boolean;     // teach-back can grade it (the key points stay on the server)
+  possibleIssue?: PossibleIssue | null; // a real edge case or bug the AI found, or null
 }
 
 export async function explainChange(id: string): Promise<ExplanationData> {

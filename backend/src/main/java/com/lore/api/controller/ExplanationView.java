@@ -58,7 +58,10 @@ final class ExplanationView {
      * overview, steps, concepts, status, plus:
      * current: false if it was written for another profile (the page then offers "Explain again"),
      * writtenFor: that profile's level, like "New to coding" (null for old rows),
-     * damaged: true if it has stray JSON characters from before they were checked.
+     * damaged: true if it has stray JSON characters from before they were checked,
+     * testable: false for changes with nothing to understand, null on older explanations,
+     * hasKeyPoints: whether teach-back can grade it (the points themselves stay on the server),
+     * possibleIssue: {"diff_line", "text"} for a real edge case or bug, or null.
      */
     static Map<String, Object> toMap(Explanation explanation, UserProfile profile) {
         try {
@@ -77,6 +80,10 @@ final class ExplanationView {
             out.put("status", explanation.getStatus().toString());
             out.put("current", isCurrent(explanation, profile));
             out.put("damaged", isDamaged(explanation));
+            out.put("testable", explanation.getTestable());
+            out.put("hasKeyPoints", !readStrings(explanation.getKeyPoints()).isEmpty());
+            out.put("possibleIssue", explanation.getPossibleIssue() == null ? null
+                    : mapper.readValue(explanation.getPossibleIssue(), new TypeReference<Map<String, Object>>() {}));
             out.put("writtenFor", UserProfile.fromKey(explanation.getProfile())
                     .map(p -> p.level().label())
                     .orElse(null));
@@ -90,6 +97,12 @@ final class ExplanationView {
         if (json == null || json.isBlank()) return new ArrayList<>();
         List<Map<String, Object>> list = mapper.readValue(json, new TypeReference<>() {});
         return list == null ? new ArrayList<>() : new ArrayList<>(list);
+    }
+
+    private static List<String> readStrings(String json) throws Exception {
+        if (json == null || json.isBlank()) return List.of();
+        List<String> list = mapper.readValue(json, new TypeReference<>() {});
+        return list == null ? List.of() : list;
     }
 
     private static void renameKey(Map<String, Object> map, String from, String to) {

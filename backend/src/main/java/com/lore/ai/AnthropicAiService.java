@@ -109,7 +109,22 @@ public class AnthropicAiService implements AiService {
             @JsonPropertyDescription("One sentence saying what this change does overall")
             String overview,
             List<StepOutput> steps,
-            List<ConceptOutput> concepts) {}
+            List<ConceptOutput> concepts,
+            @JsonProperty("key_points")
+            @JsonPropertyDescription("2-3 short things a person must say to show they understand this change")
+            List<String> keyPoints,
+            @JsonPropertyDescription("False only if there is nothing to understand: imports, formatting, renames, comments")
+            boolean testable,
+            @JsonProperty("possible_issue")
+            @JsonPropertyDescription("Empty, or exactly one real edge case or bug in this change. Never invent one.")
+            List<IssueOutput> possibleIssue) {}
+
+    record IssueOutput(
+            @JsonProperty("diff_line")
+            @JsonPropertyDescription("The numbered diff line the problem is on")
+            int diffLine,
+            @JsonPropertyDescription("What input breaks it and what happens, in 1-2 sentences")
+            String text) {}
 
     record StepOutput(
             @JsonPropertyDescription("Plain-English explanation of what these lines do and why")
@@ -171,7 +186,15 @@ public class AnthropicAiService implements AiService {
                 : out.concepts().stream().filter(Objects::nonNull)
                         .map(c -> new ExplanationResponse.Concept(c.name(), c.meaning()))
                         .toList();
-        return new ExplanationResponse(out.overview(), steps, concepts);
+        List<String> keyPoints = out.keyPoints() == null ? List.of()
+                : out.keyPoints().stream().filter(k -> k != null && !k.isBlank()).map(String::strip).toList();
+        ExplanationResponse.Issue issue = out.possibleIssue() == null ? null
+                : out.possibleIssue().stream()
+                        .filter(i -> i != null && i.text() != null && !i.text().isBlank())
+                        .findFirst()
+                        .map(i -> new ExplanationResponse.Issue(i.diffLine(), i.text().strip()))
+                        .orElse(null);
+        return new ExplanationResponse(out.overview(), steps, concepts, keyPoints, out.testable(), issue);
     }
 
     private <T> T call(Class<T> outputType, String system, String userMessage) {

@@ -113,6 +113,17 @@ public final class AiPrompts {
                 an idea that only appears in unchanged context lines, even if it's nearby: if a \
                 regex or a loop is untouched, it is not a concept of this change. An empty list \
                 is fine.
+                4. "key_points": 2-3 short things a person must be able to say, in their own words, \
+                to show they understand what this change does and why. About behavior and purpose, \
+                not syntax. Each is one short sentence.
+                5. "testable": false only if there is nothing to understand: imports, formatting, \
+                renames, comments, version bumps. Otherwise true. When false, key_points may be empty.
+                6. "possible_issue": an empty list, or exactly one real problem in this change: an \
+                edge case it gets wrong or a bug it introduces, that you can show from the numbered \
+                lines (for example, a negative index when a length is smaller than what is \
+                subtracted). Give the line it's on and say what input breaks it and what happens. \
+                Never invent a problem and never guess: most changes have none, and an empty list \
+                is the right answer then.
 
                 If you know what they were trying to do, connect the change to it, for example: \
                 "You asked for X. This part does that by..."

@@ -24,6 +24,9 @@ public class FakeAi implements AiService {
     public volatile UserProfile lastExplainProfile;
     /** Goal check answer: parts of the goal not done. A file named "unrelated…" gets "no", "partly…" gets "partly". */
     public volatile List<String> goalGaps = List.of("Add a test");
+    /** Explanation extras: a real issue to report (default none) and whether the change is testable. */
+    public volatile ExplanationResponse.Issue explainIssue;
+    public volatile boolean explainTestable = true;
     /** How many of the next answers (summary or explanation) end a text with stray "}]}". */
     public volatile int garbledAnswers;
 
@@ -33,6 +36,8 @@ public class FakeAi implements AiService {
         explainCalls = 0;
         garbledAnswers = 0;
         goalGaps = List.of("Add a test");
+        explainIssue = null;
+        explainTestable = true;
     }
 
     /** "}]}" while garbledAnswers lasts, then nothing. */
@@ -67,7 +72,9 @@ public class FakeAi implements AiService {
         fail();
         return new ExplanationResponse("Explains " + filePath,
                 List.of(new ExplanationResponse.Step("First line" + tail(), 1, 2)),
-                List.of(new ExplanationResponse.Concept("logging", "printing text")));
+                List.of(new ExplanationResponse.Concept("logging", "printing text")),
+                explainTestable ? List.of("Point one", "Point two") : List.of(),
+                explainTestable, explainIssue);
     }
 
     private static String goalMatch(String path) {

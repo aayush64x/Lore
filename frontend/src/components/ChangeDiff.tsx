@@ -1,4 +1,5 @@
-import type { ChangeResponse } from "../api/client";
+import { useState } from "react";
+import type { ChangeResponse, PossibleIssue } from "../api/client";
 import DiffView from "./DiffView";
 import type { DiffRow } from "./diffLines";
 
@@ -9,6 +10,8 @@ interface ChangeDiffProps {
   active: boolean;
   highlight: { start: number; end: number } | null;
   onSelect: () => void;
+  // From this change's explanation: a real edge case or bug, or null.
+  issue: PossibleIssue | null;
 }
 
 const TYPE_TAG: Record<string, string> = {
@@ -20,7 +23,13 @@ const TYPE_TAG: Record<string, string> = {
 
 // One change in the diff box: a slim header (file, type, lines, status) and its diff.
 // Clicking it shows it in the explain panel.
-export default function ChangeDiff({ change, rows, active, highlight, onSelect }: ChangeDiffProps) {
+export default function ChangeDiff({ change, rows, active, highlight, onSelect, issue }: ChangeDiffProps) {
+  const [issueOpen, setIssueOpen] = useState(false);
+  // On a drawn line the badge sits on that line; otherwise (no line, or a hidden
+  // header row in plain code) it sits in this header.
+  const plain = change.changeType === "ADDED";
+  const row = issue && issue.diff_line >= 1 ? rows.at(issue.diff_line - 1) : undefined;
+  const onLine = !!row && !(plain && (row.kind === "header" || row.kind === "note"));
   const fileName = change.oldFilePath ? `${change.oldFilePath} → ${change.filePath}` : change.filePath;
   return (
     <section
@@ -55,6 +64,18 @@ export default function ChangeDiff({ change, rows, active, highlight, onSelect }
             Partly your goal
           </span>
         )}
+        {issue && !onLine && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIssueOpen(!issueOpen);
+            }}
+            aria-expanded={issueOpen}
+            className="text-[11px] font-medium px-1.5 py-0.5 rounded border bg-red-50 text-red-700 border-red-300 hover:bg-red-100"
+          >
+            ⚠ Lore found an issue
+          </button>
+        )}
         <span className="font-mono text-xs text-gray-400">
           Lines {change.newStart}–{change.newStart + Math.max(change.newCount - 1, 0)}
         </span>
@@ -63,6 +84,9 @@ export default function ChangeDiff({ change, rows, active, highlight, onSelect }
           {change.understood ? "✓ Understood" : "Not understood yet"}
         </span>
       </div>
+      {issue && !onLine && issueOpen && (
+        <p className="px-4 py-2 text-xs text-red-900 bg-red-50 border-b border-red-200">{issue.text}</p>
+      )}
       {change.binary ? (
         <p className="px-4 py-3 text-sm text-gray-500">Binary file, no diff to show.</p>
       ) : (
@@ -70,7 +94,8 @@ export default function ChangeDiff({ change, rows, active, highlight, onSelect }
           rows={rows}
           highlightStart={highlight?.start}
           highlightEnd={highlight?.end}
-          plainCode={change.changeType === "ADDED"}
+          plainCode={plain}
+          issue={issue && onLine ? { line: issue.diff_line, text: issue.text } : null}
         />
       )}
     </section>

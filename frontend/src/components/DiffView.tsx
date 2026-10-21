@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { DiffRow } from "./diffLines";
 
 interface DiffViewProps {
@@ -8,6 +9,8 @@ interface DiffViewProps {
   highlightEnd?: number;
   // New files: show plain code with one line number column instead of old | new.
   plainCode?: boolean;
+  // "Lore found an issue" on this 1-based diff line; click shows the reason under it.
+  issue?: { line: number; text: string } | null;
 }
 
 const ROW_CLASS: Record<DiffRow["kind"], string> = {
@@ -26,7 +29,9 @@ function Gutter({ value }: { value: number | null }) {
   );
 }
 
-export default function DiffView({ rows, highlightStart, highlightEnd, plainCode }: DiffViewProps) {
+export default function DiffView({ rows, highlightStart, highlightEnd, plainCode, issue }: DiffViewProps) {
+  const [issueOpen, setIssueOpen] = useState(false);
+
   function isHighlighted(i: number) {
     if (highlightStart === undefined || highlightEnd === undefined) return false;
     const lineNumber = i + 1;
@@ -44,11 +49,31 @@ export default function DiffView({ rows, highlightStart, highlightEnd, plainCode
           if (plainCode && (row.kind === "header" || row.kind === "note")) return null;
           const highlighted = isHighlighted(i) ? " diff-line-highlighted" : "";
           const kind = plainCode ? "" : ROW_CLASS[row.kind];
+          const hasIssue = issue && issue.line === i + 1;
           return (
-            <div key={i} data-diff-line={i + 1} className={`flex ${kind}${highlighted}`}>
-              {!plainCode && <Gutter value={row.oldLine} />}
-              <Gutter value={row.newLine} />
-              <span className="pl-3 pr-4">{(row.kind === "header" ? row.text : row.text.slice(1)) || " "}</span>
+            <div key={i}>
+              <div data-diff-line={i + 1} className={`flex items-center ${kind}${highlighted}`}>
+                {!plainCode && <Gutter value={row.oldLine} />}
+                <Gutter value={row.newLine} />
+                <span className="pl-3 pr-4">{(row.kind === "header" ? row.text : row.text.slice(1)) || " "}</span>
+                {hasIssue && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIssueOpen(!issueOpen);
+                    }}
+                    aria-expanded={issueOpen}
+                    className="font-sans text-[11px] font-medium px-1.5 py-px mr-4 rounded border bg-red-50 text-red-700 border-red-300 hover:bg-red-100 whitespace-nowrap"
+                  >
+                    ⚠ Lore found an issue
+                  </button>
+                )}
+              </div>
+              {hasIssue && issueOpen && (
+                <div className="font-sans text-xs whitespace-normal text-red-900 bg-red-50 border-y border-red-200 px-4 py-2 sticky left-0 max-w-[min(100%,48rem)]">
+                  {issue.text}
+                </div>
+              )}
             </div>
           );
         })}

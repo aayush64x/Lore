@@ -26,6 +26,17 @@ public class Explanation {
     /** The profile it was written for (UserProfile.key()); null for old rows. */
     private String profile;
 
+    /** JSON list of what someone must say to show they understand; null on older rows. */
+    @Column(name = "key_points", columnDefinition = "TEXT")
+    private String keyPoints;
+
+    /** False for changes with nothing to understand; null on older rows. */
+    private Boolean testable;
+
+    /** JSON {"diff_line", "text"} for a real edge case or bug; null if none (or older rows). */
+    @Column(name = "possible_issue", columnDefinition = "TEXT")
+    private String possibleIssue;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ExplanationStatus status = ExplanationStatus.PENDING;
@@ -49,6 +60,12 @@ public class Explanation {
     public void setSteps(String steps) { this.steps = steps; }
     public String getConcepts() { return concepts; }
     public void setConcepts(String concepts) { this.concepts = concepts; }
+    public String getKeyPoints() { return keyPoints; }
+    public void setKeyPoints(String keyPoints) { this.keyPoints = keyPoints; }
+    public Boolean getTestable() { return testable; }
+    public void setTestable(Boolean testable) { this.testable = testable; }
+    public String getPossibleIssue() { return possibleIssue; }
+    public void setPossibleIssue(String possibleIssue) { this.possibleIssue = possibleIssue; }
     public String getProfile() { return profile; }
     public void setProfile(String profile) { this.profile = profile; }
     public ExplanationStatus getStatus() { return status; }
