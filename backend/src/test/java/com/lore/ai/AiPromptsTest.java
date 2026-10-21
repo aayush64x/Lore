@@ -39,6 +39,8 @@ class AiPromptsTest {
                 String p = AiPrompts.explainSystemPrompt(profile(level, goal));
                 assertTrue(p.contains("\"diff_line_start\""), level + " " + goal);
                 assertTrue(p.contains("Only use line numbers from the diff."), level + " " + goal);
+                assertTrue(p.contains("Only tag an idea if a line starting with + or - uses it."), level + " " + goal);
+                assertTrue(p.contains("only appears in unchanged context lines"), level + " " + goal);
                 assertTrue(p.contains("WHO YOU ARE WRITING FOR:\n" + AiPrompts.audience(profile(level, goal))));
             }
         }

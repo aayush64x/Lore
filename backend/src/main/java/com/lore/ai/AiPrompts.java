@@ -88,7 +88,11 @@ public final class AiPrompts {
                    - "diff_line_end": the last numbered line this step covers
                    Only use line numbers from the diff. Together, the steps should cover every \
                 added or removed line.
-                3. "concepts": coding ideas used in this change. Each has "name" and "meaning".
+                3. "concepts": coding ideas this change adds, removes or changes. Each has "name" \
+                and "meaning". Only tag an idea if a line starting with + or - uses it. Never tag \
+                an idea that only appears in unchanged context lines, even if it's nearby: if a \
+                regex or a loop is untouched, it is not a concept of this change. An empty list \
+                is fine.
 
                 If you know what they were trying to do, connect the change to it, for example: \
                 "You asked for X. This part does that by..."

@@ -40,8 +40,8 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 Order: 15 → 16 → 17 → 18. Then 19 only as a stretch, with a hard cutoff.
 
 - [x] **15. Fix stray `}]}` at the source.** The model sometimes ends a text field with JSON characters (seen Oct 21: "...matching the code.}]}"). Tell it plain text only. Check every text field before saving. Ask once more if it's bad, then fail instead of saving bad text. Old damaged explanations get an "Explain again" note.
-- [ ] **16. One summary, one status.** The session summary becomes one sentence under the goal. Remove the change summary and overview from the panel. Status only in the top bar and the sidebar dots. Keep one Mark as understood button.
-- [ ] **17. Concepts only for what the diff changes.** Prompt fix (no tags for code the diff didn't touch, like "Regex trimming").
+- [ ] **16. One summary, one status.** *(On hold Oct 21: Aayush is undecided. Middle option: drop only the overview paragraph and the card-header status.)* The session summary becomes one sentence under the goal. Remove the change summary and overview from the panel. Status only in the top bar and the sidebar dots. Keep one Mark as understood button.
+- [x] **17. Concepts only for what the diff changes.** Prompt fix (no tags for code the diff didn't touch, like "Regex trimming").
 - [x] **18. Collapsible files sidebar.** Button on the sidebar plus the `b` key. Thin rail with status dots, file-count badge and filename tooltips. Saved in localStorage (try/catch). Animated width, no jump.
 - [ ] **19. Stretch: questions.** 1–2 multiple-choice questions (3–4 options) per substantive change, plus one edge-case question only if a real one exists. The server checks answers; retry allowed. The explanation shows after answering. A change is understood when its questions are answered correctly. **Hard cutoff: Oct 23 noon.** If it isn't working by then, keep the current Mark as understood.
 

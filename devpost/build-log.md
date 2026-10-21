@@ -463,3 +463,19 @@ One entry per slice. Newest at the bottom.
 2. Open a session. Click **‹** next to FILES. The list folds to dots and the diff gets wider.
 3. Hover a dot to see its file name. Click one to open that file.
 4. Press **b** to open and close it. Reload the page: it stays the way you left it.
+
+---
+
+## Slice 17: concept tags only for what the diff changes
+
+- **What was wrong:** the explain prompt asked for "coding ideas used in this change". So the AI tagged ideas from nearby unchanged lines too, like "Regex trimming" on the `truncate` change, where the regex line didn't change.
+- **Fix:** the prompt now says concepts are ideas the change **adds, removes or changes**. It only tags an idea if a `+` or `-` line uses it, never one that only appears in unchanged lines, and an empty list is fine.
+- It's in the shared part of the prompt, so every level and goal gets it.
+- Old saved explanations keep their tags until they're explained again.
+
+**Files:** `backend/src/main/java/com/lore/ai/AiPrompts.java`, `backend/src/test/java/com/lore/ai/AiPromptsTest.java`, `devpost/slices.md` (17 done, 16 on hold)
+
+**How to check (uses your key, one AI call):**
+1. Stop `lore ui`, run `./scripts/install.sh`, start `lore ui`.
+2. Open the `truncate` session ("idk ask claude…") and click **Explain again** in the garbled note.
+3. The concept tags shouldn't include "Regex trimming". The regex line has no `+` or `-`. Also no step should end with `}]}`.
