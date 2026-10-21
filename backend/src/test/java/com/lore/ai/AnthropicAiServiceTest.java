@@ -217,6 +217,13 @@ class AnthropicAiServiceTest {
     }
 
     @Test
+    void a_correct_but_vague_answer_is_partly_not_fail() {
+        String p = AiPrompts.gradeSystemPrompt();
+        assertTrue(p.contains("A correct but vague answer is \"partly\", never \"fail\"."), p);
+        assertTrue(p.contains("\"It adds a function that counts words.\""), p);
+    }
+
+    @Test
     void the_grading_instructions_are_long_enough_to_cache() {
         // Haiku 5.5 caches prompts of 512+ tokens. Roughly 4 characters a token in English,
         // so 2,600+ characters keeps a safe margin above the minimum.

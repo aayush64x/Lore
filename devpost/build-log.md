@@ -659,3 +659,14 @@ Most of the list was already covered by steps 1–4. Added for the gaps:
 **Files:** `db/migration/V8__teach_back_practice.sql` (new), `change/TeachBackAttempt.java`, `api/controller/TeachBackController.java`, `api/controller/TeachBackView.java`, `frontend/src/api/client.ts`, `components/ExplainPanel.tsx`, `components/TeachBackPanel.tsx`, `pages/SessionPage.tsx`; tests in `TeachBackTest`, `MigrationTest`
 
 **How to check:** install, open a change you passed, click **Retake (practice)**, answer badly. You see the grade, it still says ✓ Passed, and the dot stays solid green.
+
+---
+
+## Grader: correct but vague = Partly
+
+- **From the end-to-end test:** "It adds a function that counts words." got **Not yet**. Aayush wants that to be **Partly there**.
+- The grading rules now say: Partly also covers answers that get the general idea right without the how or why. "A correct but vague answer is partly, never fail." Fail is for answers that are wrong, say nothing, or only repeat a name from the code.
+- That exact sentence is now one of the grading examples.
+- Earlier grades aren't changed. This applies to new answers.
+
+**Files:** `backend/src/main/java/com/lore/ai/AiPrompts.java`, test in `AnthropicAiServiceTest`
