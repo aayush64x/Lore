@@ -13,8 +13,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { explainChange, fetchSession, retrySummary, sessionTitle, toggleUnderstood } from "../api/client";
-import type { ChangeResponse, ExplanationConcept, ExplanationData, SessionDetailResponse } from "../api/client";
+import { TeachBackError, explainChange, fetchSession, retrySummary, sessionTitle, teachBack, toggleUnderstood } from "../api/client";
+import type { ChangeResponse, ExplanationConcept, ExplanationData, SessionDetailResponse, TeachBackResult } from "../api/client";
 import ChangeDiff from "../components/ChangeDiff";
 import ExplainPanel from "../components/ExplainPanel";
 import FileSidebar from "../components/FileSidebar";
@@ -22,7 +22,15 @@ import type { FileSummary } from "../components/FileSidebar";
 import ProgressBar from "../components/ProgressBar";
 import Navbar from "../components/Navbar";
 import SessionHeader from "../components/SessionHeader";
+import TeachBackPanel from "../components/TeachBackPanel";
 import { diffRows, lineCounts, stepLabel } from "../components/diffLines";
+
+// A copy of a per-change record without one change's entry.
+function omit<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const rest = { ...record };
+  delete rest[key];
+  return rest;
+}
 
 const SIDEBAR_KEY = "lore.sidebarCollapsed";
 
@@ -55,6 +63,14 @@ export default function SessionPage() {
   const [explainingId, setExplainingId] = useState<string | null>(null);
   const [activeSteps, setActiveSteps] = useState<Record<string, number>>({});
   const [hoverStep, setHoverStep] = useState<number | null>(null);
+  // Teach-back: the change being tested (its panel replaces the explanation), drafts and
+  // grades per change, and a short "passed" note shown on the change we moved on to.
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [testResults, setTestResults] = useState<Record<string, TeachBackResult>>({});
+  const [testErrors, setTestErrors] = useState<Record<string, string>>({});
+  const [testBusyId, setTestBusyId] = useState<string | null>(null);
+  const [passNote, setPassNote] = useState<{ forChangeId: string; file: string } | null>(null);
   const [diffScrolled, setDiffScrolled] = useState(false);
   const diffBoxRef = useRef<HTMLDivElement>(null);
   // Files sidebar folded to a thin rail (wide screens). Remembered in this browser.
@@ -87,6 +103,7 @@ export default function SessionPage() {
         changes,
         total: changes.length,
         understood: changes.filter((c) => c.understood).length,
+        passed: changes.filter((c) => c.understoodBy === "teach_back").length,
         added: counts.reduce((n, c) => n + c.added, 0),
         removed: counts.reduce((n, c) => n + c.removed, 0),
       };
@@ -207,7 +224,7 @@ export default function SessionPage() {
       .finally(() => setRetrying(false));
   }
 
-  async function handleExplain(changeId: string) {
+  async function handleExplain(changeId: string, refresh = false) {
     setExplainingId(changeId);
     setExplainErrors((prev) => {
       const rest = { ...prev };
@@ -215,7 +232,7 @@ export default function SessionPage() {
       return rest;
     });
     try {
-      const data = await explainChange(changeId);
+      const data = await explainChange(changeId, refresh);
       setExplanations((prev) => ({ ...prev, [changeId]: data }));
       setActiveSteps((prev) => ({ ...prev, [changeId]: 0 }));
     } catch {
@@ -238,24 +255,68 @@ export default function SessionPage() {
     target?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  function handleToggleUnderstood(changeId: string) {
-    const flip = (prev: SessionDetailResponse | null) =>
-      prev
-        ? {
-            ...prev,
-            changes: prev.changes.map((c) =>
-              c.id === changeId ? { ...c, understood: !c.understood } : c
-            ),
-          }
-        : prev;
+  function updateChange(changeId: string, patch: Partial<ChangeResponse>) {
+    setSession((prev) =>
+      prev ? { ...prev, changes: prev.changes.map((c) => (c.id === changeId ? { ...c, ...patch } : c)) } : prev
+    );
+  }
 
-    setSession(flip);
-    toggleUnderstood(changeId).catch(() => setSession(flip));
+  // By hand it's always "self": marking sets it, unmarking clears it. Shown at once, then
+  // set to what the server says (or put back if the request failed).
+  function handleToggleUnderstood(changeId: string) {
+    const before = allChanges.find((c) => c.id === changeId);
+    if (!before) return;
+    updateChange(changeId, { understood: !before.understood, understoodBy: before.understood ? null : "self" });
+    toggleUnderstood(changeId)
+      .then((r) => updateChange(changeId, r))
+      .catch(() => updateChange(changeId, { understood: before.understood, understoodBy: before.understoodBy }));
+  }
+
+  // Opens the teach-back panel. A finished grade is cleared so there's a fresh box,
+  // unless there are no tries left (then the grade and key points stay up).
+  function startTest(change: ChangeResponse) {
+    setTestingId(change.id);
+    setPassNote(null);
+    setTestErrors((prev) => omit(prev, change.id));
+    if (change.teachBack.attemptsLeft > 0) setTestResults((prev) => omit(prev, change.id));
+  }
+
+  async function submitTest(change: ChangeResponse) {
+    setTestBusyId(change.id);
+    setTestErrors((prev) => omit(prev, change.id));
+    try {
+      const r = await teachBack(change.id, drafts[change.id] ?? "");
+      const { attemptsUsed, attemptsLeft, lastVerdict, keyPoints } = r;
+      updateChange(change.id, {
+        understood: r.understood,
+        understoodBy: r.understoodBy,
+        teachBack: { attemptsUsed, attemptsLeft, lastVerdict, keyPoints },
+      });
+      setTestResults((prev) => ({ ...prev, [change.id]: r }));
+      // A pass moves on, like "Got it" does. If nothing is left, the grade stays on screen.
+      if (r.verdict === "pass") {
+        const next = nextToLearn(change.id);
+        if (next) {
+          setTestingId(null);
+          setPassNote({ forChangeId: next.id, file: change.filePath });
+          goToChange(next);
+        }
+      }
+    } catch (e) {
+      const message = e instanceof TeachBackError ? e.message : "Couldn't check your answer. Try again.";
+      setTestErrors((prev) => ({ ...prev, [change.id]: message }));
+      if (e instanceof TeachBackError && typeof e.state.attemptsUsed === "number") {
+        updateChange(change.id, { teachBack: { ...change.teachBack, ...e.state } });
+      }
+    } finally {
+      setTestBusyId(null);
+    }
   }
 
   // "Got it? Mark as understood": mark it, then go straight to the next one to learn.
   function handleMarkUnderstood(change: ChangeResponse) {
     if (!change.understood) handleToggleUnderstood(change.id);
+    setTestingId(null);
     const next = nextToLearn(change.id);
     if (next) goToChange(next);
   }
@@ -426,7 +487,26 @@ export default function SessionPage() {
         </div>
 
         <aside className="bg-white border-t border-gray-200 min-[1000px]:border-t-0 min-[1000px]:border-l min-[1000px]:overflow-y-auto">
-          {selected && (
+          {selected && passNote?.forChangeId === selected.id && (
+            <p className="mx-5 mt-4 px-3 py-2 rounded-md bg-green-50 border border-green-200 text-sm text-green-800">
+              ✓ Passed <span className="font-mono text-xs">{passNote.file}</span>. Here's the next one.
+            </p>
+          )}
+          {selected && testingId === selected.id && (
+            <TeachBackPanel
+              change={selected}
+              answer={drafts[selected.id] ?? ""}
+              onAnswerChange={(text) => setDrafts((prev) => ({ ...prev, [selected.id]: text }))}
+              busy={testBusyId === selected.id}
+              result={testResults[selected.id] ?? null}
+              error={testErrors[selected.id] ?? null}
+              onSubmit={() => submitTest(selected)}
+              onRetry={() => setTestResults((prev) => omit(prev, selected.id))}
+              onCancel={() => setTestingId(null)}
+              onSkip={() => handleMarkUnderstood(selected)}
+            />
+          )}
+          {selected && testingId !== selected.id && (
             <ExplainPanel
               change={selected}
               index={selectedIndex}
@@ -443,6 +523,8 @@ export default function SessionPage() {
               stepLabel={(start, end) => stepLabel(rowsById[selected.id] ?? [], start, end)}
               onToggleUnderstood={() => handleToggleUnderstood(selected.id)}
               onMarkUnderstood={() => handleMarkUnderstood(selected)}
+              onTestMe={() => startTest(selected)}
+              onExplainForTest={() => handleExplain(selected.id, true)}
             />
           )}
         </aside>

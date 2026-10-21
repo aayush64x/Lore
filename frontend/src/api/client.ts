@@ -44,6 +44,47 @@ export interface ChangeResponse {
   explanation: ExplanationData | null; // saved explanation, if this change was explained before
   goalMatch: "yes" | "partly" | "no" | null; // against the goal given at lore stop; null = not checked
   goalReason: string | null;
+  understoodBy: "teach_back" | "self" | null; // passed a teach-back, or marked by hand / skipped
+  teachBack: TeachBackState;
+}
+
+export interface TeachBackState {
+  attemptsUsed: number;
+  attemptsLeft: number;
+  lastVerdict: "pass" | "partly" | "fail" | null;
+  keyPoints: string[] | null; // null until revealed (after 2 answers that didn't pass, or a pass)
+}
+
+export interface TeachBackResult extends TeachBackState {
+  verdict: "pass" | "partly" | "fail";
+  gotRight: string[];
+  missing: string[]; // hints that point at what's missing, never the answer
+  understood: boolean;
+  understoodBy: "teach_back" | "self" | null;
+}
+
+// A refused or failed teach-back: the server's reason, plus the tries state when it sent one.
+export class TeachBackError extends Error {
+  state: Partial<TeachBackState>;
+  constructor(message: string, state: Partial<TeachBackState>) {
+    super(message);
+    this.state = state;
+  }
+}
+
+// POST /api/changes/{id}/teach-back. The server enforces every rule (3 tries, when key points
+// show, what counts as understood); a failed AI call doesn't use a try.
+export async function teachBack(id: string, answer: string): Promise<TeachBackResult> {
+  const response = await fetch(`/api/changes/${id}/teach-back`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answer }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new TeachBackError(data.error ?? `Couldn't check your answer (HTTP ${response.status}).`, data);
+  }
+  return data;
 }
 
 // --- API functions (your turn) ---
@@ -90,7 +131,7 @@ export async function fetchSession(id : string): Promise<SessionDetailResponse>{
 // LOOK AT: fetchSession above for the pattern — same style, just PUT instead of GET.
 //
 // READ: MDN > Fetch API > Using Fetch — look at how to set the method
-export async function toggleUnderstood(id : string) : Promise<{understood : boolean}>{
+export async function toggleUnderstood(id : string) : Promise<{understood : boolean; understoodBy: "teach_back" | "self" | null}>{
   const response = await fetch(`/api/changes/${id}/understood`,{
     method : "PUT",
   });
@@ -99,7 +140,7 @@ export async function toggleUnderstood(id : string) : Promise<{understood : bool
     throw new Error(`HTTP error : ${response.status}`);
   }
   const data = await response.json();
-  return { understood : data.understood}
+  return { understood : data.understood, understoodBy: data.understoodBy ?? null }
 }
 
 
@@ -128,8 +169,9 @@ export interface ExplanationData{
   possibleIssue?: PossibleIssue | null; // a real edge case or bug the AI found, or null
 }
 
-export async function explainChange(id: string): Promise<ExplanationData> {
-  const response = await fetch(`/api/changes/${id}/explain`, { method: "POST" });
+// refresh: make a new one even if a saved one would do (used to add key points to an old one).
+export async function explainChange(id: string, refresh = false): Promise<ExplanationData> {
+  const response = await fetch(`/api/changes/${id}/explain${refresh ? "?refresh=true" : ""}`, { method: "POST" });
 
   if (!response.ok) {
     throw new Error(`HTTP error: ${response.status}`);

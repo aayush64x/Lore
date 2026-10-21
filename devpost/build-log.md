@@ -584,3 +584,29 @@ One entry per slice. Newest at the bottom.
 
 **How to check:** there's no button yet (that's step 4). With `lore ui` running and a freshly explained change:
 `curl -X POST -H 'content-type: application/json' -d '{"answer":"..."}' http://127.0.0.1:8080/api/changes/<change id>/teach-back`
+
+---
+
+## Step 4 (slice 23): teach-back on the page
+
+- **Test me:** on a testable change with key points, a big blue **Test me** button under the change summary. It's also offered at the last walkthrough step, next to "Got it? Mark as understood".
+- **While testing:** the explanation is replaced by the teach-back panel. The diff stays visible.
+  - Question: "In your own words, what does this change do and why?", with a 2,000-character box and "Try 1 of 3".
+  - **Check my answer** shows "Checking…", then the result: **Passed ✓** (green), **Partly there** (amber) or **Not yet** (red), plus ✓ what you got right and **Hint:** lines.
+  - **Retry** keeps your text so you can improve it.
+  - After 2 answers that didn't pass, **A full answer covers** shows the key points (the server decides).
+  - With no tries left: "Mark as understood" (self).
+  - Errors (no key, Bedrock, network) show the server's message, and the try isn't used.
+- **On a pass:** it jumps to the next change you haven't understood, like "Got it" does, with a "✓ Passed <file>. Here's the next one." note. If nothing is left, the result stays on screen.
+- **Skip test and mark it understood:** a small link under Test me and under Explain this (also the way through when there's no API key or AI is off). Skipping sets `understood_by = self` and moves on.
+- **Status label** (no longer a toggle): **✓ Passed** (solid green) or **✓ Self-marked** (outlined green, click to undo) or **Not understood yet**.
+- **Sidebar dots:** solid green = all passed, green ring = all understood but some self-marked, orange = something left. Hover for the label.
+- **Old explanations** (no key points): "Explain again to enable testing". Clicking it calls `POST /explain?refresh=true`, the only way the server makes a new one when the saved one is otherwise current. Never done automatically.
+- **Nothing to test** (testable = false): "Nothing to test here… Mark as understood".
+
+**Files:** `frontend/src/components/TeachBackPanel.tsx` (new), `ExplainPanel.tsx`, `ExplainWalkthrough.tsx`, `FileSidebar.tsx`, `frontend/src/pages/SessionPage.tsx`, `frontend/src/api/client.ts`, `backend/.../ChangeController.java` (`refresh`), test in `TeachBackTest`
+
+**How to check (real key, 1 explain + 1–3 grading calls):**
+1. Stop `lore ui`, run `./scripts/install.sh`, start `lore ui`.
+2. Open the `truncate` session. Click **Explain again to enable testing** (or Explain again in the garbled note).
+3. Click **Test me**. Write a half answer, check it (expect Partly + a hint), then a full one (expect Passed). It moves on and the dot turns solid green.

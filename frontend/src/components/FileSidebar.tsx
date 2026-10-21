@@ -5,6 +5,8 @@ export interface FileSummary {
   path: string;
   total: number;
   understood: number;
+  // Understood by passing a teach-back (the rest of `understood` were self-marked).
+  passed: number;
   added: number;
   removed: number;
 }
@@ -44,6 +46,19 @@ function FileIcon() {
   );
 }
 
+// Solid green: every change passed a teach-back. Green ring: all understood, some only
+// self-marked. Orange: something left to learn.
+function status(file: FileSummary): { label: string; dot: string } {
+  if (file.understood < file.total) return { label: "not understood yet", dot: "bg-orange-400" };
+  if (file.passed === file.total) return { label: "passed", dot: "bg-green-500" };
+  return { label: "understood (self-marked)", dot: "border-2 border-green-500" };
+}
+
+function StatusDot({ file }: { file: FileSummary }) {
+  const { label, dot } = status(file);
+  return <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} aria-label={label} title={label} />;
+}
+
 const toggleButton = "p-1 rounded text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors";
 
 // Left column of the session page: every changed file, then the session's concepts.
@@ -67,18 +82,17 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
         </span>
         <ul className="flex flex-col items-center gap-1">
           {files.map((file) => {
-            const done = file.understood === file.total;
             const active = file.path === selected;
             return (
               <li key={file.path}>
                 <button
                   onClick={() => onSelect(file.path)}
-                  title={`${file.path} · ${done ? "understood" : "not understood yet"}`}
+                  title={`${file.path} · ${status(file).label}`}
                   aria-label={file.path}
                   aria-current={active ? "page" : undefined}
                   className={`w-8 h-7 flex items-center justify-center rounded ${active ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-gray-100"}`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${done ? "bg-green-500" : "bg-orange-400"}`} />
+                  <StatusDot file={file} />
                 </button>
               </li>
             );
@@ -107,7 +121,6 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
       )}
       <ul>
         {files.map((file) => {
-          const done = file.understood === file.total;
           const { name, folder } = splitPath(file.path);
           const active = file.path === selected;
           return (
@@ -120,10 +133,7 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
                   active ? "bg-blue-50 border-blue-500" : "border-transparent hover:bg-gray-50"
                 }`}
               >
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${done ? "bg-green-500" : "bg-orange-400"}`}
-                  aria-label={done ? "Understood" : "Not understood yet"}
-                />
+                <StatusDot file={file} />
                 <span className="flex-1 min-w-0">
                   <span className="block font-mono text-sm truncate text-gray-900">{name}</span>
                   {folder && <span className="block font-mono text-[11px] text-gray-400 truncate">{folder}</span>}

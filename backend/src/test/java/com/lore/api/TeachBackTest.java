@@ -206,6 +206,25 @@ class TeachBackTest {
     }
 
     @Test
+    void explain_with_refresh_replaces_an_old_explanation_so_it_can_be_tested() throws Exception {
+        Change c = change(session());
+        Explanation old = new Explanation(UUID.randomUUID(), c);
+        old.setOverview("Old.");
+        old.setSteps("[]");
+        old.setConcepts("[]");
+        old.setStatus(Explanation.ExplanationStatus.COMPLETE);
+        explanationRepository.save(old);
+        String url = "/api/changes/" + c.getId() + "/explain";
+
+        mvc.perform(post(url)).andExpect(jsonPath("$.hasKeyPoints").value(false));
+        assertEquals(0, ai.explainCalls, "without refresh the saved one is reused");
+
+        mvc.perform(post(url).param("refresh", "true")).andExpect(jsonPath("$.hasKeyPoints").value(true));
+        assertEquals(1, ai.explainCalls);
+        answer(c, "now it can be tested").andExpect(status().isOk());
+    }
+
+    @Test
     void a_change_never_explained_asks_to_explain_first() throws Exception {
         Change c = change(session());
 

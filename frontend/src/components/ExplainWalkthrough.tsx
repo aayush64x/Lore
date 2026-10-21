@@ -12,7 +12,10 @@ interface ExplainWalkthroughProps {
   // using the same numbers as the gutter next to the code.
   stepLabel: (diffStart: number, diffEnd: number) => string;
   understood: boolean;
+  understoodBy: "teach_back" | "self" | null;
   onMarkUnderstood: () => void;
+  // Set on testable changes: "Test me" is offered next to "Got it?" at the last step.
+  onTestMe?: () => void;
 }
 
 export default function ExplainWalkthrough({
@@ -22,7 +25,9 @@ export default function ExplainWalkthrough({
   onHoverStep,
   stepLabel,
   understood,
+  understoodBy,
   onMarkUnderstood,
+  onTestMe,
 }: ExplainWalkthroughProps) {
   const [openConcept, setOpenConcept] = useState<number | null>(null);
   const { steps, concepts } = explanation;
@@ -82,14 +87,30 @@ export default function ExplainWalkthrough({
       {active === last && (
         <div className="mt-4 p-3 rounded-lg border border-green-200 bg-green-50 text-center">
           {understood ? (
-            <p className="text-sm text-green-700 font-medium">✓ Marked as understood</p>
+            <p className="text-sm text-green-700 font-medium">
+              {understoodBy === "teach_back" ? "✓ Passed" : "✓ Self-marked as understood"}
+            </p>
           ) : (
-            <button
-              onClick={onMarkUnderstood}
-              className="text-sm font-medium px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
-            >
-              Got it? Mark as understood
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {onTestMe && (
+                <button
+                  onClick={onTestMe}
+                  className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  Test me
+                </button>
+              )}
+              <button
+                onClick={onMarkUnderstood}
+                className={`text-sm font-medium px-4 py-2 rounded-md ${
+                  onTestMe
+                    ? "border border-green-300 text-green-800 hover:bg-green-100"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                }`}
+              >
+                Got it? Mark as understood
+              </button>
+            </div>
           )}
         </div>
       )}

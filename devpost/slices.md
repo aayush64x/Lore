@@ -52,7 +52,7 @@ Replaces slice 19 (no multiple-choice quiz). Order: 20 → 21 → 16 (middle opt
 - [x] **20. Intent check.** The `lore stop` summary also says, per change, whether it serves your goal (yes / partly / no + why), and which parts of the goal weren't done. Only when a goal was given. Badges plus a warning box.
 - [x] **21. key_points + testable + possible_issue in explanations.** Key points stay on the server; a real edge case or bug shows as a red "Lore found an issue" badge on its line.
 - [x] **22. Grading endpoint, attempts table, server rules** (Haiku grader, 3 tries, key points shown after 2 fails, pass = understood_by teach_back). On Bedrock: "Teach-back only works with the Anthropic provider." No provider switching.
-- [ ] **23. Teach-back UI** (Test me, Skip test = understood_by self, passed vs self-marked).
+- [x] **23. Teach-back UI** (Test me, Skip test = understood_by self, passed vs self-marked).
 - [ ] **24. Remaining tests.**
 
 ## Cut first if time runs short

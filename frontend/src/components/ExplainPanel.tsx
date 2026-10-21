@@ -16,13 +16,19 @@ interface ExplainPanelProps {
   onActivateStep: (i: number) => void;
   onHoverStep: (i: number | null) => void;
   stepLabel: (diffStart: number, diffEnd: number) => string;
+  // Undo a self-mark (a pass can't be undone here).
   onToggleUnderstood: () => void;
-  // "Got it? Mark as understood" at the last step: marks it and moves on.
+  // "Got it? Mark as understood" at the last step, and "Skip test": marks it (self) and moves on.
   onMarkUnderstood: () => void;
+  onTestMe: () => void;
+  // "Explain again to enable testing": a new explanation with key points.
+  onExplainForTest: () => void;
 }
 
-// The right side of the file page: summary, understood pill, and the
-// step-by-step explanation for the selected change.
+const LINK = "text-xs text-gray-500 hover:text-gray-800 underline";
+
+// The right side of the session page: summary, status, what to do next (test, skip,
+// explain), and the step-by-step explanation for the selected change.
 export default function ExplainPanel({
   change,
   index,
@@ -39,7 +45,21 @@ export default function ExplainPanel({
   stepLabel,
   onToggleUnderstood,
   onMarkUnderstood,
+  onTestMe,
+  onExplainForTest,
 }: ExplainPanelProps) {
+  const passed = change.understoodBy === "teach_back";
+  const canTest = explanation?.testable === true && !!explanation.hasKeyPoints;
+  // Made before key points existed: testing needs a new explanation (only when asked).
+  // (When the "Explain again" note above the steps is showing, that one does it already.)
+  const madeBeforeTesting = !!explanation && explanation.testable == null && explanation.current !== false;
+  const nothingToTest = explanation?.testable === false;
+  const skipLink = !change.understood && (
+    <button onClick={onMarkUnderstood} className={`block mt-2 ${LINK}`}>
+      Skip test and mark it understood
+    </button>
+  );
+
   return (
     <div className="p-5">
       {count > 1 && (
@@ -58,19 +78,57 @@ export default function ExplainPanel({
 
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Change summary</div>
-        <button
-          onClick={onToggleUnderstood}
-          title="Click to change"
-          className={`text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${
-            change.understood
-              ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-              : "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
-          }`}
-        >
-          {change.understood ? "✓ Understood" : "Not understood yet"}
-        </button>
+        {passed ? (
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-green-600 text-white border-green-600">
+            ✓ Passed
+          </span>
+        ) : change.understood ? (
+          <button
+            onClick={onToggleUnderstood}
+            title="Marked by you, not tested. Click to undo."
+            className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+          >
+            ✓ Self-marked
+          </button>
+        ) : (
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-orange-50 text-orange-700 border-orange-200">
+            Not understood yet
+          </span>
+        )}
       </div>
       <p className="text-sm text-gray-500 mb-4">{change.description ?? "No summary for this change."}</p>
+
+      {!passed && !change.binary && canTest && (
+        <div className="mb-4">
+          <button
+            onClick={onTestMe}
+            className="w-full text-sm font-medium py-2.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            {change.teachBack.attemptsLeft === 0 ? "See the key points" : "Test me"}
+          </button>
+          {change.teachBack.attemptsLeft > 0 && skipLink}
+        </div>
+      )}
+      {!passed && madeBeforeTesting && (
+        <div className="mb-4 px-3 py-2 rounded-md bg-gray-50 border border-gray-200 text-xs text-gray-600">
+          <button
+            onClick={onExplainForTest}
+            disabled={loading}
+            className="font-medium text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+          >
+            {loading ? "Explaining…" : "Explain again to enable testing"}
+          </button>
+          {skipLink}
+        </div>
+      )}
+      {nothingToTest && !change.understood && (
+        <div className="mb-4 text-xs text-gray-500">
+          Nothing to test here (formatting, imports or renames).{" "}
+          <button onClick={onMarkUnderstood} className="font-medium text-blue-600 hover:underline">
+            Mark as understood
+          </button>
+        </div>
+      )}
 
       {!change.binary && !explanation && (
         <>
@@ -82,6 +140,7 @@ export default function ExplainPanel({
             {loading ? "Explaining…" : "Explain this"}
           </button>
           {error && <p className="text-sm text-red-600 mt-2">{error} Click the button to try again.</p>}
+          {skipLink}
         </>
       )}
 
@@ -111,7 +170,9 @@ export default function ExplainPanel({
             onHoverStep={onHoverStep}
             stepLabel={stepLabel}
             understood={change.understood}
+            understoodBy={change.understoodBy}
             onMarkUnderstood={onMarkUnderstood}
+            onTestMe={canTest && change.teachBack.attemptsLeft > 0 ? onTestMe : undefined}
           />
           <p className="text-xs text-gray-400 mt-4">Keys: ← → steps · [ ] files · b sidebar</p>
         </div>

@@ -66,7 +66,8 @@ public class ChangeController {
     }
 
     @PostMapping("/changes/{id}/explain")
-    public Map<String, Object> explain(@PathVariable UUID id) {
+    public Map<String, Object> explain(@PathVariable UUID id,
+                                       @RequestParam(defaultValue = "false") boolean refresh) {
         Change change = changeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (change.isBinary() || change.getDiffContent() == null) {
@@ -75,7 +76,9 @@ public class ChangeController {
 
         UserProfile profile = settings.profile().orElse(UserProfile.DEFAULT);
         var existing = explanationRepository.findByChangeId(id);
-        if (existing.isPresent() && ExplanationView.isCurrent(existing.get(), profile)) {
+        // refresh=true: the user asked for a new one ("Explain again to enable testing" on an
+        // explanation made before key points existed). Never done automatically.
+        if (!refresh && existing.isPresent() && ExplanationView.isCurrent(existing.get(), profile)) {
             return ExplanationView.toMap(existing.get(), profile);
         }
 
