@@ -51,14 +51,18 @@ public class ChangeController {
     }
 
     @PutMapping("/changes/{id}/understood")
-    public Map<String, Boolean> toggleUnderstood(@PathVariable UUID id) {
+    public Map<String, Object> toggleUnderstood(@PathVariable UUID id) {
         Change change = changeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
-        change.setUnderstood(!change.isUnderstood());
+        // By hand (or "Skip test") always counts as self-marked; unmarking clears it.
+        change.markUnderstood(change.isUnderstood() ? null : Change.UnderstoodBy.SELF);
         changeRepository.save(change);
 
-        return Map.of("understood", change.isUnderstood());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("understood", change.isUnderstood());
+        out.put("understoodBy", TeachBackView.understoodBy(change));
+        return out;
     }
 
     @PostMapping("/changes/{id}/explain")

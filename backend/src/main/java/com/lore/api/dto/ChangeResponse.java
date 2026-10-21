@@ -21,5 +21,9 @@ public record ChangeResponse(
         Map<String, Object> explanation,
         // "yes" / "partly" / "no" against the goal given at lore stop; null if not checked.
         String goalMatch,
-        String goalReason
+        String goalReason,
+        // "teach_back" (passed) / "self" (marked by hand or skipped); null while not understood.
+        String understoodBy,
+        // attemptsUsed, attemptsLeft, lastVerdict, keyPoints (null until revealed).
+        Map<String, Object> teachBack
 ) {}

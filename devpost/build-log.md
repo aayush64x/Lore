@@ -552,3 +552,35 @@ One entry per slice. Newest at the bottom.
 **Files:** `frontend/src/components/ExplainWalkthrough.tsx`, `frontend/src/components/ChangeDiff.tsx`
 
 **How to check:** install, open a session, click a change that has an explanation. The panel goes straight from "Change summary" to the steps, and the change header has no status text.
+
+---
+
+## Step 3 (slice 22): grading endpoint, attempts table, server rules
+
+- **New endpoint `POST /api/changes/{id}/teach-back`** with `{"answer": "..."}`. Returns the verdict (`pass` / `partly` / `fail`), what you got right, hints for what's missing, tries used and left, and whether the change is now understood.
+- **Grader:** a separate, cheaper model, `claude-haiku-5-5`. Change it with `anthropic.grading-model=...` in `~/.lore/config.properties`.
+  - It gets **only** the diff, the key points and your answer. Not the session, not the full explanation.
+  - At most 400 tokens out. **Thinking off and low effort**, because Haiku 5.5 rejects any non-default temperature.
+  - The grading instructions are one **cached** system block. They include short examples, which keeps them above the 512-token minimum Haiku needs before it caches.
+  - Your answer sits inside `<student_answer>` tags and is treated as student text, never as instructions. A `</student_answer>` typed in the answer (or a `</diff>` in the code) is broken up, so it can't end its section early.
+  - Rules in the prompt: judge meaning, ignore spelling and grammar, pass = every key point covered, hints point at where to look and never give the answer.
+  - The grade gets the same stray-`}]}` check, with one retry.
+- **Server rules** (the page can't get around them):
+  - 3 tries per change.
+  - After 2 answers that didn't pass, the key points are sent back so the page can show them.
+  - A pass marks the change understood, with `understood_by = teach_back`.
+  - A change that was marked by hand can still be tested and upgraded to passed.
+  - A failed AI call (no key, network, garbled twice) does **not** use a try.
+  - Refused: non-testable changes, explanations without key points ("Explain again to enable testing"), changes already passed, empty answers, answers over 2,000 characters.
+- **New migration `V7__teach_back.sql`:**
+  - `changes.understood_by`: `TEACH_BACK` or `SELF`. Changes already understood become `SELF`.
+  - New table `teach_back_attempts`: change, answer, verdict, got right, missing, model, time.
+- The understood toggle now records `SELF` (and clears it when unmarked). This is the "Skip test" path.
+- The session API now sends `understoodBy` and `teachBack` (tries used and left, last verdict, key points once revealed) for each change.
+- **Bedrock:** grading says "Teach-back only works with the Anthropic provider." **AI off:** "AI is not set up." Skip still works for both.
+- **Also fixed:** two older key-leak tests had silently started calling the real API after the constructor changed. They now use the local stub server again.
+
+**Files:** `ai/AiService.java`, `ai/AnthropicAiService.java`, `ai/AiPrompts.java`, `ai/AiOutputCheck.java`, `ai/ApiKeyStore.java`, `ai/NoOpAiService.java`, `ai/dto/GradeResponse.java` (new), `change/Change.java`, `change/TeachBackAttempt.java` (new), `change/TeachBackAttemptRepository.java` (new), `api/controller/TeachBackController.java` (new), `api/controller/TeachBackView.java` (new), `api/controller/ChangeController.java`, `api/controller/SessionController.java`, `api/dto/ChangeResponse.java`, `db/migration/V7__teach_back.sql` (new), `application.yml`; tests: `TeachBackTest` (new, 17), `AnthropicAiServiceTest`, `AiOutputCheckTest`, `ApiKeyNeverLeaksTest`, `FakeAi`
+
+**How to check:** there's no button yet (that's step 4). With `lore ui` running and a freshly explained change:
+`curl -X POST -H 'content-type: application/json' -d '{"answer":"..."}' http://127.0.0.1:8080/api/changes/<change id>/teach-back`

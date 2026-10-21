@@ -61,7 +61,7 @@ class ApiKeyNeverLeaksTest {
             });
             server.start();
             try {
-                AnthropicAiService ai = new AnthropicAiService(storeWithEnvKey(home), "claude-sonnet-5-5",
+                AnthropicAiService ai = new AnthropicAiService(storeWithEnvKey(home), "claude-sonnet-5-5", "claude-haiku-5-5",
                         "http://127.0.0.1:" + server.getAddress().getPort());
                 AiUnavailableException e = assertThrows(AiUnavailableException.class,
                         () -> ai.summarize(List.of(), "reason"));
@@ -81,7 +81,7 @@ class ApiKeyNeverLeaksTest {
         try (ServerSocket s = new ServerSocket(0)) {
             closedPort = s.getLocalPort();
         }
-        AnthropicAiService ai = new AnthropicAiService(storeWithEnvKey(home), "claude-sonnet-5-5",
+        AnthropicAiService ai = new AnthropicAiService(storeWithEnvKey(home), "claude-sonnet-5-5", "claude-haiku-5-5",
                 "http://127.0.0.1:" + closedPort);
         AiUnavailableException e = assertThrows(AiUnavailableException.class, () -> ai.explain("a.js", "+x", null, UserProfile.DEFAULT));
         assertNoKey(everything(e));

@@ -5,8 +5,11 @@ import com.lore.ai.UserProfile;
 import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.ExplanationResponse;
+import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -27,6 +30,12 @@ public class FakeAi implements AiService {
     /** Explanation extras: a real issue to report (default none) and whether the change is testable. */
     public volatile ExplanationResponse.Issue explainIssue;
     public volatile boolean explainTestable = true;
+    /** Grades to hand out, in order ("pass" / "partly" / "fail"); "pass" once empty. */
+    public final Deque<String> gradeVerdicts = new ArrayDeque<>();
+    public volatile int gradeCalls;
+    public volatile String lastGradeDiff;
+    public volatile List<String> lastGradeKeyPoints;
+    public volatile String lastGradeAnswer;
     /** How many of the next answers (summary or explanation) end a text with stray "}]}". */
     public volatile int garbledAnswers;
 
@@ -38,6 +47,11 @@ public class FakeAi implements AiService {
         goalGaps = List.of("Add a test");
         explainIssue = null;
         explainTestable = true;
+        gradeVerdicts.clear();
+        gradeCalls = 0;
+        lastGradeDiff = null;
+        lastGradeKeyPoints = null;
+        lastGradeAnswer = null;
     }
 
     /** "}]}" while garbledAnswers lasts, then nothing. */
@@ -75,6 +89,18 @@ public class FakeAi implements AiService {
                 List.of(new ExplanationResponse.Concept("logging", "printing text")),
                 explainTestable ? List.of("Point one", "Point two") : List.of(),
                 explainTestable, explainIssue);
+    }
+
+    @Override
+    public GradeResponse grade(String diffContent, List<String> keyPoints, String answer) {
+        gradeCalls++;
+        lastGradeDiff = diffContent;
+        lastGradeKeyPoints = keyPoints;
+        lastGradeAnswer = answer;
+        fail();
+        String verdict = gradeVerdicts.isEmpty() ? "pass" : gradeVerdicts.poll();
+        return new GradeResponse(verdict, List.of("the first point"),
+                List.of("Look at the second point" + tail()), "fake-grader");
     }
 
     private static String goalMatch(String path) {

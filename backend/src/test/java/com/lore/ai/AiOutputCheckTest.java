@@ -1,6 +1,7 @@
 package com.lore.ai;
 
 import com.lore.ai.dto.ExplanationResponse;
+import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
 import org.junit.jupiter.api.Test;
 
@@ -47,6 +48,12 @@ class AiOutputCheckTest {
         ExplanationResponse r = new ExplanationResponse("Fine.", List.of(), List.of(),
                 List.of("ok", "cuts 3 earlier.}]}"), true, new ExplanationResponse.Issue(2, "breaks\"}"));
         assertEquals(List.of("key_points[1]", "possible_issue.text"), AiOutputCheck.problems(r));
+    }
+
+    @Test
+    void grades_are_checked_too() {
+        GradeResponse g = new GradeResponse("partly", List.of("ok", "cut.}]}"), List.of("Look at the length.\"]"), "m");
+        assertEquals(List.of("got_right[1]", "missing[0]"), AiOutputCheck.problems(g));
     }
 
     @Test

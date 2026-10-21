@@ -31,6 +31,7 @@ public class ApiKeyStore {
     public static final String ENV_VAR = "ANTHROPIC_API_KEY";
     static final String PROPERTY = "anthropic.api.key";
     static final String MODEL_PROPERTY = "anthropic.model";
+    static final String GRADING_MODEL_PROPERTY = "anthropic.grading-model";
     /** Set to "skipped" when the user skipped the first-run key prompt, so it isn't shown again. */
     static final String PROMPT_PROPERTY = "anthropic.api.key.prompt";
     static final String LEVEL_PROPERTY = "profile.level";
@@ -69,6 +70,13 @@ public class ApiKeyStore {
     /** The anthropic.model line from config.properties, if the user set one. */
     public Optional<String> modelOverride() {
         return Optional.ofNullable(load().getProperty(MODEL_PROPERTY))
+                .map(String::strip)
+                .filter(m -> !m.isEmpty());
+    }
+
+    /** The anthropic.grading-model line from config.properties, if the user set one. */
+    public Optional<String> gradingModelOverride() {
+        return Optional.ofNullable(load().getProperty(GRADING_MODEL_PROPERTY))
                 .map(String::strip)
                 .filter(m -> !m.isEmpty());
     }

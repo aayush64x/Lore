@@ -1,6 +1,7 @@
 package com.lore.ai;
 
 import com.lore.ai.dto.ExplanationResponse;
+import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +82,22 @@ public final class AiOutputCheck {
         if (r.goalPartsNotDone() != null) {
             for (int i = 0; i < r.goalPartsNotDone().size(); i++) {
                 if (isDamaged(r.goalPartsNotDone().get(i))) bad.add("goal_parts_not_done[" + i + "]");
+            }
+        }
+        return bad;
+    }
+
+    public static List<String> problems(GradeResponse r) {
+        List<String> bad = new ArrayList<>();
+        if (r == null) return bad;
+        if (r.gotRight() != null) {
+            for (int i = 0; i < r.gotRight().size(); i++) {
+                if (isDamaged(r.gotRight().get(i))) bad.add("got_right[" + i + "]");
+            }
+        }
+        if (r.missing() != null) {
+            for (int i = 0; i < r.missing().size(); i++) {
+                if (isDamaged(r.missing().get(i))) bad.add("missing[" + i + "]");
             }
         }
         return bad;

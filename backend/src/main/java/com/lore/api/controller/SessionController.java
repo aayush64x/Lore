@@ -11,6 +11,8 @@ import com.lore.ai.UserProfile;
 import com.lore.change.ChangeRepository;
 import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
+import com.lore.change.TeachBackAttempt;
+import com.lore.change.TeachBackAttemptRepository;
 import com.lore.session.Session;
 import com.lore.session.SessionRepository;
 import com.lore.session.SessionService;
@@ -37,14 +39,17 @@ public class SessionController {
     private final ChangeRepository changeRepository;
     private final ExplanationRepository explanationRepository;
     private final ApiKeyStore settings;
+    private final TeachBackAttemptRepository attemptRepository;
 
     public SessionController(SessionService sessionService, SessionRepository sessionRepository, ChangeRepository changeRepository,
-                             ExplanationRepository explanationRepository, ApiKeyStore settings){
+                             ExplanationRepository explanationRepository, ApiKeyStore settings,
+                             TeachBackAttemptRepository attemptRepository){
         this.sessionService = sessionService;
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
         this.settings = settings;
+        this.attemptRepository = attemptRepository;
 
     }
 
@@ -105,6 +110,10 @@ public class SessionController {
         // Saved explanations ride along, so the page shows them without asking the AI again.
         // Failed ones are left out; the page shows the Explain button for those.
         UserProfile profile = settings.profile().orElse(UserProfile.DEFAULT);
+        Map<UUID, List<TeachBackAttempt>> attempts = new HashMap<>();
+        for (TeachBackAttempt a : attemptRepository.findByChangeSessionIdOrderByCreatedAt(id)) {
+            attempts.computeIfAbsent(a.getChange().getId(), k -> new ArrayList<>()).add(a);
+        }
         Map<UUID, Explanation> explanations = new HashMap<>();
         for (Explanation e : explanationRepository.findByChangeSessionId(id)) {
             if (e.getStatus() == Explanation.ExplanationStatus.COMPLETE) explanations.put(e.getChange().getId(), e);
@@ -129,7 +138,9 @@ public class SessionController {
                                 ? ExplanationView.toMap(explanations.get(c.getId()), profile)
                                 : null,
                         c.getGoalMatch() == null ? null : c.getGoalMatch().name().toLowerCase(),
-                        c.getGoalReason()
+                        c.getGoalReason(),
+                        TeachBackView.understoodBy(c),
+                        TeachBackView.state(attempts.getOrDefault(c.getId(), List.of()), explanations.get(c.getId()))
                 ))
                 .toList();
 

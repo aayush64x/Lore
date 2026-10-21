@@ -4,13 +4,19 @@ import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.errors.AnthropicException;
 import com.anthropic.errors.AnthropicServiceException;
+import com.anthropic.models.messages.CacheControlEphemeral;
 import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.StopReason;
 import com.anthropic.models.messages.StructuredMessage;
 import com.anthropic.models.messages.StructuredMessageCreateParams;
+import com.anthropic.models.messages.StructuredOutputConfig;
+import com.anthropic.models.messages.TextBlockParam;
+import com.anthropic.models.messages.ThinkingConfigDisabled;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.lore.ai.dto.ExplanationResponse;
+import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,24 +39,30 @@ public class AnthropicAiService implements AiService {
 
     static final String API_BASE_URL = "https://api.anthropic.com";
     private static final long MAX_TOKENS = 16_000L;
+    /** A grade is a verdict and a few short lines. */
+    private static final long GRADE_MAX_TOKENS = 400L;
 
     private final ApiKeyStore keyStore;
     /** Default from lore.anthropic.model; anthropic.model in config.properties overrides it. */
     private final String defaultModel;
+    /** Default from lore.anthropic.grading-model; anthropic.grading-model in config.properties overrides it. */
+    private final String defaultGradingModel;
     private final String baseUrl;
 
     private AnthropicClient client;
     private String clientKey;
 
     @Autowired
-    public AnthropicAiService(ApiKeyStore keyStore, @Value("${lore.anthropic.model}") String defaultModel) {
-        this(keyStore, defaultModel, API_BASE_URL);
+    public AnthropicAiService(ApiKeyStore keyStore, @Value("${lore.anthropic.model}") String defaultModel,
+                              @Value("${lore.anthropic.grading-model}") String defaultGradingModel) {
+        this(keyStore, defaultModel, defaultGradingModel, API_BASE_URL);
     }
 
     /** Tests only: points the client at a local stub server instead of api.anthropic.com. */
-    AnthropicAiService(ApiKeyStore keyStore, String defaultModel, String baseUrl) {
+    AnthropicAiService(ApiKeyStore keyStore, String defaultModel, String defaultGradingModel, String baseUrl) {
         this.keyStore = keyStore;
         this.defaultModel = defaultModel;
+        this.defaultGradingModel = defaultGradingModel;
         this.baseUrl = baseUrl;
     }
 
@@ -137,6 +149,17 @@ public class AnthropicAiService implements AiService {
             @JsonPropertyDescription("One-sentence explanation a beginner would understand")
             String meaning) {}
 
+    enum Verdict { PASS, PARTLY, FAIL }
+
+    record GradeOutput(
+            @JsonPropertyDescription("PASS if every key point is covered in meaning, PARTLY if some are, FAIL if none")
+            Verdict verdict,
+            @JsonProperty("got_right")
+            @JsonPropertyDescription("Each key point the student covered, in a few words")
+            List<String> gotRight,
+            @JsonPropertyDescription("One hint per key point not covered; points where to look, never the answer")
+            List<String> missing) {}
+
     @Override
     public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
         if (reason != null && !reason.isBlank()) return summarizeWithGoal(changes, reason);
@@ -197,6 +220,41 @@ public class AnthropicAiService implements AiService {
         return new ExplanationResponse(out.overview(), steps, concepts, keyPoints, out.testable(), issue);
     }
 
+    /**
+     * Grades with the cheaper grading model. Haiku only accepts the default temperature, so
+     * thinking is off and effort is low instead: short, steady grades that fit in 400 tokens.
+     * The instructions are one cached system block (they never change between requests).
+     */
+    @Override
+    public GradeResponse grade(String diffContent, List<String> keyPoints, String answer) {
+        String model = keyStore.gradingModelOverride().orElse(defaultGradingModel);
+        StructuredMessageCreateParams<GradeOutput> params = MessageCreateParams.builder()
+                .model(model)
+                .maxTokens(GRADE_MAX_TOKENS)
+                .systemOfTextBlockParams(List.of(TextBlockParam.builder()
+                        .text(AiPrompts.gradeSystemPrompt())
+                        .cacheControl(CacheControlEphemeral.builder().build())
+                        .build()))
+                .thinking(ThinkingConfigDisabled.builder().build())
+                .outputConfig(GradeOutput.class)
+                .outputConfig(StructuredOutputConfig.<GradeOutput>builder()
+                        .format(GradeOutput.class)
+                        .effort(OutputConfig.Effort.LOW)
+                        .build())
+                .addUserMessage(AiPrompts.gradeUserMessage(diffContent, keyPoints, answer))
+                .build();
+
+        GradeOutput out = send(params);
+        if (out.verdict() == null) throw new AiUnavailableException("Claude returned no grade.");
+        return new GradeResponse(out.verdict().name().toLowerCase(),
+                clean(out.gotRight()), clean(out.missing()), model);
+    }
+
+    private static List<String> clean(List<String> items) {
+        return items == null ? List.of()
+                : items.stream().filter(t -> t != null && !t.isBlank()).map(String::strip).toList();
+    }
+
     private <T> T call(Class<T> outputType, String system, String userMessage) {
         StructuredMessageCreateParams<T> params = MessageCreateParams.builder()
                 .model(keyStore.modelOverride().orElse(defaultModel))
@@ -205,7 +263,11 @@ public class AnthropicAiService implements AiService {
                 .outputConfig(outputType)
                 .addUserMessage(userMessage)
                 .build();
+        return send(params);
+    }
 
+    /** Sends the request and reads the structured answer; every failure becomes AiUnavailableException. */
+    private <T> T send(StructuredMessageCreateParams<T> params) {
         StructuredMessage<T> response;
         try {
             response = client().messages().create(params);

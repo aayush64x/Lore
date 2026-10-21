@@ -56,6 +56,11 @@ public class Change {
     @Column(nullable = false)
     private boolean understood;
 
+    /** How it became understood; null while not understood. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "understood_by")
+    private UnderstoodBy understoodBy;
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
@@ -94,10 +99,20 @@ public class Change {
     public void setBinary(boolean binary) { this.binary = binary; }
     public boolean isUnderstood() { return understood; }
     public void setUnderstood(boolean understood) { this.understood = understood; }
+    public UnderstoodBy getUnderstoodBy() { return understoodBy; }
+
+    /** Understood, and how; or not understood (by = null). */
+    public void markUnderstood(UnderstoodBy by) {
+        this.understood = by != null;
+        this.understoodBy = by;
+    }
     public int getDisplayOrder() { return displayOrder; }
     public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
 
     public enum ChangeType { ADDED, MODIFIED, DELETED, RENAMED }
 
     public enum GoalMatch { YES, PARTLY, NO }
+
+    /** TEACH_BACK = passed a teach-back; SELF = marked by hand or skipped the test. */
+    public enum UnderstoodBy { TEACH_BACK, SELF }
 }

@@ -1,6 +1,7 @@
 package com.lore.ai;
 
 import com.lore.ai.dto.ExplanationResponse;
+import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,11 @@ public class NoOpAiService implements AiService {
 
     @Override
     public ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile) {
+        throw new AiUnavailableException(MESSAGE);
+    }
+
+    @Override
+    public GradeResponse grade(String diffContent, List<String> keyPoints, String answer) {
         throw new AiUnavailableException(MESSAGE);
     }
 }
