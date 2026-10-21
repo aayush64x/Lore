@@ -640,3 +640,22 @@ Most of the list was already covered by steps 1–4. Added for the gaps:
 - End-to-end so far (real key, `testProject`, goal "Add a countWords helper and a test for it"): the summary, the goal gap ("Write a test for countWords"), "Not part of your goal" on `styles.css`, the issue badge on `split(" ")` (`""` → 1, double spaces), the concept tags, hints that didn't give the answer, and a pass despite deliberate typos (then it moved on) were all correct.
 
 **Files:** `frontend/src/components/TeachBackPanel.tsx`
+
+---
+
+## Teach-back: retake as practice after a pass
+
+- **Why:** from the end-to-end test, a pass was final, with no way to retake.
+- A passed change now has a small **Retake (practice)** link under its summary.
+- **Practice** is graded exactly like a real try, but:
+  - it doesn't use any of the 3 tries and has no limit
+  - it **never** changes "Passed", even if the practice answer is wrong
+  - a practice pass doesn't jump to the next change
+  - the key points (known since the pass) stay hidden until you've answered, so they don't give the answer away.
+- The panel header says **Practice — Doesn't use tries. Your pass stays.** After a practice pass: **Practice again**.
+- The server decides: any answer on an already-passed change is practice. It's saved in `teach_back_attempts` with `practice = true`.
+- **New migration `V8__teach_back_practice.sql`:** `teach_back_attempts.practice` (existing attempts = real tries).
+
+**Files:** `db/migration/V8__teach_back_practice.sql` (new), `change/TeachBackAttempt.java`, `api/controller/TeachBackController.java`, `api/controller/TeachBackView.java`, `frontend/src/api/client.ts`, `components/ExplainPanel.tsx`, `components/TeachBackPanel.tsx`, `pages/SessionPage.tsx`; tests in `TeachBackTest`, `MigrationTest`
+
+**How to check:** install, open a change you passed, click **Retake (practice)**, answer badly. You see the grade, it still says ✓ Passed, and the dot stays solid green.

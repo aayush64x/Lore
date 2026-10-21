@@ -40,6 +40,8 @@ export default function TeachBackPanel({
   onSkip,
 }: TeachBackPanelProps) {
   const state = result ?? change.teachBack;
+  // Already passed: this is practice. No tries used, the pass can't be lost.
+  const practice = change.understoodBy === "teach_back";
   const outOfTries = state.attemptsLeft === 0 && change.understoodBy !== "teach_back";
   const tryNumber = Math.min(state.attemptsUsed + (result ? 0 : 1), state.attemptsUsed + state.attemptsLeft);
   const total = state.attemptsUsed + state.attemptsLeft;
@@ -47,8 +49,12 @@ export default function TeachBackPanel({
   return (
     <div className="p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Teach it back</div>
-        {total > 0 && !outOfTries && (
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          {practice ? "Practice" : "Teach it back"}
+        </div>
+        {practice ? (
+          <span className="text-xs text-gray-500">Doesn't use tries. Your pass stays.</span>
+        ) : total > 0 && !outOfTries && (
           <span className="text-xs text-gray-500">
             Try {tryNumber} of {total}
           </span>
@@ -128,9 +134,19 @@ export default function TeachBackPanel({
       )}
 
       {result?.verdict === "pass" && (
-        <button onClick={onCancel} className="mt-3 text-sm text-gray-600 hover:text-gray-900">
-          Back to the explanation
-        </button>
+        <div className="flex items-center gap-3 mt-3">
+          {practice && (
+            <button
+              onClick={onRetry}
+              className="text-sm font-medium px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Practice again
+            </button>
+          )}
+          <button onClick={onCancel} className="text-sm text-gray-600 hover:text-gray-900">
+            Back to the explanation
+          </button>
+        </div>
       )}
 
       {result && result.verdict !== "pass" && !outOfTries && (
@@ -147,7 +163,8 @@ export default function TeachBackPanel({
         </div>
       )}
 
-      {state.keyPoints && (
+      {/* In practice the points are known from the pass; show them only after answering. */}
+      {state.keyPoints && (!practice || result) && (
         <div className="mt-4 p-3 rounded-md border border-gray-200 bg-gray-50">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">A full answer covers</p>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">

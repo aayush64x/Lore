@@ -98,6 +98,12 @@ export default function ExplainPanel({
       </div>
       <p className="text-sm text-gray-500 mb-4">{change.description ?? "No summary for this change."}</p>
 
+      {passed && canTest && (
+        <button onClick={onTestMe} className={`-mt-2 mb-4 ${LINK}`}>
+          Retake (practice)
+        </button>
+      )}
+
       {!passed && !change.binary && canTest && (
         <div className="mb-4">
           <button

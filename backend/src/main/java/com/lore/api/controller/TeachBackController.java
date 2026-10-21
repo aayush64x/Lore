@@ -26,7 +26,8 @@ import java.util.UUID;
  * Teach-back: the user explains a change in their own words and the grading model checks it
  * against the explanation's key points. Every rule is enforced here, never by the page:
  * 3 tries per change, key points revealed after 2 that didn't pass, and a pass marks the
- * change understood (by teach-back). A failed AI call doesn't use up a try.
+ * change understood (by teach-back). A failed AI call doesn't use up a try. Once passed,
+ * further answers are practice: graded the same, no limit, and the pass always stays.
  */
 @RestController
 @RequestMapping("/api")
@@ -53,9 +54,9 @@ public class TeachBackController {
     public record TeachBackRequest(String answer) {}
 
     /**
-     * 200: {verdict, gotRight, missing, attemptsUsed, attemptsLeft, lastVerdict, keyPoints, understood, understoodBy}
+     * 200: {verdict, gotRight, missing, practice, attemptsUsed, attemptsLeft, lastVerdict, keyPoints, understood, understoodBy}
      * 400: empty or too-long answer. 404: no such change.
-     * 409: already passed, nothing to test, explain again first, or no tries left (body says which).
+     * 409: nothing to test, explain again first, or no tries left (body says which).
      * 503: the grader couldn't be reached or answered badly; no try is used.
      */
     @PostMapping("/changes/{id}/teach-back")
@@ -68,9 +69,7 @@ public class TeachBackController {
                 .orElse(null);
         List<TeachBackAttempt> attempts = attemptRepository.findByChangeIdOrderByCreatedAt(id);
 
-        if (change.getUnderstoodBy() == Change.UnderstoodBy.TEACH_BACK || TeachBackView.passed(attempts)) {
-            return error(HttpStatus.CONFLICT, "You already passed this one.", attempts, explanation);
-        }
+        boolean practice = change.getUnderstoodBy() == Change.UnderstoodBy.TEACH_BACK || TeachBackView.passed(attempts);
         if (explanation != null && Boolean.FALSE.equals(explanation.getTestable())) {
             return error(HttpStatus.CONFLICT, "This change has nothing to test. Mark it understood instead.", attempts, explanation);
         }
@@ -78,7 +77,7 @@ public class TeachBackController {
         if (keyPoints.isEmpty()) {
             return error(HttpStatus.CONFLICT, "Explain again to enable testing.", attempts, explanation);
         }
-        if (attempts.size() >= TeachBackView.MAX_ATTEMPTS) {
+        if (!practice && TeachBackView.real(attempts).size() >= TeachBackView.MAX_ATTEMPTS) {
             return error(HttpStatus.CONFLICT, "No tries left. The key points are shown below.", attempts, explanation);
         }
 
@@ -108,17 +107,19 @@ public class TeachBackController {
 
         try {
             attemptRepository.save(new TeachBackAttempt(UUID.randomUUID(), change, answer, verdict,
-                    mapper.writeValueAsString(grade.gotRight()), mapper.writeValueAsString(grade.missing()), grade.model()));
+                    mapper.writeValueAsString(grade.gotRight()), mapper.writeValueAsString(grade.missing()), grade.model(),
+                    practice));
         } catch (Exception e) {
             throw new IllegalStateException("Could not save the teach-back attempt", e);
         }
-        if (verdict == TeachBackAttempt.Verdict.PASS) {
+        if (verdict == TeachBackAttempt.Verdict.PASS && !practice) {
             change.markUnderstood(Change.UnderstoodBy.TEACH_BACK);
             changeRepository.save(change);
         }
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("verdict", verdict.name().toLowerCase());
+        out.put("practice", practice);
         out.put("gotRight", grade.gotRight());
         // A pass needs no hints.
         out.put("missing", verdict == TeachBackAttempt.Verdict.PASS ? List.of() : grade.missing());

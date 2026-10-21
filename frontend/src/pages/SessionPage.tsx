@@ -278,7 +278,9 @@ export default function SessionPage() {
     setTestingId(change.id);
     setPassNote(null);
     setTestErrors((prev) => omit(prev, change.id));
-    if (change.teachBack.attemptsLeft > 0) setTestResults((prev) => omit(prev, change.id));
+    if (change.teachBack.attemptsLeft > 0 || change.understoodBy === "teach_back") {
+      setTestResults((prev) => omit(prev, change.id));
+    }
   }
 
   async function submitTest(change: ChangeResponse) {
@@ -293,8 +295,9 @@ export default function SessionPage() {
         teachBack: { attemptsUsed, attemptsLeft, lastVerdict, keyPoints },
       });
       setTestResults((prev) => ({ ...prev, [change.id]: r }));
-      // A pass moves on, like "Got it" does. If nothing is left, the grade stays on screen.
-      if (r.verdict === "pass") {
+      // A pass moves on, like "Got it" does. If nothing is left, or it was practice, the
+      // grade stays on screen.
+      if (r.verdict === "pass" && !r.practice) {
         const next = nextToLearn(change.id);
         if (next) {
           setTestingId(null);

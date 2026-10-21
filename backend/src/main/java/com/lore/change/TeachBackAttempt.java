@@ -31,6 +31,10 @@ public class TeachBackAttempt {
 
     private String model;
 
+    /** True for answers given after the change was already passed (they don't use tries). */
+    @Column(nullable = false)
+    private boolean practice;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -38,6 +42,11 @@ public class TeachBackAttempt {
 
     public TeachBackAttempt(UUID id, Change change, String answer, Verdict verdict,
                             String gotRight, String missing, String model) {
+        this(id, change, answer, verdict, gotRight, missing, model, false);
+    }
+
+    public TeachBackAttempt(UUID id, Change change, String answer, Verdict verdict,
+                            String gotRight, String missing, String model, boolean practice) {
         this.id = id;
         this.change = change;
         this.answer = answer;
@@ -45,6 +54,7 @@ public class TeachBackAttempt {
         this.gotRight = gotRight;
         this.missing = missing;
         this.model = model;
+        this.practice = practice;
         this.createdAt = Instant.now();
     }
 
@@ -55,6 +65,7 @@ public class TeachBackAttempt {
     public String getGotRight() { return gotRight; }
     public String getMissing() { return missing; }
     public String getModel() { return model; }
+    public boolean isPractice() { return practice; }
     public Instant getCreatedAt() { return createdAt; }
 
     public enum Verdict { PASS, PARTLY, FAIL }

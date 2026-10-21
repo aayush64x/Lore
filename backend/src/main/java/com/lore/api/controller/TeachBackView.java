@@ -26,12 +26,17 @@ final class TeachBackView {
 
     private TeachBackView() {}
 
+    /** The tries that count; practice answers (after a pass) are left out. */
+    static List<TeachBackAttempt> real(List<TeachBackAttempt> attempts) {
+        return attempts.stream().filter(a -> !a.isPractice()).toList();
+    }
+
     static boolean passed(List<TeachBackAttempt> attempts) {
-        return attempts.stream().anyMatch(a -> a.getVerdict() == TeachBackAttempt.Verdict.PASS);
+        return real(attempts).stream().anyMatch(a -> a.getVerdict() == TeachBackAttempt.Verdict.PASS);
     }
 
     static boolean keyPointsRevealed(List<TeachBackAttempt> attempts) {
-        long notPassed = attempts.stream().filter(a -> a.getVerdict() != TeachBackAttempt.Verdict.PASS).count();
+        long notPassed = real(attempts).stream().filter(a -> a.getVerdict() != TeachBackAttempt.Verdict.PASS).count();
         return passed(attempts) || notPassed >= REVEAL_AFTER_FAILS;
     }
 
@@ -46,13 +51,17 @@ final class TeachBackView {
         }
     }
 
-    /** attemptsUsed, attemptsLeft, lastVerdict ("pass" / "partly" / "fail" / null), keyPoints (null until revealed). */
+    /**
+     * attemptsUsed, attemptsLeft, lastVerdict ("pass" / "partly" / "fail" / null), keyPoints (null
+     * until revealed). Counts real tries only; practice answers don't change any of it.
+     */
     static Map<String, Object> state(List<TeachBackAttempt> attempts, Explanation explanation) {
+        List<TeachBackAttempt> real = real(attempts);
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("attemptsUsed", attempts.size());
-        out.put("attemptsLeft", passed(attempts) ? 0 : Math.max(0, MAX_ATTEMPTS - attempts.size()));
-        out.put("lastVerdict", attempts.isEmpty() ? null
-                : attempts.get(attempts.size() - 1).getVerdict().name().toLowerCase());
+        out.put("attemptsUsed", real.size());
+        out.put("attemptsLeft", passed(attempts) ? 0 : Math.max(0, MAX_ATTEMPTS - real.size()));
+        out.put("lastVerdict", real.isEmpty() ? null
+                : real.get(real.size() - 1).getVerdict().name().toLowerCase());
         out.put("keyPoints", keyPointsRevealed(attempts) ? keyPoints(explanation) : null);
         return out;
     }

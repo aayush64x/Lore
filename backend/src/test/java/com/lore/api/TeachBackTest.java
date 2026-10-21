@@ -162,13 +162,36 @@ class TeachBackTest {
     }
 
     @Test
-    void a_passed_change_cannot_be_graded_again() throws Exception {
+    void after_a_pass_answers_are_practice_and_never_undo_the_pass() throws Exception {
         Change c = explained();
-        answer(c, "right").andExpect(status().isOk());
+        answer(c, "right").andExpect(jsonPath("$.practice").value(false));
+        ai.gradeVerdicts.add("fail");
 
-        answer(c, "again").andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error", containsString("already passed")));
-        assertEquals(1, ai.gradeCalls);
+        answer(c, "a worse answer")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.practice").value(true))
+                .andExpect(jsonPath("$.verdict").value("fail"))
+                .andExpect(jsonPath("$.understood").value(true))
+                .andExpect(jsonPath("$.understoodBy").value("teach_back"))
+                .andExpect(jsonPath("$.attemptsUsed").value(1))
+                .andExpect(jsonPath("$.lastVerdict").value("pass"));
+
+        Change saved = changeRepository.findById(c.getId()).orElseThrow();
+        assertEquals(Change.UnderstoodBy.TEACH_BACK, saved.getUnderstoodBy());
+        List<TeachBackAttempt> attempts = attemptRepository.findByChangeIdOrderByCreatedAt(c.getId());
+        assertEquals(List.of(false, true), attempts.stream().map(TeachBackAttempt::isPractice).toList());
+    }
+
+    @Test
+    void practice_has_no_try_limit() throws Exception {
+        Change c = explained();
+        ai.gradeVerdicts.addAll(List.of("fail", "fail", "pass", "fail", "fail", "fail", "fail"));
+        for (int i = 0; i < 3; i++) answer(c, "real " + i).andExpect(status().isOk());
+
+        for (int i = 0; i < 4; i++) {
+            answer(c, "practice " + i).andExpect(status().isOk()).andExpect(jsonPath("$.practice").value(true));
+        }
+        assertEquals(7, ai.gradeCalls);
     }
 
     @Test

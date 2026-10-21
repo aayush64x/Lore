@@ -57,6 +57,7 @@ export interface TeachBackState {
 
 export interface TeachBackResult extends TeachBackState {
   verdict: "pass" | "partly" | "fail";
+  practice: boolean; // answered after the change was already passed: no try used, the pass stays
   gotRight: string[];
   missing: string[]; // hints that point at what's missing, never the answer
   understood: boolean;
