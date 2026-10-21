@@ -372,3 +372,14 @@ One entry per slice. Newest at the bottom.
 2. Open a file, click **Explain this**, then reload the page. The explanation is still there.
 3. Stop `lore ui` and start it again. Open the same file. The explanation is still there.
 4. Open a change you never explained. It shows the **Explain this** button.
+
+---
+
+## Slice 0: real-key test passed (Oct 21)
+
+- Done with a real Anthropic key and the installed `lore` command (`~/.lore/lib/lore.jar`).
+- `lore start` → changed `truncate` in `helpers.js` (`…` → `...`, `maxLength - 1` → `maxLength - 3`) → `lore stop` → `lore ui` → **Explain this**.
+- The AI summary and the explanation both described the real change.
+- Red/green diff, step keys (← →) and line highlighting worked.
+- The explanation was still there after a page reload, and after restarting `lore ui`.
+- Backups appeared in `~/.lore/backups`.
