@@ -1,0 +1,87 @@
+package com.lore.db;
+
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Test;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Migrations run against data that already exists, which the other tests never see
+ * (they start from an empty database). Each test stops at one version, adds rows the way
+ * an older Lore would have, then runs the next migration.
+ */
+class MigrationTest {
+
+    private static String newDb() {
+        return "jdbc:h2:mem:migration-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+    }
+
+    private static void migrateTo(String url, String version) {
+        Flyway.configure().dataSource(url, "sa", "").locations("classpath:db/migration")
+                .target(version).load().migrate();
+    }
+
+    @Test
+    void v7_marks_changes_already_understood_as_self_and_leaves_the_rest_alone() throws Exception {
+        String url = newDb();
+        migrateTo(url, "6");
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            s.execute("INSERT INTO sessions (id, project_path, start_ref, status, started_at) "
+                    + "VALUES ('00000000-0000-0000-0000-000000000001', '/p', 'r', 'COMPLETE', CURRENT_TIMESTAMP)");
+            s.execute("INSERT INTO changes (id, session_id, file_path, change_type, understood) VALUES "
+                    + "('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000001', 'done.js', 'MODIFIED', TRUE), "
+                    + "('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-000000000001', 'todo.js', 'MODIFIED', FALSE)");
+        }
+
+        migrateTo(url, "7");
+
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement();
+             ResultSet r = s.executeQuery("SELECT file_path, understood, understood_by FROM changes ORDER BY file_path")) {
+            assertTrue(r.next());
+            assertEquals("done.js", r.getString(1));
+            assertTrue(r.getBoolean(2));
+            assertEquals("SELF", r.getString(3));
+            assertTrue(r.next());
+            assertEquals("todo.js", r.getString(1));
+            assertFalse(r.getBoolean(2));
+            assertNull(r.getString(3));
+        }
+    }
+
+    @Test
+    void v5_and_v6_leave_older_rows_unchecked() throws Exception {
+        String url = newDb();
+        migrateTo(url, "4");
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            s.execute("INSERT INTO sessions (id, project_path, start_ref, status, started_at) "
+                    + "VALUES ('00000000-0000-0000-0000-000000000001', '/p', 'r', 'COMPLETE', CURRENT_TIMESTAMP)");
+            s.execute("INSERT INTO changes (id, session_id, file_path, change_type) VALUES "
+                    + "('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000001', 'a.js', 'MODIFIED')");
+            s.execute("INSERT INTO explanations (id, change_id, overview, status, created_at) VALUES "
+                    + "('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000000a', 'Old.', 'COMPLETE', CURRENT_TIMESTAMP)");
+        }
+
+        migrateTo(url, "7");
+
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            ResultSet r = s.executeQuery("SELECT goal_gaps FROM sessions");
+            assertTrue(r.next());
+            assertNull(r.getString(1), "old sessions were never goal-checked");
+            r = s.executeQuery("SELECT goal_match FROM changes");
+            assertTrue(r.next());
+            assertNull(r.getString(1));
+            r = s.executeQuery("SELECT key_points, testable, possible_issue, overview FROM explanations");
+            assertTrue(r.next());
+            assertNull(r.getString(1), "no backfill of key points");
+            assertNull(r.getObject(2));
+            assertNull(r.getString(3));
+            assertEquals("Old.", r.getString(4));
+        }
+    }
+}

@@ -225,6 +225,25 @@ class TeachBackTest {
     }
 
     @Test
+    void a_failed_explanation_cannot_be_graded() throws Exception {
+        Change c = change(session());
+        ai.reset(FakeAi.Mode.CRASH);
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain")).andExpect(status().isServiceUnavailable());
+        ai.reset(FakeAi.Mode.WORKING);
+
+        answer(c, "anything").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Explain again to enable testing."));
+        assertEquals(0, ai.gradeCalls);
+    }
+
+    @Test
+    void with_ai_turned_off_grading_says_so_and_uses_no_try() {
+        var e = assertThrows(com.lore.ai.AiUnavailableException.class,
+                () -> new com.lore.ai.NoOpAiService().grade("d", List.of("k"), "a"));
+        assertEquals("AI is not set up.", e.getMessage());
+    }
+
+    @Test
     void a_change_never_explained_asks_to_explain_first() throws Exception {
         Change c = change(session());
 

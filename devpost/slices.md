@@ -53,7 +53,7 @@ Replaces slice 19 (no multiple-choice quiz). Order: 20 → 21 → 16 (middle opt
 - [x] **21. key_points + testable + possible_issue in explanations.** Key points stay on the server; a real edge case or bug shows as a red "Lore found an issue" badge on its line.
 - [x] **22. Grading endpoint, attempts table, server rules** (Haiku grader, 3 tries, key points shown after 2 fails, pass = understood_by teach_back). On Bedrock: "Teach-back only works with the Anthropic provider." No provider switching.
 - [x] **23. Teach-back UI** (Test me, Skip test = understood_by self, passed vs self-marked).
-- [ ] **24. Remaining tests.**
+- [x] **24. Remaining tests.** 187 backend tests. The page has no automated tests; each UI step was checked with a scripted browser run.
 
 ## Cut first if time runs short
 

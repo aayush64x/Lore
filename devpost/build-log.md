@@ -610,3 +610,22 @@ One entry per slice. Newest at the bottom.
 1. Stop `lore ui`, run `./scripts/install.sh`, start `lore ui`.
 2. Open the `truncate` session. Click **Explain again to enable testing** (or Explain again in the garbled note).
 3. Click **Test me**. Write a half answer, check it (expect Partly + a hint), then a full one (expect Passed). It moves on and the dot turns solid green.
+
+---
+
+## Step 5 (slice 24): remaining tests
+
+Most of the list was already covered by steps 1–4. Added for the gaps:
+
+- **`MigrationTest` (new):** the migrations run on **existing** data, which no other test sees (they all start empty).
+  - V7: a change already marked understood becomes `SELF`, and a not-understood one stays empty.
+  - V5–V6: older sessions and explanations keep NULL goal and teach-back fields. No backfill.
+- **A failed explanation** can't be graded ("Explain again to enable testing").
+- **The real service reads a FAIL grade**, and a grade with no verdict becomes "Claude returned no grade." instead of counting as anything.
+- **AI turned off:** grading says "AI is not set up."
+
+**Total: 187 backend tests, 0 failures.** The page has no automated test setup. Each UI step was checked with a scripted headless-browser run (screenshots in the build notes).
+
+**Files:** `backend/src/test/java/com/lore/db/MigrationTest.java` (new), `TeachBackTest.java`, `AnthropicAiServiceTest.java`
+
+**How to check:** in `backend`, run `mvn package` (with `lore ui` stopped). You should see `Tests run: 187, Failures: 0`.

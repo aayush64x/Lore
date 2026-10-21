@@ -183,6 +183,28 @@ class AnthropicAiServiceTest {
     }
 
     @Test
+    void grade_reads_a_fail(@TempDir Path home) throws Exception {
+        responseBody = message("""
+                {"verdict": "FAIL", "got_right": [], "missing": ["Look at the ending.", "Think about the length."]}""");
+
+        GradeResponse g = service(home, FAKE_KEY).grade("+a\n", List.of("k1", "k2"), "It is faster.");
+
+        assertEquals("fail", g.verdict());
+        assertEquals(List.of(), g.gotRight());
+        assertEquals(2, g.missing().size());
+    }
+
+    @Test
+    void a_grade_without_a_verdict_is_an_error_not_a_pass(@TempDir Path home) throws Exception {
+        responseBody = message("""
+                {"verdict": null, "got_right": ["x"], "missing": []}""");
+
+        AiUnavailableException e = assertThrows(AiUnavailableException.class,
+                () -> service(home, FAKE_KEY).grade("+a\n", List.of("k"), "answer"));
+        assertEquals("Claude returned no grade.", e.getMessage());
+    }
+
+    @Test
     void grading_model_can_be_changed_in_config_file(@TempDir Path home) throws Exception {
         java.nio.file.Files.writeString(home.resolve("config.properties"), "anthropic.grading-model=claude-sonnet-5-5\n");
         responseBody = message("""
