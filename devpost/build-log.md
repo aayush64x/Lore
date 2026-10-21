@@ -97,3 +97,24 @@ One entry per slice. Newest at the bottom.
 1. Run `./scripts/lore ui` on your Mac. Your browser should open by itself.
 2. In the `backend` folder, run `mvn test`. The 3 `UICommandTest` tests check the command for Mac, Windows and Linux.
 3. If you have a Linux or Windows computer, try `lore ui` there too.
+
+---
+
+## Slice 6c: File list and a page for each file
+
+- The session page no longer shows every diff at once. It shows the summary and a list of **Files changed**.
+- Each file row shows its path, whether it's new, edited, deleted or renamed, how many changes it has, and how many you've understood.
+- Click a file to open its own page with only that file's changes. Each change still has its diff, **Explain this**, hover highlighting and the understood button.
+- At the bottom of a file page, **Next file** takes you to the next file. **← All files** takes you back to the list.
+- **Unreviewed only** now hides files where every change is understood.
+- Refreshing a file page works too. The server sends back the app for the new address.
+- Why: one long page with every diff was hard to read. Now you study one file at a time.
+
+**Files:** `frontend/src/pages/SessionDetail.tsx`, `frontend/src/pages/FileDetail.tsx` (new), `frontend/src/components/ChangeCard.tsx` (new), `frontend/src/App.tsx`, `backend/src/main/java/com/lore/api/controller/SpaController.java`, `backend/src/test/java/com/lore/api/SpaControllerTest.java` (new)
+
+**How to check:**
+1. In the `backend` folder, run `mvn package`. You should see `Tests run: 84, Failures: 0`.
+2. In your test repo, run `lore ui` and open a session. You should see a list of files, not diffs.
+3. Click a file. Only that file's changes show. Click **Next file**, then **← All files**.
+4. Mark every change in a file as understood, go back, and tick **Unreviewed only**. That file should disappear.
+5. On a file page, press refresh in the browser. The page should load again.

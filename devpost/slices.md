@@ -6,7 +6,7 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 
 ## Real-key test
 
-- [ ] **0. Real-key test: no later than Oct 20** (Aayush): run `lore key`, enter a real Anthropic API key, then start → edit → stop → ui → Explain in a test repo. Check the summary and explanation are real.
+- [x] **0. Real-key test: no later than Oct 20** (Aayush): run `lore key`, enter a real Anthropic API key, then start → edit → stop → ui → Explain in a test repo. Check the summary and explanation are real.
 
 ## Make what's there work smoothly
 
@@ -17,6 +17,7 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 - [x] **5. Hover a step to highlight its lines.** Connects explain steps to the diff from slice 4.
 - [x] **6. Fix the lint error in `SessionList.tsx`** and show an error message if the session list fails to load.
 - [x] **6b. API controller tests + fixes.** Tests for `SessionController` and `ChangeController` endpoints. Fix whatever they find.
+- [x] **6c. File list + file page.** The session page lists the changed files; click one to see only its changes.
 
 ## Make it usable by other people
 

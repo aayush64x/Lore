@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchSession, retrySummary, toggleUnderstood } from "../api/client";
+import { fetchSession, retrySummary } from "../api/client";
 import type { SessionDetailResponse, ChangeResponse } from "../api/client";
-import DiffView from "../components/DiffView";
-import ExplainWalkthrough from "../components/ExplainWalkthrough";
 import ProgressBar from "../components/ProgressBar";
+
+const CHANGE_TYPE_LABELS: Record<string, string> = {
+  ADDED: "New file",
+  MODIFIED: "Edited",
+  DELETED: "Deleted",
+  RENAMED: "Renamed",
+};
 
 export default function SessionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -15,8 +20,6 @@ export default function SessionDetail() {
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [unreviewedOnly, setUnreviewedOnly] = useState(false);
-  // Which diff lines to highlight, and in which change (each change has its own diff).
-  const [highlight, setHighlight] = useState<{ changeId: string; start: number; end: number } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -44,22 +47,6 @@ export default function SessionDetail() {
     );
   }
 
-  // Flip locally first so the button feels instant; flip back if the server says no.
-  function handleToggleUnderstood(changeId: string) {
-    const flip = (prev: SessionDetailResponse | null) =>
-      prev
-        ? {
-            ...prev,
-            changes: prev.changes.map((c) =>
-              c.id === changeId ? { ...c, understood: !c.understood } : c
-            ),
-          }
-        : prev;
-
-    setSession(flip);
-    toggleUnderstood(changeId).catch(() => setSession(flip));
-  }
-
   function handleRetrySummary() {
     if (!id) return;
     setRetrying(true);
@@ -70,16 +57,21 @@ export default function SessionDetail() {
       .finally(() => setRetrying(false));
   }
 
-  const visibleChanges = unreviewedOnly
-    ? session.changes.filter((c) => !c.understood)
-    : session.changes;
-
   const changesByFile: Record<string, ChangeResponse[]> = {};
-  for (const change of visibleChanges) {
+  for (const change of session.changes) {
     const key = change.filePath;
     if (!changesByFile[key]) changesByFile[key] = [];
     changesByFile[key].push(change);
   }
+
+  // A file counts as reviewed once every change in it is understood.
+  const files = Object.entries(changesByFile).map(([filePath, changes]) => ({
+    filePath,
+    changeType: changes[0].changeType,
+    total: changes.length,
+    understood: changes.filter((c) => c.understood).length,
+  }));
+  const visibleFiles = unreviewedOnly ? files.filter((f) => f.understood < f.total) : files;
 
   const totalChanges = session.changes.length;
   const understoodChanges = session.changes.filter((c) => c.understood).length;
@@ -123,7 +115,9 @@ export default function SessionDetail() {
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Changes</h2>
+          <h2 className="text-lg font-semibold">
+            Files changed <span className="text-gray-500 font-normal">({files.length})</span>
+          </h2>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
             <input
               type="checkbox"
@@ -134,52 +128,41 @@ export default function SessionDetail() {
           </label>
         </div>
 
-        {unreviewedOnly && visibleChanges.length === 0 && (
+        {unreviewedOnly && visibleFiles.length === 0 && (
           <p className="text-sm text-gray-500 py-6 text-center">
             Nothing left to review. You've marked every change as understood.
           </p>
         )}
 
-        {Object.entries(changesByFile).map(([filePath, changes]) => (
-          <div key={filePath} className="mb-6">
-            <h3 className="font-mono text-sm font-medium mb-2">{filePath}</h3>
-
-            {changes.map((change) => (
-              <div key={change.id} className="bg-white border border-gray-200 rounded-lg mb-2 overflow-hidden">
-                <div className="px-4 py-3 flex gap-3 items-center text-sm">
-                  <span className="text-gray-500 font-mono text-xs">
-                    Lines {change.newStart}–{change.newStart + Math.max(change.newCount - 1, 0)}
+        <ul className="space-y-2">
+          {visibleFiles.map((file) => {
+            const done = file.understood === file.total;
+            return (
+              <li key={file.filePath}>
+                <button
+                  onClick={() => navigate(`/sessions/${id}/file?path=${encodeURIComponent(file.filePath)}`)}
+                  className="w-full text-left p-4 border border-gray-200 rounded-lg bg-white hover:border-blue-500 transition-colors flex items-center gap-3"
+                >
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-mono text-sm font-medium break-all">{file.filePath}</span>
+                    <span className="block text-xs text-gray-500 mt-1">
+                      {CHANGE_TYPE_LABELS[file.changeType] ?? file.changeType} ·{" "}
+                      {file.total} {file.total === 1 ? "change" : "changes"}
+                    </span>
                   </span>
-                  <span className="flex-1">{change.description ?? change.changeType}</span>
-                  <button
-                    onClick={() => handleToggleUnderstood(change.id)}
-                    className={`text-xs px-2 py-1 rounded ${
-                      change.understood
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    } transition-colors`}
+                  <span
+                    className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                      done ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                    }`}
                   >
-                    {change.understood ? "Understood" : "Not understood"}
-                  </button>
-                </div>
-                <DiffView
-                  diffContent={change.diffContent}
-                  highlightStart={highlight?.changeId === change.id ? highlight.start : undefined}
-                  highlightEnd={highlight?.changeId === change.id ? highlight.end : undefined}
-                />
-                {!change.binary && (
-                  <div className="px-4 py-3 border-t border-gray-100 text-sm">
-                    <ExplainWalkthrough
-                      changeId={change.id}
-                      onHighlight={(start, end) => setHighlight({ changeId: change.id, start, end })}
-                      onClearHighlight={() => setHighlight(null)}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
+                    {done ? "✓ Understood" : `${file.understood} of ${file.total} understood`}
+                  </span>
+                  <span className="text-gray-400" aria-hidden="true">›</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );
