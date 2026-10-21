@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchSession, retrySummary } from "../api/client";
+import { fetchSession, retrySummary, sessionDetails, sessionTitle } from "../api/client";
 import type { SessionDetailResponse, ChangeResponse } from "../api/client";
 import ProgressBar from "../components/ProgressBar";
 
@@ -83,8 +83,13 @@ export default function SessionDetail() {
       </button>
 
       <div className="mb-4">
-        <h1 className="text-xl font-semibold">{session.reason ?? "Untitled session"}</h1>
+        <h1 className="text-xl font-semibold break-words">{sessionTitle(session.reason)}</h1>
         <div className="text-sm text-gray-500">{new Date(session.startedAt).toLocaleString()}</div>
+        {sessionDetails(session.reason) && (
+          <p className="mt-3 text-sm text-gray-700 whitespace-pre-wrap break-words">
+            {sessionDetails(session.reason)}
+          </p>
+        )}
       </div>
 
       <div className="mb-4">

@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { fetchSession, toggleUnderstood } from "../api/client";
+import { fetchSession, sessionTitle, toggleUnderstood } from "../api/client";
 import type { SessionDetailResponse } from "../api/client";
 import ChangeCard from "../components/ChangeCard";
 import ProgressBar from "../components/ProgressBar";
@@ -88,7 +88,7 @@ export default function FileDetail() {
         {oldFilePath && (
           <div className="text-sm text-gray-500 font-mono break-all">Renamed from {oldFilePath}</div>
         )}
-        <div className="text-sm text-gray-500">{session.reason ?? "Untitled session"}</div>
+        <div className="text-sm text-gray-500">{sessionTitle(session.reason)}</div>
       </div>
 
       <div className="mb-4">

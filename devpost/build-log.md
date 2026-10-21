@@ -142,3 +142,28 @@ One entry per slice. Newest at the bottom.
 2. Run `lore ui` in your test repo. Your key is already saved, so it asks only the level and goal questions.
 3. Run `lore ui` again. It asks nothing.
 4. Run `lore config`. It shows your settings. Change one, then check `~/.lore/config.properties`.
+
+---
+
+## Write as much as you want at `lore stop`
+
+- "What were you trying to do?" used to take one line. Now it can be as long as you like.
+- **Way 1, type it:** write as many lines as you want. One empty line is kept as a paragraph break. Press Enter 2 more times to finish.
+- **Way 2, editor:** type `e` and press Enter. A text editor opens. Write, save, close, and Lore continues.
+  - It uses your own editor setting (`$VISUAL` or `$EDITOR`) if you have one.
+  - Otherwise it uses Notepad on Windows and nano on Mac or Linux. It never falls back to vim.
+  - The editor file has help lines that start with `#`. Lore ignores them.
+  - If the editor can't open, you type the text in the terminal instead.
+- Press Enter right away to skip, same as before.
+- The first line becomes the session's title in the list. The rest shows under the title on the session page.
+- The AI summary gets the whole text.
+- The database can now hold up to 20,000 characters (it was 1,024). Old sessions are kept.
+- Why: people want to explain what they were trying to do, or paste the prompt they gave their AI tool.
+
+**Files:** `backend/src/main/java/com/lore/cli/ReasonInput.java` (new), `backend/src/main/java/com/lore/cli/StopCommand.java`, `backend/src/main/java/com/lore/session/Session.java`, `backend/src/main/resources/db/migration/V3__longer_session_reason.sql` (new), `backend/src/main/java/com/lore/ai/AiPrompts.java`, `frontend/src/api/client.ts`, `frontend/src/pages/SessionList.tsx`, `frontend/src/pages/SessionDetail.tsx`, `frontend/src/pages/FileDetail.tsx`, `backend/src/test/java/com/lore/cli/ReasonInputTest.java` (new), `backend/src/test/java/com/lore/session/SessionServiceTest.java`
+
+**How to check:**
+1. In the `backend` folder, run `mvn package`. You should see `Tests run: 107, Failures: 0`.
+2. In your test repo: `lore start`, change a file, `lore stop`. Type 2 paragraphs, then press Enter 2 more times.
+3. Do it again, but type `e`. nano opens. Write something, press Ctrl+O, Enter, then Ctrl+X.
+4. Run `lore ui`. The list shows only the first line. Open the session to see the rest under the title.

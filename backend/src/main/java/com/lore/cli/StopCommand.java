@@ -4,8 +4,10 @@ import com.lore.session.SessionService;
 import org.springframework.stereotype.Component;
 import picocli.CommandLine.Command;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
-import java.util.Scanner;
+import java.util.Optional;
 
 @Component
 @Command(name = "stop", description = "Stop the session and save changes")
@@ -27,22 +29,21 @@ public class StopCommand implements Runnable {
                 return;
             }
 
-            System.out.print("What were you trying to do? ");
-            Scanner scanner = new Scanner(System.in);
-            String reason = scanner.nextLine().trim();
+            String reason = new ReasonInput(
+                    new BufferedReader(new InputStreamReader(System.in)), System.out, editor()).read();
 
-            if (reason.isEmpty()) {
+            if (reason == null) {
                 System.out.println("(No reason given — the summary will be less useful.)");
             }
 
             System.out.println("Summarizing changes...");
-            SessionService.StopResult result = sessionService.stop(cwd, reason.isEmpty() ? null : reason);
+            SessionService.StopResult result = sessionService.stop(cwd, reason);
 
             if (result.discarded()) {
                 System.out.println("No changes since lore start. Nothing to save.");
             } else {
                 String reasonText = result.session().getReason() != null
-                        ? result.session().getReason() : "(no reason)";
+                        ? ReasonInput.title(result.session().getReason()) : "(no reason)";
                 System.out.println("Session saved: " + reasonText
                         + ". " + plural(result.fileCount(), "file") + " changed, "
                         + plural(result.changeCount(), "change") + " to review."
@@ -58,6 +59,13 @@ public class StopCommand implements Runnable {
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         }
+    }
+
+    /** An editor is only offered when a person is typing in a terminal. */
+    private static Optional<ReasonInput.Editor> editor() {
+        if (System.console() == null) return Optional.empty();
+        return ReasonInput.editorCommand(System.getenv(), System.getProperty("os.name", ""), ReasonInput.onPath("nano"))
+                .map(ReasonInput::systemEditor);
     }
 
     static String plural(int count, String noun) {

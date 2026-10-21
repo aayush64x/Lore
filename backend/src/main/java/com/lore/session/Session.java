@@ -14,6 +14,7 @@ public class Session {
     @Column(name = "project_path", nullable = false)
     private String projectPath;
 
+    @Column(length = 20000)
     private String reason;
 
     private String summary;

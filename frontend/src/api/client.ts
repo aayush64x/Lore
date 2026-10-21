@@ -133,3 +133,15 @@ export async function retrySummary(id: string): Promise<SessionDetailResponse> {
   }
   return response.json();
 }
+
+// "What were you trying to do?" can be many lines. The first line is the title;
+// the rest is shown under it on the session page.
+export function sessionTitle(reason: string | null): string {
+  const first = reason?.trim().split("\n")[0].trim();
+  return first || "Untitled session";
+}
+
+export function sessionDetails(reason: string | null): string | null {
+  const rest = reason?.trim().split("\n").slice(1).join("\n").trim();
+  return rest || null;
+}

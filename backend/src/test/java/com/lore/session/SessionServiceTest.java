@@ -142,6 +142,17 @@ class SessionServiceTest {
     }
 
     @Test
+    void stop_saves_a_long_reason_with_paragraphs() throws Exception {
+        sessionService.start(repo);
+        Files.writeString(repo.resolve("a.txt"), "hi\n");
+        String essay = "Add a login page\n\n" + "I asked my AI tool to build a login form. ".repeat(300);
+
+        SessionService.StopResult r = sessionService.stop(repo, essay);
+
+        assertEquals(essay, sessionRepository.findById(r.session().getId()).orElseThrow().getReason());
+    }
+
+    @Test
     void stop_skips_lockfiles_and_build_output() throws Exception {
         sessionService.start(repo);
         Files.writeString(repo.resolve("package-lock.json"), "{}\n");

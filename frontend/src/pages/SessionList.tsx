@@ -16,7 +16,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchSessions } from "../api/client";
+import { fetchSessions, sessionTitle } from "../api/client";
 import type { SessionResponse } from "../api/client";
 
 // The result remembers which project it was loaded for, so "loading" can be worked
@@ -103,7 +103,7 @@ export default function SessionList() {
               onClick={() => navigate(`/sessions/${session.id}`)}
               className="p-4 border border-gray-200 rounded-lg cursor-pointer bg-white hover:border-blue-500 transition-colors"
             >
-              <div className="font-medium">{session.reason}</div>
+              <div className="font-medium break-words">{sessionTitle(session.reason)}</div>
               <div className="text-sm text-gray-500 flex gap-4 mt-1">
                 <span>{new Date(session.startedAt).toLocaleString()}</span>
                 <span>{session.fileCount} files</span>

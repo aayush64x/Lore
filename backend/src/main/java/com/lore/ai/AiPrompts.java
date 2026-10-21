@@ -38,7 +38,7 @@ public final class AiPrompts {
     public static String summaryUserMessage(List<AiService.ChangeInput> changes, String reason) {
         StringBuilder sb = new StringBuilder();
         if (reason != null && !reason.isBlank()) {
-            sb.append("The developer said they were trying to: ").append(reason).append("\n\n");
+            sb.append("In their own words, the developer was trying to:\n").append(reason.strip()).append("\n\n");
         }
         sb.append("Here are the ").append(changes.size()).append(" changes from this session:\n\n");
 
