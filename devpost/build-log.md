@@ -118,3 +118,27 @@ One entry per slice. Newest at the bottom.
 3. Click a file. Only that file's changes show. Click **Next file**, then **← All files**.
 4. Mark every change in a file as understood, go back, and tick **Unreviewed only**. That file should disappear.
 5. On a file page, press refresh in the browser. The page should load again.
+
+---
+
+## First-run setup + `lore config`
+
+- The first time you run `lore start` or `lore ui`, Lore asks 3 things:
+  1. Your API key (hidden while you type). You can press Enter to skip it.
+  2. How much coding you know: new to coding, know some, or developer.
+  3. Your goal: understand what my app does, or learn to code.
+- Press Enter on a question to take the suggested answer.
+- Typing something wrong (like `9`) asks again.
+- Answers are saved in `~/.lore/config.properties`, the same private file as the key.
+- It asks only once. If you already have a key, it asks only the 2 new questions.
+- It never asks during `lore stop`, `--help`, or when input comes from a pipe instead of a person.
+- New command `lore config`: shows your settings and lets you change any of them. Enter keeps what you have.
+- Why: the next slice uses your level and goal to write explanations that fit you.
+
+**Files:** `backend/src/main/java/com/lore/ai/UserProfile.java` (new), `backend/src/main/java/com/lore/ai/ApiKeyStore.java`, `backend/src/main/java/com/lore/ai/ApiKeyPrompt.java`, `backend/src/main/java/com/lore/cli/ConfigCommand.java` (new), `backend/src/main/java/com/lore/cli/LoreCli.java`, `backend/src/test/java/com/lore/ai/SetupPromptTest.java` (new), `backend/src/test/java/com/lore/ai/ApiKeyNeverLeaksTest.java`
+
+**How to check:**
+1. In the `backend` folder, run `mvn package`. You should see `Tests run: 95, Failures: 0`.
+2. Run `lore ui` in your test repo. Your key is already saved, so it asks only the level and goal questions.
+3. Run `lore ui` again. It asks nothing.
+4. Run `lore config`. It shows your settings. Change one, then check `~/.lore/config.properties`.

@@ -151,6 +151,10 @@ class ApiKeyNeverLeaksTest {
 
         @Override public boolean isInteractive() { return interactive; }
         @Override public char[] readHidden(String prompt) { asked++; return answer.toCharArray(); }
+        /** Answers for visible questions, in order; Enter ("") once they run out. */
+        final java.util.Deque<String> lines = new java.util.ArrayDeque<>();
+        int linesAsked;
+        @Override public String readLine(String prompt) { linesAsked++; return lines.isEmpty() ? "" : lines.poll(); }
         @Override public PrintStream out() { return new PrintStream(buffer, true, StandardCharsets.UTF_8); }
         String printed() { return buffer.toString(StandardCharsets.UTF_8); }
     }

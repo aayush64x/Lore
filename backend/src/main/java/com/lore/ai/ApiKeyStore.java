@@ -21,8 +21,9 @@ import java.util.function.UnaryOperator;
 /**
  * Finds the Anthropic API key: the ANTHROPIC_API_KEY environment variable first,
  * then anthropic.api.key in {lore.home}/config.properties. The same file may also
- * hold anthropic.model=... to override the default Claude model. Saving writes that file
- * so only the owner can read it. Nothing here ever logs or prints the key.
+ * hold anthropic.model=... to override the default Claude model, and the user's profile
+ * (profile.level, profile.goal). Saving writes that file so only the owner can read it.
+ * Nothing here ever logs or prints the key.
  */
 @Component
 public class ApiKeyStore {
@@ -32,6 +33,8 @@ public class ApiKeyStore {
     static final String MODEL_PROPERTY = "anthropic.model";
     /** Set to "skipped" when the user skipped the first-run key prompt, so it isn't shown again. */
     static final String PROMPT_PROPERTY = "anthropic.api.key.prompt";
+    static final String LEVEL_PROPERTY = "profile.level";
+    static final String GOAL_PROPERTY = "profile.goal";
 
     private static final Set<PosixFilePermission> OWNER_FILE = PosixFilePermissions.fromString("rw-------");
     private static final Set<PosixFilePermission> OWNER_DIR = PosixFilePermissions.fromString("rwx------");
@@ -84,6 +87,23 @@ public class ApiKeyStore {
     public void markPromptSkipped() throws IOException {
         Properties props = load();
         props.setProperty(PROMPT_PROPERTY, "skipped");
+        write(props);
+    }
+
+    /** The saved profile; empty until both level and goal have been chosen. */
+    public Optional<UserProfile> profile() {
+        Properties props = load();
+        var level = UserProfile.parse(UserProfile.Level.class, props.getProperty(LEVEL_PROPERTY));
+        var goal = UserProfile.parse(UserProfile.Goal.class, props.getProperty(GOAL_PROPERTY));
+        if (level.isEmpty() || goal.isEmpty()) return Optional.empty();
+        return Optional.of(new UserProfile(level.get(), goal.get()));
+    }
+
+    /** Saves the profile, keeping the key and any other settings. */
+    public void saveProfile(UserProfile profile) throws IOException {
+        Properties props = load();
+        props.setProperty(LEVEL_PROPERTY, profile.level().name());
+        props.setProperty(GOAL_PROPERTY, profile.goal().name());
         write(props);
     }
 

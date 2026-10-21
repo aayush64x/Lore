@@ -17,7 +17,7 @@ import java.nio.file.Path;
         mixinStandardHelpOptions = true,
         version = "0.1.0",
         description = "Learn from your AI-assisted coding sessions.",
-        subcommands = { StartCommand.class, StopCommand.class, UICommand.class, KeyCommand.class }
+        subcommands = { StartCommand.class, StopCommand.class, UICommand.class, KeyCommand.class, ConfigCommand.class }
 )
 public class LoreCli implements Runnable, CommandLineRunner, ExitCodeGenerator {
 
@@ -50,6 +50,7 @@ public class LoreCli implements Runnable, CommandLineRunner, ExitCodeGenerator {
             System.out.println("  lore stop    Stop the session and summarize changes");
             System.out.println("  lore ui      Open the web UI");
             System.out.println("  lore key     Set or change your Anthropic API key");
+            System.out.println("  lore config  Change your API key, coding level or goal");
         }
     }
 
