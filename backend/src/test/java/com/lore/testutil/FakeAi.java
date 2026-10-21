@@ -22,18 +22,28 @@ public class FakeAi implements AiService {
     public volatile int explainCalls;
     public volatile String lastExplainReason;
     public volatile UserProfile lastExplainProfile;
+    /** How many of the next answers (summary or explanation) end a text with stray "}]}". */
+    public volatile int garbledAnswers;
 
     public void reset(Mode mode) {
         this.mode = mode;
         summarizeCalls = 0;
         explainCalls = 0;
+        garbledAnswers = 0;
+    }
+
+    /** "}]}" while garbledAnswers lasts, then nothing. */
+    private String tail() {
+        if (garbledAnswers <= 0) return "";
+        garbledAnswers--;
+        return "}]}";
     }
 
     @Override
     public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
         summarizeCalls++;
         fail();
-        return new SummaryResponse("Summary for: " + reason, changes.stream()
+        return new SummaryResponse("Summary for: " + reason + tail(), changes.stream()
                 .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath()))
                 .toList());
     }
@@ -45,7 +55,7 @@ public class FakeAi implements AiService {
         lastExplainProfile = profile;
         fail();
         return new ExplanationResponse("Explains " + filePath,
-                List.of(new ExplanationResponse.Step("First line", 1, 2)),
+                List.of(new ExplanationResponse.Step("First line" + tail(), 1, 2)),
                 List.of(new ExplanationResponse.Concept("logging", "printing text")));
     }
 

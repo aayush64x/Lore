@@ -28,7 +28,10 @@ public final class AiPrompts {
                    - "display_order": copied exactly from that change's header
                    - "file_path": copied exactly from that change's header
                    - "description": one line saying what that change does in plain English
-                Describe each change using only the diff directly under its own header.""";
+                Describe each change using only the diff directly under its own header.
+
+                Every text value is plain sentences. Never end a text with JSON characters such as \
+                }, ] or a quote: the JSON structure is handled for you.""";
     }
 
     /**
@@ -89,6 +92,9 @@ public final class AiPrompts {
 
                 If you know what they were trying to do, connect the change to it, for example: \
                 "You asked for X. This part does that by..."
+
+                Every text value is plain sentences. Never end a text with JSON characters such as \
+                }, ] or a quote: the JSON structure is handled for you.
 
                 WHO YOU ARE WRITING FOR:
                 """ + audience(profile);

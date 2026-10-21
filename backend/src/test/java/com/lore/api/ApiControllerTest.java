@@ -331,6 +331,52 @@ class ApiControllerTest {
     }
 
     @Test
+    void explain_asks_again_when_a_text_comes_back_with_stray_json() throws Exception {
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
+        ai.garbledAnswers = 1;
+
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.steps[0].text").value("First line"))
+                .andExpect(jsonPath("$.damaged").value(false));
+        assertEquals(2, ai.explainCalls);
+    }
+
+    @Test
+    void explain_garbled_twice_is_503_and_nothing_is_saved_as_complete() throws Exception {
+        Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
+        ai.garbledAnswers = 2;
+
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain"))
+                .andExpect(status().isServiceUnavailable());
+        assertEquals(2, ai.explainCalls);
+        assertTrue(explanationRepository.findByChangeId(c.getId())
+                .map(e -> e.getStatus() != Explanation.ExplanationStatus.COMPLETE).orElse(true));
+    }
+
+    @Test
+    void an_old_damaged_explanation_is_flagged_and_explaining_again_replaces_it() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "r");
+        Change c = change(s, "a.js", 0);
+        Explanation old = new Explanation(UUID.randomUUID(), c);
+        old.setOverview("Fine overview.");
+        old.setSteps("[{\"text\":\"matching the code.}]}\",\"diff_line_start\":1,\"diff_line_end\":2}]");
+        old.setConcepts("[]");
+        old.setStatus(Explanation.ExplanationStatus.COMPLETE);
+        explanationRepository.save(old);
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.changes[0].explanation.damaged").value(true))
+                .andExpect(jsonPath("$.changes[0].explanation.current").value(false));
+
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.steps[0].text").value("First line"))
+                .andExpect(jsonPath("$.damaged").value(false));
+        assertEquals(1, ai.explainCalls);
+    }
+
+    @Test
     void changing_the_profile_makes_a_new_explanation_once() throws Exception {
         Change c = change(session(project, Session.SessionStatus.COMPLETE, "r"), "a.js", 0);
         String url = "/api/changes/" + c.getId() + "/explain";

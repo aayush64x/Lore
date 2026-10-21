@@ -35,11 +35,25 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
   - Test: start `lore ui`, re-run the installer, press Ctrl+C, then check that every session is still there.
   - (The database backup on every start was moved out of this item and done on Oct 21.)
 
-- [ ] **14. Stray `}]}` at the end of some explain steps.** Seen Oct 21 on a real explanation ("...matching the code.}]}"). The AI's answer is read wrong somewhere (`AnthropicAiService` / `ExplanationResponse` parsing). Fix the parsing and add a test with that output.
+## Review page rework (Oct 21 plan)
+
+Order: 15 → 16 → 17 → 18. Then 19 only as a stretch, with a hard cutoff.
+
+- [x] **15. Fix stray `}]}` at the source.** The model sometimes ends a text field with JSON characters (seen Oct 21: "...matching the code.}]}"). Tell it plain text only. Check every text field before saving. Ask once more if it's bad, then fail instead of saving bad text. Old damaged explanations get an "Explain again" note.
+- [ ] **16. One summary, one status.** The session summary becomes one sentence under the goal. Remove the change summary and overview from the panel. Status only in the top bar and the sidebar dots. Keep one Mark as understood button.
+- [ ] **17. Concepts only for what the diff changes.** Prompt fix (no tags for code the diff didn't touch, like "Regex trimming").
+- [ ] **18. Collapsible files sidebar.** Button on the sidebar plus the `b` key. Thin rail with status dots, file-count badge and filename tooltips. Saved in localStorage (try/catch). Animated width, no jump.
+- [ ] **19. Stretch: questions.** 1–2 multiple-choice questions (3–4 options) per substantive change, plus one edge-case question only if a real one exists. The server checks answers; retry allowed. The explanation shows after answering. A change is understood when its questions are answered correctly. **Hard cutoff: Oct 23 noon.** If it isn't working by then, keep the current Mark as understood.
 
 ## Cut first if time runs short
 
 - [ ] **12. Warning for sessions left open too long**, in the terminal and on the web page.
+
+## After the hackathon
+
+- **Trivial vs substantive changes.** Classify each change (comments, docs, formatting, renames = trivial) in the `lore stop` summary call, with a comment/whitespace-only fallback. New `changes.kind` column (old rows = substantive). Fold trivial ones into "N trivial changes – show". Leave them out of "N of M understood".
+- **Inline notes.** Show each explain step under the line it explains, like GitHub review comments, collapsible.
+- **Lookalike characters.** Scan the diff for `…`, smart quotes, non-breaking spaces and dashes, and have the explanation name them ("… (1 char, U+2026)" vs "... (3 chars)"). Show code in explanations as inline code.
 
 ## Not code slices
 

@@ -1,6 +1,7 @@
 package com.lore.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lore.ai.AiOutputCheck;
 import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
 import com.lore.ai.ApiKeyStore;
@@ -80,8 +81,10 @@ public class ChangeController {
                 .map(Session::getReason).orElse(null);
 
         try {
-            ExplanationResponse result = aiService.explain(
-                    change.getFilePath(), change.getDiffContent(), reason, profile);
+            // Asked once more if a text field comes back with stray JSON characters.
+            ExplanationResponse result = AiOutputCheck.askWithRetry(
+                    () -> aiService.explain(change.getFilePath(), change.getDiffContent(), reason, profile),
+                    AiOutputCheck::problems);
             if (result == null || result.overview() == null || result.overview().isBlank()) {
                 throw new AiUnavailableException("AI returned an empty explanation.");
             }

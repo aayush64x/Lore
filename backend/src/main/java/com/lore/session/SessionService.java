@@ -1,5 +1,6 @@
 package com.lore.session;
 
+import com.lore.ai.AiOutputCheck;
 import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.SummaryResponse;
@@ -162,7 +163,10 @@ public class SessionService {
                             c.getChangeType().name(), c.getDiffContent(), c.isBinary()))
                     .toList();
 
-            SummaryResponse summary = aiService.summarize(aiInputs, session.getReason());
+            // Asked once more if a text field comes back with stray JSON characters.
+            SummaryResponse summary = AiOutputCheck.askWithRetry(
+                    () -> aiService.summarize(aiInputs, session.getReason()),
+                    AiOutputCheck::problems);
             if (summary == null || summary.sessionSummary() == null || summary.sessionSummary().isBlank()) {
                 throw new AiUnavailableException("AI returned an empty summary.");
             }

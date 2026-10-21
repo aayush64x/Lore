@@ -115,6 +115,7 @@ export interface ExplanationData{
   concepts: ExplanationConcept[];
   current?: boolean;          // false if written for a different level than the user's now
   writtenFor?: string | null; // that level, like "New to coding" (null for old ones)
+  damaged?: boolean;          // saved with stray JSON characters (e.g. "}]}") before they were checked
 }
 
 export async function explainChange(id: string): Promise<ExplanationData> {

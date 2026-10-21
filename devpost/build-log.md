@@ -421,3 +421,21 @@ One entry per slice. Newest at the bottom.
 1. Stop `lore ui`, run `./scripts/install.sh`, start `lore ui`.
 2. Open a session with one change you haven't explained. Click **Start learning →**. It starts explaining.
 3. On a change that has an explanation, go to step 2, then click **Start learning →**. It goes back to step 1.
+
+---
+
+## Slice 15: no more stray `}]}` in explanations
+
+- **What was wrong:** the AI's answer was valid JSON, but the model sometimes put JSON closing characters inside a text, like "...matching the code.}]}". It tried to end the JSON too early, and those characters became part of the text.
+- **Fix at the source:**
+  - Both prompts now say: plain sentences only, never end a text with `}`, `]` or a quote.
+  - New `AiOutputCheck` checks every text field (overview, steps, concepts, session summary, change summaries) before anything is saved. A text "looks damaged" if it ends with 2+ of `} ] " ,` including a `}` or `]`. Normal text like "an empty object {}" passes.
+  - If an answer looks damaged, Lore asks the AI once more. If the second one is damaged too, it fails with "Claude's answer came back garbled twice. Try again." and nothing broken is saved.
+  - Works for both the Anthropic and Bedrock options, because the check runs where results are saved, not inside one provider.
+- **Old saved explanations with `}]}`:** they're marked `damaged`. The page shows "This explanation came back garbled when it was made." with **Explain again**, and explaining again replaces it. Nothing is cut off in the page.
+
+**Files:** `backend/src/main/java/com/lore/ai/AiOutputCheck.java` (new), `AiPrompts.java`, `api/controller/ChangeController.java`, `api/controller/ExplanationView.java`, `session/SessionService.java`, `frontend/src/api/client.ts`, `frontend/src/components/ExplainPanel.tsx`, tests: `AiOutputCheckTest` (new), `ApiControllerTest`, `SessionServiceTest`, `FakeAi`
+
+**How to check:**
+1. In `backend`, run `mvn package` (with `lore ui` stopped). `Tests run: 143, Failures: 0`.
+2. Install and open your "idk ask claude" session. Its explanation shows the garbled note. Click **Explain again**. The new steps have no `}]}`.

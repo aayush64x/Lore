@@ -89,7 +89,11 @@ export default function ExplainPanel({
         <div className="border-t border-gray-100 pt-4">
           {explanation.current === false && (
             <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-md bg-gray-50 border border-gray-200 text-xs text-gray-600">
-              <span>Written for {explanation.writtenFor ?? "another level"}</span>
+              <span>
+                {explanation.damaged
+                  ? "This explanation came back garbled when it was made."
+                  : `Written for ${explanation.writtenFor ?? "another level"}`}
+              </span>
               <button
                 onClick={onExplain}
                 disabled={loading}

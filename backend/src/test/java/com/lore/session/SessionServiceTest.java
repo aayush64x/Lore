@@ -142,6 +142,33 @@ class SessionServiceTest {
     }
 
     @Test
+    void stop_asks_again_when_the_summary_comes_back_with_stray_json() throws Exception {
+        sessionService.start(repo);
+        Files.writeString(repo.resolve("a.txt"), "hi\n");
+        ai.garbledAnswers = 1;
+
+        SessionService.StopResult r = sessionService.stop(repo, "fix");
+
+        assertNull(r.summaryError());
+        assertEquals(2, ai.summarizeCalls);
+        assertEquals("Summary for: fix", sessionRepository.findById(r.session().getId()).orElseThrow().getSummary());
+    }
+
+    @Test
+    void stop_with_a_summary_garbled_twice_saves_no_summary() throws Exception {
+        sessionService.start(repo);
+        Files.writeString(repo.resolve("a.txt"), "hi\n");
+        ai.garbledAnswers = 2;
+
+        SessionService.StopResult r = sessionService.stop(repo, "fix");
+
+        assertNotNull(r.summaryError());
+        Session saved = sessionRepository.findById(r.session().getId()).orElseThrow();
+        assertNull(saved.getSummary());
+        assertEquals(Session.SummaryStatus.FAILED, saved.getSummaryStatus());
+    }
+
+    @Test
     void stop_saves_a_long_reason_with_paragraphs() throws Exception {
         sessionService.start(repo);
         Files.writeString(repo.resolve("a.txt"), "hi\n");

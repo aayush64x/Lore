@@ -2,6 +2,7 @@ package com.lore.api.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lore.ai.AiOutputCheck;
 import com.lore.ai.UserProfile;
 import com.lore.change.Explanation;
 
@@ -28,13 +29,36 @@ final class ExplanationView {
      */
     static boolean isCurrent(Explanation explanation, UserProfile profile) {
         return explanation.getStatus() == Explanation.ExplanationStatus.COMPLETE
-                && (explanation.getProfile() == null || explanation.getProfile().equals(profile.key()));
+                && (explanation.getProfile() == null || explanation.getProfile().equals(profile.key()))
+                && !isDamaged(explanation);
+    }
+
+    /**
+     * Saved before AiOutputCheck existed, with stray JSON characters in a text field
+     * (like "...code.}]}"). Shown with an "Explain again" note; explaining again replaces it.
+     * Looks at every text value in the saved steps and concepts, whatever their key names.
+     */
+    static boolean isDamaged(Explanation explanation) {
+        if (AiOutputCheck.isDamaged(explanation.getOverview())) return true;
+        try {
+            for (String field : new String[]{explanation.getSteps(), explanation.getConcepts()}) {
+                for (Map<String, Object> item : readList(field)) {
+                    for (Object value : item.values()) {
+                        if (value instanceof String text && AiOutputCheck.isDamaged(text)) return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
     }
 
     /**
      * overview, steps, concepts, status, plus:
      * current: false if it was written for another profile (the page then offers "Explain again"),
-     * writtenFor: that profile's level, like "New to coding" (null for old rows).
+     * writtenFor: that profile's level, like "New to coding" (null for old rows),
+     * damaged: true if it has stray JSON characters from before they were checked.
      */
     static Map<String, Object> toMap(Explanation explanation, UserProfile profile) {
         try {
@@ -52,6 +76,7 @@ final class ExplanationView {
             out.put("concepts", concepts);
             out.put("status", explanation.getStatus().toString());
             out.put("current", isCurrent(explanation, profile));
+            out.put("damaged", isDamaged(explanation));
             out.put("writtenFor", UserProfile.fromKey(explanation.getProfile())
                     .map(p -> p.level().label())
                     .orElse(null));
