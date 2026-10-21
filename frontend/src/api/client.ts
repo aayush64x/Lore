@@ -16,6 +16,7 @@ export interface SessionResponse {
 // Used by the session detail page — one session with all its changes
 export interface SessionDetailResponse {
   id: string;
+  projectPath: string;
   reason: string | null;
   summary: string | null;
   summaryStatus: string;

@@ -167,3 +167,27 @@ One entry per slice. Newest at the bottom.
 2. In your test repo: `lore start`, change a file, `lore stop`. Type 2 paragraphs, then press Enter 2 more times.
 3. Do it again, but type `e`. nano opens. Write something, press Ctrl+O, Enter, then Ctrl+X.
 4. Run `lore ui`. The list shows only the first line. Open the session to see the rest under the title.
+
+---
+
+## Navbar
+
+- Every page now has a white bar across the top. It stays at the top when you scroll.
+- On the left: **Lore**. Click it to go to the session list.
+- Next to it, a breadcrumb trail (a "you are here" path): `project › session title › file`.
+  - Click the project name to go to the session list.
+  - Click the session title to go to that session's file list.
+  - The last item is the page you're on, so it isn't a link.
+- Long titles and file paths are cut off with "…". Hover to see the full text.
+- Removed the old "← Back to sessions" and "← All files" buttons. The bar replaces them.
+- The session page used to lose your project when you went back. Now the server sends the project folder with each session, so links always find the right list.
+- Why: you always know where you are and can jump back with one click.
+
+**Files:** `frontend/src/components/Navbar.tsx` (new), `frontend/src/pages/SessionList.tsx`, `frontend/src/pages/SessionDetail.tsx`, `frontend/src/pages/FileDetail.tsx`, `frontend/src/api/client.ts`, `backend/src/main/java/com/lore/api/dto/SessionDetailResponse.java`, `backend/src/main/java/com/lore/api/controller/SessionController.java`, `backend/src/test/java/com/lore/api/ApiControllerTest.java`
+
+**How to check:**
+1. In the `backend` folder, run `mvn package`. You should see `Tests run: 107, Failures: 0`.
+2. Run `lore ui`. The bar shows `Lore | your-project`.
+3. Open a session, then a file. The bar shows `Lore | your-project › session title › file`.
+4. Click the session title, then the project name, then **Lore**. Each one takes you to the right page.
+5. Refresh on a file page. The bar still shows the full path.

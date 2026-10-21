@@ -109,6 +109,7 @@ public class SessionController {
 
         return new SessionDetailResponse(
                 session.getId(),
+                session.getProjectPath(),
                 session.getReason(),
                 session.getSummary(),
                 session.getSummaryStatus().toString(),

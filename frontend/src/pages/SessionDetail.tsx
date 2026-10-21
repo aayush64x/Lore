@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
 import { fetchSession, retrySummary, sessionDetails, sessionTitle } from "../api/client";
 import type { SessionDetailResponse, ChangeResponse } from "../api/client";
 import ProgressBar from "../components/ProgressBar";
@@ -32,18 +33,21 @@ export default function SessionDetail() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 text-gray-500">Loading session...</div>
+      <>
+        <Navbar project={null} />
+        <div className="max-w-3xl mx-auto px-4 py-6 text-gray-500">Loading session...</div>
+      </>
     );
   }
 
   if (error || !session) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <button onClick={() => navigate("/")} className="text-blue-600 text-sm hover:underline mb-4">
-          ← Back to sessions
-        </button>
-        <p className="text-red-600">{error ?? "Session not found."}</p>
-      </div>
+      <>
+        <Navbar project={null} crumbs={[{ label: "Session not found" }]} />
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          <p className="text-red-600">{error ?? "Session not found."}</p>
+        </div>
+      </>
     );
   }
 
@@ -77,10 +81,9 @@ export default function SessionDetail() {
   const understoodChanges = session.changes.filter((c) => c.understood).length;
 
   return (
+    <>
+    <Navbar project={session.projectPath} crumbs={[{ label: sessionTitle(session.reason) }]} />
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <button onClick={() => navigate(-1)} className="text-blue-600 text-sm hover:underline inline-block mb-4">
-        ← Back to sessions
-      </button>
 
       <div className="mb-4">
         <h1 className="text-xl font-semibold break-words">{sessionTitle(session.reason)}</h1>
@@ -170,5 +173,6 @@ export default function SessionDetail() {
         </ul>
       </div>
     </div>
+    </>
   );
 }

@@ -118,6 +118,7 @@ class ApiControllerTest {
         mvc.perform(get("/api/sessions/" + s.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reason").value("work"))
+                .andExpect(jsonPath("$.projectPath").value(project))
                 .andExpect(jsonPath("$.changes", hasSize(2)))
                 .andExpect(jsonPath("$.changes[0].filePath").value("first.js"))
                 .andExpect(jsonPath("$.changes[1].filePath").value("second.js"))

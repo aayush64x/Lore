@@ -9,6 +9,7 @@ import { fetchSession, sessionTitle, toggleUnderstood } from "../api/client";
 import type { SessionDetailResponse } from "../api/client";
 import ChangeCard from "../components/ChangeCard";
 import ProgressBar from "../components/ProgressBar";
+import Navbar from "../components/Navbar";
 
 export default function FileDetail() {
   const { id } = useParams<{ id: string }>();
@@ -37,24 +38,36 @@ export default function FileDetail() {
     else navigate(`/sessions/${id}`);
   }
 
-  const backButton = (
-    <button onClick={backToFiles} className="text-blue-600 text-sm hover:underline inline-block mb-4">
-      ← All files
-    </button>
+  // project › session title › this file
+  const navbar = (
+    <Navbar
+      project={session?.projectPath ?? null}
+      crumbs={[
+        ...(session ? [{ label: sessionTitle(session.reason), to: `/sessions/${id}` }] : []),
+        ...(filePath ? [{ label: filePath, mono: true }] : []),
+      ]}
+    />
   );
 
   if (loading) {
-    return <div className="max-w-3xl mx-auto px-4 py-6 text-gray-500">Loading file...</div>;
+    return (
+      <>
+        {navbar}
+        <div className="max-w-3xl mx-auto px-4 py-6 text-gray-500">Loading file...</div>
+      </>
+    );
   }
 
   const changes = session?.changes.filter((c) => c.filePath === filePath) ?? [];
 
   if (error || !session || changes.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        {backButton}
-        <p className="text-red-600">{error ?? "This file has no changes in this session."}</p>
-      </div>
+      <>
+        {navbar}
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          <p className="text-red-600">{error ?? "This file has no changes in this session."}</p>
+        </div>
+      </>
     );
   }
 
@@ -80,15 +93,14 @@ export default function FileDetail() {
   const oldFilePath = changes.find((c) => c.oldFilePath)?.oldFilePath;
 
   return (
+    <>
+    {navbar}
     <div className="max-w-3xl mx-auto px-4 py-6">
-      {backButton}
-
       <div className="mb-4">
         <h1 className="font-mono text-lg font-semibold break-all">{filePath}</h1>
         {oldFilePath && (
           <div className="text-sm text-gray-500 font-mono break-all">Renamed from {oldFilePath}</div>
         )}
-        <div className="text-sm text-gray-500">{sessionTitle(session.reason)}</div>
       </div>
 
       <div className="mb-4">
@@ -124,5 +136,6 @@ export default function FileDetail() {
         )}
       </div>
     </div>
+    </>
   );
 }

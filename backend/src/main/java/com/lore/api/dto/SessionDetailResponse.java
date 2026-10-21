@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record SessionDetailResponse(
         UUID id,
+        String projectPath,
         String reason,
         String summary,
         String summaryStatus,

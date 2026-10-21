@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchSessions, sessionTitle } from "../api/client";
 import type { SessionResponse } from "../api/client";
+import Navbar from "../components/Navbar";
 
 // The result remembers which project it was loaded for, so "loading" can be worked
 // out during render instead of being set inside the effect.
@@ -60,8 +61,10 @@ export default function SessionList() {
   const error = current?.error ?? null;
 
   return (
+    <>
+    <Navbar project={project} />
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-semibold mb-6">Lore</h1>
+      <h1 className="text-xl font-semibold mb-4">Sessions</h1>
 
       {!project && (
         <div className="text-gray-500 text-center py-12">
@@ -117,5 +120,6 @@ export default function SessionList() {
         </ul>
       )}
     </div>
+    </>
   );
 }
