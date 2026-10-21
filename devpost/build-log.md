@@ -239,3 +239,23 @@ One entry per slice. Newest at the bottom.
 3. Run `lore ui` and open that file. You should see 3 chunks (lines 1–79, 80–123, 124–178), each with its own buttons.
 4. The code has line numbers and no `+` signs.
 5. Click **Explain this** on the second chunk. Hover a step. The line numbers in the step match the numbers next to the highlighted code.
+
+---
+
+## Slice 8: installer
+
+- New script `scripts/install.sh` installs the `lore` command so it works from any folder, not just inside the Lore repo.
+- It copies the JAR to `~/.lore/lib/lore.jar` and writes a small `lore` command to `~/.local/bin/lore`.
+- If there's no built JAR yet, it builds one with Maven first.
+- `--jar FILE` installs a JAR you downloaded instead. The GitHub release (slice 10) will use this.
+- It checks for Java 21+ and warns if git is missing.
+- If `~/.local/bin` isn't on your PATH, it prints the exact line to add to `~/.zshrc`.
+- It prints how to uninstall (delete two files).
+- Your sessions and settings in `~/.lore` are not touched.
+
+**Files:** `scripts/install.sh` (new), `devpost/slices.md`
+
+**How to check:**
+1. In the Lore folder, run `./scripts/install.sh`. It should say `Installed: /Users/you/.local/bin/lore` and `Done.`
+2. Open a new terminal, `cd` into any other git project, and run `lore`. It should show the session status.
+3. Run `which lore`. It should print `~/.local/bin/lore`.
