@@ -135,6 +135,61 @@ class ApiControllerTest {
     }
 
     @Test
+    void detail_has_no_explanation_for_a_change_never_explained() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "work");
+        change(s, "a.js", 0);
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changes[0].explanation").value(nullValue()));
+    }
+
+    @Test
+    void detail_includes_a_saved_explanation_without_calling_the_ai_again() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "work");
+        Change c = change(s, "a.js", 0);
+        change(s, "b.js", 1);
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain")).andExpect(status().isOk());
+        assertEquals(1, ai.explainCalls);
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changes[0].explanation.overview").isNotEmpty())
+                .andExpect(jsonPath("$.changes[0].explanation.steps[0].diff_line_start").exists())
+                .andExpect(jsonPath("$.changes[0].explanation.concepts").isArray())
+                .andExpect(jsonPath("$.changes[0].explanation.current").value(true))
+                .andExpect(jsonPath("$.changes[0].explanation.writtenFor").value("I know some coding"))
+                .andExpect(jsonPath("$.changes[1].explanation").value(nullValue()));
+        assertEquals(1, ai.explainCalls);
+    }
+
+    @Test
+    void detail_marks_an_explanation_written_for_another_level() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "work");
+        Change c = change(s, "a.js", 0);
+        settings.saveProfile(new UserProfile(UserProfile.Level.NEW_TO_CODING, UserProfile.Goal.UNDERSTAND_APP));
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain")).andExpect(status().isOk());
+
+        settings.saveProfile(new UserProfile(UserProfile.Level.DEVELOPER, UserProfile.Goal.UNDERSTAND_APP));
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.changes[0].explanation.current").value(false))
+                .andExpect(jsonPath("$.changes[0].explanation.writtenFor").value("New to coding"));
+        assertEquals(1, ai.explainCalls);
+    }
+
+    @Test
+    void detail_leaves_out_a_failed_explanation() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, "work");
+        Change c = change(s, "a.js", 0);
+        ai.reset(FakeAi.Mode.CRASH);
+        mvc.perform(post("/api/changes/" + c.getId() + "/explain")).andExpect(status().isServiceUnavailable());
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.changes[0].explanation").value(nullValue()));
+    }
+
+    @Test
     void detail_unknown_session_is_404() throws Exception {
         mvc.perform(get("/api/sessions/" + UUID.randomUUID())).andExpect(status().isNotFound());
     }

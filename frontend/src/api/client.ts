@@ -40,6 +40,7 @@ export interface ChangeResponse {
   binary: boolean;
   understood: boolean;
   displayOrder: number;
+  explanation: ExplanationData | null; // saved explanation, if this change was explained before
 }
 
 // --- API functions (your turn) ---
@@ -112,6 +113,8 @@ export interface ExplanationData{
   overview: string;
   steps: ExplanationStep[];
   concepts: ExplanationConcept[];
+  current?: boolean;          // false if written for a different level than the user's now
+  writtenFor?: string | null; // that level, like "New to coding" (null for old ones)
 }
 
 export async function explainChange(id: string): Promise<ExplanationData> {

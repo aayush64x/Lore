@@ -1,5 +1,6 @@
 package com.lore.api.dto;
 
+import java.util.Map;
 import java.util.UUID;
 
 public record ChangeResponse(
@@ -15,5 +16,7 @@ public record ChangeResponse(
         String description,
         boolean binary,
         boolean understood,
-        int displayOrder
+        int displayOrder,
+        // The saved explanation (same shape as POST /changes/{id}/explain), or null.
+        Map<String, Object> explanation
 ) {}

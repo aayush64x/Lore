@@ -84,6 +84,19 @@ export default function ExplainPanel({
 
       {explanation && (
         <div className="border-t border-gray-100 pt-4">
+          {explanation.current === false && (
+            <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-md bg-gray-50 border border-gray-200 text-xs text-gray-600">
+              <span>Written for {explanation.writtenFor ?? "another level"}</span>
+              <button
+                onClick={onExplain}
+                disabled={loading}
+                className="font-medium text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline whitespace-nowrap"
+              >
+                {loading ? "Explaining…" : "Explain again"}
+              </button>
+            </div>
+          )}
+          {explanation.current === false && error && <p className="text-xs text-red-600 mb-3">{error}</p>}
           <ExplainWalkthrough
             explanation={explanation}
             active={activeStep}

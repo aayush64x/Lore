@@ -354,3 +354,21 @@ One entry per slice. Newest at the bottom.
 1. Run `lore` twice.
 2. Run `ls ~/.lore/backups`. You should see dated `lore-....mv.db` files.
 3. Run `lore` 3 more times. There are still only 3 files.
+
+---
+
+## Saved explanations show when you open a page
+
+- Explanations were always saved in the database, but the page didn't load them. You saw **Explain this** again and had to click it.
+- Now the session data from the server includes each change's saved explanation. The page shows it right away: no button flash, no AI call.
+- If you changed your level (`lore config`) since it was written, it still shows, with a small note like "Written for New to coding" and an **Explain again** button.
+- Failed explanations are left out, so those changes show the Explain button.
+- Saved explanations for a whole session are loaded in one database query.
+
+**Files:** `backend/src/main/java/com/lore/api/controller/ExplanationView.java` (new, shared by both endpoints), `SessionController.java`, `ChangeController.java`, `backend/src/main/java/com/lore/api/dto/ChangeResponse.java`, `backend/src/main/java/com/lore/change/ExplanationRepository.java`, `backend/src/main/java/com/lore/ai/UserProfile.java`, `frontend/src/api/client.ts`, `frontend/src/pages/FileDetail.tsx`, `frontend/src/components/ExplainPanel.tsx`, tests in `ApiControllerTest`
+
+**How to check:**
+1. In the `backend` folder, run `mvn package` (with `lore ui` stopped). You should see `Tests run: 132, Failures: 0`.
+2. Open a file, click **Explain this**, then reload the page. The explanation is still there.
+3. Stop `lore ui` and start it again. Open the same file. The explanation is still there.
+4. Open a change you never explained. It shows the **Explain this** button.

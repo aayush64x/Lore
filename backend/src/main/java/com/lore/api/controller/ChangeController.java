@@ -1,6 +1,5 @@
 package com.lore.api.controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
@@ -71,8 +70,8 @@ public class ChangeController {
 
         UserProfile profile = settings.profile().orElse(UserProfile.DEFAULT);
         var existing = explanationRepository.findByChangeId(id);
-        if (existing.isPresent() && isCurrent(existing.get(), profile)) {
-            return buildExplanationMap(existing.get());
+        if (existing.isPresent() && ExplanationView.isCurrent(existing.get(), profile)) {
+            return ExplanationView.toMap(existing.get(), profile);
         }
 
         Explanation explanation = existing.orElseGet(() -> new Explanation(UUID.randomUUID(), change));
@@ -105,17 +104,7 @@ public class ChangeController {
         }
 
         explanationRepository.save(explanation);
-        return buildExplanationMap(explanation);
-    }
-
-    /**
-     * A saved explanation is reused unless it failed or was written for a different
-     * profile. Rows from before profiles existed (null) are kept, to avoid paying for
-     * new explanations nobody asked for.
-     */
-    private static boolean isCurrent(Explanation explanation, UserProfile profile) {
-        return explanation.getStatus() == Explanation.ExplanationStatus.COMPLETE
-                && (explanation.getProfile() == null || explanation.getProfile().equals(profile.key()));
+        return ExplanationView.toMap(explanation, profile);
     }
 
     /**
@@ -148,37 +137,5 @@ public class ChangeController {
             out.add(m);
         }
         return out;
-    }
-
-    private Map<String, Object> buildExplanationMap(Explanation explanation) {
-        try {
-            List<Map<String, Object>> steps = readList(explanation.getSteps());
-            // Older rows were saved with camelCase step keys; send them in the shape the page reads.
-            for (Map<String, Object> step : steps) {
-                renameKey(step, "diffLineStart", "diff_line_start");
-                renameKey(step, "diffLineEnd", "diff_line_end");
-            }
-            List<Map<String, Object>> concepts = readList(explanation.getConcepts());
-
-            return Map.of(
-                    "overview", explanation.getOverview() == null ? "" : explanation.getOverview(),
-                    "steps", steps,
-                    "concepts", concepts,
-                    "status", explanation.getStatus().toString());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to read explanation data", e);
-        }
-    }
-
-    private static List<Map<String, Object>> readList(String json) throws Exception {
-        if (json == null || json.isBlank()) return new ArrayList<>();
-        List<Map<String, Object>> list = mapper.readValue(json, new TypeReference<>() {});
-        return list == null ? new ArrayList<>() : new ArrayList<>(list);
-    }
-
-    private static void renameKey(Map<String, Object> map, String from, String to) {
-        if (map.containsKey(from) && !map.containsKey(to)) {
-            map.put(to, map.remove(from));
-        }
     }
 }

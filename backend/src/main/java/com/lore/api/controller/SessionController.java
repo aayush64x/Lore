@@ -4,7 +4,11 @@ import com.lore.api.dto.ChangeResponse;
 import com.lore.api.dto.SessionDetailResponse;
 import com.lore.api.dto.SessionResponse;
 import com.lore.change.Change;
+import com.lore.ai.ApiKeyStore;
+import com.lore.ai.UserProfile;
 import com.lore.change.ChangeRepository;
+import com.lore.change.Explanation;
+import com.lore.change.ExplanationRepository;
 import com.lore.session.Session;
 import com.lore.session.SessionRepository;
 import com.lore.session.SessionService;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -26,11 +31,16 @@ public class SessionController {
     private final SessionService sessionService;
     private final SessionRepository sessionRepository;
     private final ChangeRepository changeRepository;
+    private final ExplanationRepository explanationRepository;
+    private final ApiKeyStore settings;
 
-    public SessionController(SessionService sessionService, SessionRepository sessionRepository, ChangeRepository changeRepository){
+    public SessionController(SessionService sessionService, SessionRepository sessionRepository, ChangeRepository changeRepository,
+                             ExplanationRepository explanationRepository, ApiKeyStore settings){
         this.sessionService = sessionService;
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
+        this.explanationRepository = explanationRepository;
+        this.settings = settings;
 
     }
 
@@ -88,6 +98,13 @@ public class SessionController {
 
     private SessionDetailResponse toDetail(Session session) {
         UUID id = session.getId();
+        // Saved explanations ride along, so the page shows them without asking the AI again.
+        // Failed ones are left out; the page shows the Explain button for those.
+        UserProfile profile = settings.profile().orElse(UserProfile.DEFAULT);
+        Map<UUID, Explanation> explanations = new HashMap<>();
+        for (Explanation e : explanationRepository.findByChangeSessionId(id)) {
+            if (e.getStatus() == Explanation.ExplanationStatus.COMPLETE) explanations.put(e.getChange().getId(), e);
+        }
         List<ChangeResponse> changeResponses = changeRepository.findBySessionIdOrderByDisplayOrder(id)
                 .stream()
                 .map(c -> new ChangeResponse(
@@ -103,7 +120,10 @@ public class SessionController {
                         c.getDescription(),
                         c.isBinary(),
                         c.isUnderstood(),
-                        c.getDisplayOrder()
+                        c.getDisplayOrder(),
+                        explanations.containsKey(c.getId())
+                                ? ExplanationView.toMap(explanations.get(c.getId()), profile)
+                                : null
                 ))
                 .toList();
 

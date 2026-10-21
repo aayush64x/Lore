@@ -28,6 +28,7 @@ export default function FileDetail() {
   const [error, setError] = useState<string | null>(null);
 
   // Per change, so switching changes (or files) keeps what was already explained.
+  // Saved explanations come with the session; this holds ones made on this visit.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [explanations, setExplanations] = useState<Record<string, ExplanationData>>({});
   const [explainErrors, setExplainErrors] = useState<Record<string, string>>({});
@@ -63,7 +64,7 @@ export default function FileDetail() {
 
   const selected = changes.find((c) => c.id === selectedId) ?? changes[0] ?? null;
   const selectedIndex = selected ? changes.indexOf(selected) : -1;
-  const explanation = selected ? explanations[selected.id] ?? null : null;
+  const explanation = selected ? explanations[selected.id] ?? selected.explanation ?? null : null;
   const activeStep = selected ? activeSteps[selected.id] ?? 0 : 0;
 
   // Files in the same order as the file list. Unreviewed only skips files that

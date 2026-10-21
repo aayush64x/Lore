@@ -40,6 +40,18 @@ public record UserProfile(Level level, Goal goal) {
         return level.name() + "/" + goal.name();
     }
 
+    /** Reads a key() back, like "NEW_TO_CODING/LEARN_TO_CODE"; empty if missing or unknown. */
+    public static Optional<UserProfile> fromKey(String key) {
+        if (key == null) return Optional.empty();
+        String[] parts = key.split("/", 2);
+        if (parts.length != 2) return Optional.empty();
+        Optional<Level> level = parse(Level.class, parts[0]);
+        Optional<Goal> goal = parse(Goal.class, parts[1]);
+        return level.isPresent() && goal.isPresent()
+                ? Optional.of(new UserProfile(level.get(), goal.get()))
+                : Optional.empty();
+    }
+
     /** Parses a saved enum name; empty if missing or not a known value. */
     static <E extends Enum<E>> Optional<E> parse(Class<E> type, String saved) {
         if (saved == null) return Optional.empty();
