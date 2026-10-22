@@ -551,6 +551,7 @@ export default function SessionPage() {
           {selected && testingId !== selected.id && (
             <ExplainPanel
               change={selected}
+              project={session.projectPath}
               index={selectedIndex}
               count={changes.length}
               onPrevChange={() => selectedIndex > 0 && goToChange(changes[selectedIndex - 1])}

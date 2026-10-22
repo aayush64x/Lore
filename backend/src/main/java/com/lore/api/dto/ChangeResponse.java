@@ -1,5 +1,8 @@
 package com.lore.api.dto;
 
+import com.lore.concept.ConceptTags;
+
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,5 +28,7 @@ public record ChangeResponse(
         // "teach_back" (passed) / "self" (marked by hand or skipped); null while not understood.
         String understoodBy,
         // attemptsUsed, attemptsLeft, lastVerdict, keyPoints (null until revealed).
-        Map<String, Object> teachBack
+        Map<String, Object> teachBack,
+        // Concept tags from the summary: list concepts first, by name; empty for older sessions.
+        List<ConceptTags.Tag> concepts
 ) {}

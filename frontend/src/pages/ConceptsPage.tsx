@@ -6,11 +6,13 @@
 // Concepts are grouped under their heading in concepts.txt; groups that come up most go
 // first. "Other" suggestions (nothing on the list fit) are shown apart, to review.
 //
-// URL: /concepts?project=/path/to/project
+// URL: /concepts?project=/path/to/project, optionally #concept-<name> (from a concept chip on
+// the session page) to scroll to that row and highlight it, or #concept-suggested for the
+// suggestions.
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { fetchConcepts } from "../api/client";
+import { useLocation, useSearchParams } from "react-router-dom";
+import { conceptAnchor, fetchConcepts } from "../api/client";
 import type { ConceptCount, ConceptsResponse } from "../api/client";
 import Navbar from "../components/Navbar";
 import ProgressBar from "../components/ProgressBar";
@@ -39,7 +41,7 @@ function groupsOf(concepts: ConceptCount[]): [string, ConceptCount[]][] {
   });
 }
 
-function ConceptTable({ concepts, showProgress }: { concepts: ConceptCount[]; showProgress: boolean }) {
+function ConceptTable({ concepts, showProgress, target }: { concepts: ConceptCount[]; showProgress: boolean; target: string }) {
   return (
     // Fixed column widths, so every group's table lines up with the others.
     <table className="w-full table-fixed text-sm">
@@ -59,7 +61,7 @@ function ConceptTable({ concepts, showProgress }: { concepts: ConceptCount[]; sh
       </thead>
       <tbody className="divide-y divide-gray-100">
         {concepts.map((c) => (
-          <tr key={c.name}>
+          <tr key={c.name} id={conceptAnchor(c.name)} className={conceptAnchor(c.name) === target ? "bg-yellow-50" : ""}>
             <td className="py-2.5 pr-4 font-medium text-gray-900">{c.name}</td>
             <td className="py-2.5 pr-4">
               {showProgress ? (
@@ -83,6 +85,7 @@ export default function ConceptsPage() {
   const [result, setResult] = useState<LoadResult | null>(null);
   const [searchParams] = useSearchParams();
   const project = searchParams.get("project");
+  const target = useLocation().hash.slice(1);
 
   useEffect(() => {
     if (!project) return;
@@ -100,6 +103,12 @@ export default function ConceptsPage() {
       ignore = true;
     };
   }, [project]);
+
+  // Once the rows are on the page, bring the linked one into view.
+  const loaded = result !== null;
+  useEffect(() => {
+    if (loaded && target) document.getElementById(target)?.scrollIntoView({ block: "center" });
+  }, [loaded, target]);
 
   const current = project && result?.project === project ? result : null;
   const loading = !!project && current === null;
@@ -147,18 +156,23 @@ export default function ConceptsPage() {
             {groupsOf(data.concepts).map(([group, concepts]) => (
               <section key={group} className="mt-6">
                 <h2 className="text-sm font-semibold text-gray-900">{group}</h2>
-                <ConceptTable concepts={concepts} showProgress />
+                <ConceptTable concepts={concepts} showProgress target={target} />
               </section>
             ))}
 
             {data.others.length > 0 && (
-              <section className="mt-8 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+              <section
+                id={conceptAnchor("suggested")}
+                className={`mt-8 rounded-lg border p-4 ${
+                  target === conceptAnchor("suggested") ? "border-amber-400 bg-amber-50" : "border-amber-200 bg-amber-50/50"
+                }`}
+              >
                 <h2 className="text-sm font-semibold text-amber-900">Suggested, not on your list</h2>
                 <p className="mt-1 text-xs text-amber-900/80">
                   Nothing on the list fit these changes, so the AI suggested a name. To tag with one from now on, add
                   it to your concept list (see "Concepts" in Lore's README).
                 </p>
-                <ConceptTable concepts={data.others} showProgress={false} />
+                <ConceptTable concepts={data.others} showProgress={false} target={target} />
               </section>
             )}
           </>

@@ -13,6 +13,9 @@ import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
 import com.lore.change.TeachBackAttempt;
 import com.lore.change.TeachBackAttemptRepository;
+import com.lore.concept.ChangeConcept;
+import com.lore.concept.ChangeConceptRepository;
+import com.lore.concept.ConceptTags;
 import com.lore.cost.SessionCost;
 import com.lore.session.Session;
 import com.lore.session.SessionRepository;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,10 +46,12 @@ public class SessionController {
     private final ApiKeyStore settings;
     private final TeachBackAttemptRepository attemptRepository;
     private final SessionCost sessionCost;
+    private final ChangeConceptRepository conceptRepository;
 
     public SessionController(SessionService sessionService, SessionRepository sessionRepository, ChangeRepository changeRepository,
                              ExplanationRepository explanationRepository, ApiKeyStore settings,
-                             TeachBackAttemptRepository attemptRepository, SessionCost sessionCost){
+                             TeachBackAttemptRepository attemptRepository, SessionCost sessionCost,
+                             ChangeConceptRepository conceptRepository){
         this.sessionService = sessionService;
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
@@ -53,6 +59,7 @@ public class SessionController {
         this.settings = settings;
         this.attemptRepository = attemptRepository;
         this.sessionCost = sessionCost;
+        this.conceptRepository = conceptRepository;
 
     }
 
@@ -148,6 +155,13 @@ public class SessionController {
         for (TeachBackAttempt a : attemptRepository.findByChangeSessionIdOrderByCreatedAt(id)) {
             attempts.computeIfAbsent(a.getChange().getId(), k -> new ArrayList<>()).add(a);
         }
+        Map<UUID, List<ConceptTags.Tag>> concepts = new HashMap<>();
+        for (ChangeConcept cc : conceptRepository.findByChangeSessionId(id)) {
+            concepts.computeIfAbsent(cc.getChange().getId(), k -> new ArrayList<>())
+                    .add(new ConceptTags.Tag(cc.getName(), cc.isOther()));
+        }
+        concepts.values().forEach(tags -> tags.sort(
+                Comparator.comparing(ConceptTags.Tag::other).thenComparing(ConceptTags.Tag::name)));
         Map<UUID, Explanation> explanations = new HashMap<>();
         for (Explanation e : explanationRepository.findByChangeSessionId(id)) {
             if (e.getStatus() == Explanation.ExplanationStatus.COMPLETE) explanations.put(e.getChange().getId(), e);
@@ -174,7 +188,8 @@ public class SessionController {
                         c.getGoalMatch() == null ? null : c.getGoalMatch().name().toLowerCase(),
                         c.getGoalReason(),
                         TeachBackView.understoodBy(c),
-                        TeachBackView.state(attempts.getOrDefault(c.getId(), List.of()), explanations.get(c.getId()))
+                        TeachBackView.state(attempts.getOrDefault(c.getId(), List.of()), explanations.get(c.getId())),
+                        concepts.getOrDefault(c.getId(), List.of())
                 ))
                 .toList();
 

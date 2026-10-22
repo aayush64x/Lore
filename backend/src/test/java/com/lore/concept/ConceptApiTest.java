@@ -126,4 +126,21 @@ class ConceptApiTest {
                 .andExpect(jsonPath("$.others", hasSize(0)))
                 .andExpect(jsonPath("$.changes").value(0));
     }
+
+    @Test
+    void the_session_page_gets_each_changes_tags_listed_ones_first() throws Exception {
+        Session s = session(project, Session.SessionStatus.COMPLETE, later);
+        Change tagged = change(s, false, "Testing", "Loops");
+        Change suggested = change(s, false, "Other: WebSockets");
+        Change untagged = change(s, false);
+
+        mvc.perform(get("/api/sessions/" + s.getId()))
+                .andExpect(jsonPath("$.changes[?(@.id == '" + tagged.getId() + "')].concepts[*].name",
+                        contains("Loops", "Testing")))
+                .andExpect(jsonPath("$.changes[?(@.id == '" + suggested.getId() + "')].concepts[0].name",
+                        contains("WebSockets")))
+                .andExpect(jsonPath("$.changes[?(@.id == '" + suggested.getId() + "')].concepts[0].other",
+                        contains(true)))
+                .andExpect(jsonPath("$.changes[?(@.id == '" + untagged.getId() + "')].concepts[*]", hasSize(0)));
+    }
 }

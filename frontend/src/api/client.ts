@@ -65,6 +65,7 @@ export interface ChangeResponse {
   goalReason: string | null;
   understoodBy: "teach_back" | "self" | null; // passed a teach-back, or marked by hand / skipped
   teachBack: TeachBackState;
+  concepts: { name: string; other: boolean }[]; // concept tags from the summary; other = not on the list
 }
 
 export interface TeachBackState {
@@ -269,9 +270,14 @@ export function sessionsUrl(project: string | null): string {
   return project ? `/?project=${encodeURIComponent(project)}` : "/";
 }
 
-// The Concepts page's address for a project.
-export function conceptsUrl(project: string): string {
-  return `/concepts?project=${encodeURIComponent(project)}`;
+// The Concepts page's address for a project, optionally scrolled to one concept's row.
+export function conceptsUrl(project: string, concept?: string): string {
+  return `/concepts?project=${encodeURIComponent(project)}${concept ? `#${conceptAnchor(concept)}` : ""}`;
+}
+
+// The id of a concept's row on the Concepts page: "Async code (promises/await)" -> "concept-async-code-promises-await".
+export function conceptAnchor(name: string): string {
+  return "concept-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 // "What were you trying to do?" can be many lines. The first line is the title;

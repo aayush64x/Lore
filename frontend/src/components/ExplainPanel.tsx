@@ -1,8 +1,11 @@
+import { Link } from "react-router-dom";
+import { conceptsUrl } from "../api/client";
 import type { ChangeResponse, ExplanationData } from "../api/client";
 import ExplainWalkthrough from "./ExplainWalkthrough";
 
 interface ExplainPanelProps {
   change: ChangeResponse;
+  project: string; // for the concept chips' links to the Concepts page
   // Which change this is in the file, for "Change 2 of 3".
   index: number;
   count: number;
@@ -31,6 +34,7 @@ const LINK = "text-xs text-gray-500 hover:text-gray-800 underline";
 // explain), and the step-by-step explanation for the selected change.
 export default function ExplainPanel({
   change,
+  project,
   index,
   count,
   onPrevChange,
@@ -97,6 +101,26 @@ export default function ExplainPanel({
         )}
       </div>
       <p className="text-sm text-gray-500 mb-4">{change.description ?? "No summary for this change."}</p>
+
+      {change.concepts.length > 0 && (
+        // What you'd learn from this change; each opens its row on the Concepts page.
+        <div className="-mt-2 mb-4 flex flex-wrap gap-1.5" aria-label="Concepts">
+          {change.concepts.map((c) => (
+            <Link
+              key={c.name}
+              to={conceptsUrl(project, c.other ? "suggested" : c.name)}
+              title={c.other ? "Suggested by the AI, not on your concept list" : "See this concept across your sessions"}
+              className={`text-xs px-2 py-0.5 rounded-full border ${
+                c.other
+                  ? "border-dashed border-gray-300 text-gray-500 hover:text-gray-800"
+                  : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              }`}
+            >
+              {c.other ? `Other: ${c.name}` : c.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {passed && canTest && (
         <button onClick={onTestMe} className={`-mt-2 mb-4 ${LINK}`}>
