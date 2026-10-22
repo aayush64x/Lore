@@ -204,6 +204,10 @@ devpost/       planning documents and the build log
 
 To work on Lore: `cd backend && mvn package` builds everything and runs the tests. For the web page with live reload, run `lore ui` and then `cd frontend && npm install && npm run dev`.
 
+## TODO (later)
+
+- A friendly error when the database is broken, pointing to the last good backup (`~/.lore/backups/lore-…-ok.mv.db`) and how to restore it. Today Lore just fails to start with a Java error.
+
 ## Built with
 
 Java 21, Spring Boot, Picocli, Spring Data JPA, H2, Flyway, the Anthropic Java SDK (Claude Sonnet and Haiku), React, TypeScript, Vite and Tailwind.
