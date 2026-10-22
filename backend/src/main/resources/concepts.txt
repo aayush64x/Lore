@@ -27,7 +27,7 @@ Regular expressions | A short pattern for finding or checking text, like "looks 
 
 # JavaScript / frontend
 DOM & events | Changing a web page with code and reacting when someone clicks or types.
-Async code (promises/await) | Starting something slow, like loading data, and carrying on until it's ready.
+Async code (promises/await) | Starting something slow, like loading data, and doing other work while you wait for it.
 Fetching data from APIs | Asking another program or website for data over the internet.
 Browser storage (localStorage) | Saving small bits of data in the browser so they're still there next time.
 
@@ -35,11 +35,11 @@ Browser storage (localStorage) | Saving small bits of data in the browser so the
 Components & props | Building a page from reusable pieces and passing each piece the info it needs.
 State | Data a component remembers, which updates the screen when it changes.
 Side effects (useEffect) | Running code after the screen updates, like loading data or saving it.
-Lists & keys | Showing a list of items on screen, each with its own label so React can track it.
+Lists & keys | Showing a list of items on screen, each with its own ID so React can keep track of it.
 Routing | Showing a different page for each web address in the app.
 
 # Backend
-REST APIs | Web addresses a program answers, like "get orders" or "create an order".
+REST APIs | A common way for programs to talk over the web, using addresses like /orders and actions like get or create.
 Request validation | Checking data sent to the server is correct before using it.
 Databases & SQL | Storing data in tables and asking for it with SQL commands.
 Data models | Deciding what pieces of data a thing has, like an order having an item and a quantity.
