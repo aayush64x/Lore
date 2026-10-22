@@ -67,7 +67,7 @@ function StudyRow({
 }) {
   const percent = Math.round((concept.understood / concept.seen) * 100);
   return (
-    <li id={conceptAnchor(concept.name)} className={highlighted ? "bg-yellow-50" : ""}>
+    <li id={conceptAnchor(concept.name)} className={highlighted ? "bg-yellow-50" : open ? "bg-gray-50" : ""}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="w-full text-left px-4 py-3 hover:bg-gray-50">
         <div className="flex items-center gap-2">
           <span className="font-medium text-gray-900">{concept.name}</span>
@@ -76,8 +76,8 @@ function StudyRow({
               New this session
             </span>
           )}
-          <span className="ml-auto text-gray-400 text-xs" aria-hidden="true">
-            {open ? "▾" : "▸"}
+          <span className="ml-auto text-xs text-gray-500" aria-hidden="true">
+            {open ? "Hide changes ▴" : "Show changes ▾"}
           </span>
         </div>
         {concept.meaning && <p className="mt-0.5 text-sm text-gray-500">{concept.meaning}</p>}
@@ -98,7 +98,17 @@ function StudyRow({
           </span>
         </div>
       </button>
-      {open && <div className="px-4 pb-4">{node ? <ConceptChanges changes={node.changes} /> : null}</div>}
+      {open && node && (
+        // Indented under the row, on a guide line, so it reads as this concept's own list.
+        <div className="px-4 pb-4">
+          <div className="ml-1 border-l-2 border-blue-200 pl-4">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              {node.changes.length} {node.changes.length === 1 ? "change uses" : "changes use"} {concept.name}
+            </p>
+            <ConceptChanges changes={node.changes} />
+          </div>
+        </div>
+      )}
     </li>
   );
 }
