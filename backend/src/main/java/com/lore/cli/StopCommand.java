@@ -37,7 +37,7 @@ public class StopCommand implements Runnable {
             }
 
             System.out.println("Summarizing changes...");
-            SessionService.StopResult result = sessionService.stop(cwd, reason);
+            SessionService.StopResult result = sessionService.stop(cwd, reason, System.out::println);
 
             if (result.discarded()) {
                 System.out.println("No changes since lore start. Nothing to save.");

@@ -1,5 +1,6 @@
 package com.lore.session;
 
+import com.lore.ai.AiService;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.testutil.FakeAi;
@@ -17,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -343,6 +345,67 @@ class SessionServiceTest {
             assertEquals("about " + c.getFilePath(), c.getDescription(), c.getFilePath());
             assertEquals(Change.GoalMatch.YES, c.getGoalMatch(), c.getFilePath());
         }
+    }
+
+    @Test
+    void stop_reports_progress_for_a_big_session() throws Exception {
+        sessionService.start(repo);
+        writeFiles(130);
+        List<String> lines = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        sessionService.stop(repo, "r", lines::add);
+
+        assertEquals("Summarizing 130 changes in 3 groups...", lines.get(0));
+        assertTrue(lines.containsAll(List.of("  1 of 3 groups done.", "  2 of 3 groups done.", "  3 of 3 groups done.")), lines.toString());
+        assertEquals("Writing the session summary...", lines.get(lines.size() - 1));
+    }
+
+    @Test
+    void a_small_session_reports_no_group_progress() throws Exception {
+        sessionService.start(repo);
+        writeFiles(3);
+        List<String> lines = new ArrayList<>();
+
+        sessionService.stop(repo, "r", lines::add);
+
+        assertTrue(lines.isEmpty(), lines.toString());
+    }
+
+    private static List<AiService.ChangeInput> changesIn(String path, int count, int firstOrder) {
+        List<AiService.ChangeInput> out = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            out.add(new AiService.ChangeInput(firstOrder + i, path, "MODIFIED", "+x\n", false));
+        }
+        return out;
+    }
+
+    private static List<String> groupShape(List<List<AiService.ChangeInput>> groups) {
+        return groups.stream()
+                .map(g -> g.stream().map(AiService.ChangeInput::filePath).distinct().toList() + "=" + g.size())
+                .toList();
+    }
+
+    @Test
+    void summary_groups_keep_each_file_together() {
+        List<AiService.ChangeInput> inputs = new ArrayList<>();
+        inputs.addAll(changesIn("a.java", 25, 0));
+        inputs.addAll(changesIn("b.java", 25, 25));
+        inputs.addAll(changesIn("c.java", 25, 50));   // would cross 60 with a and b: starts a new group
+        inputs.addAll(changesIn("d.java", 11, 75));
+
+        assertEquals(List.of("[a.java, b.java]=50", "[c.java, d.java]=36"),
+                groupShape(SessionService.summaryGroups(inputs)));
+    }
+
+    @Test
+    void summary_groups_split_only_a_file_with_more_than_the_batch_size() {
+        List<AiService.ChangeInput> inputs = new ArrayList<>();
+        inputs.addAll(changesIn("small.java", 5, 0));
+        inputs.addAll(changesIn("huge.java", 130, 5));
+        inputs.addAll(changesIn("other.java", 5, 135));
+
+        assertEquals(List.of("[huge.java]=60", "[huge.java]=60", "[huge.java]=10", "[small.java, other.java]=10"),
+                groupShape(SessionService.summaryGroups(inputs)));
     }
 
     @Test

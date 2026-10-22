@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,6 +28,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 @Service
 public class SessionService {
@@ -35,12 +38,12 @@ public class SessionService {
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
     /**
-     * Above this many changes the summary is asked for in parts of this size, then joined.
-     * One answer has to describe every change it was given, and 330 changes in one call ran
-     * past the answer's length limit and got cut off.
+     * Above this many changes the summary is asked for in groups of at most this size, then
+     * joined. One answer has to describe every change it was given, and 330 changes in one
+     * call ran past the answer's length limit and got cut off.
      */
     static final int SUMMARY_BATCH_SIZE = 60;
-    /** How many parts are asked for at the same time. */
+    /** How many groups are asked for at the same time. */
     private static final int SUMMARY_THREADS = 4;
 
     private final SessionRepository sessionRepository;
@@ -80,6 +83,11 @@ public class SessionService {
     }
 
     public StopResult stop(Path projectDir, String reason) throws IOException {
+        return stop(projectDir, reason, message -> {});
+    }
+
+    /** progress gets short lines like "2 of 6 groups done." while a big session is summarized. */
+    public StopResult stop(Path projectDir, String reason, Consumer<String> progress) throws IOException {
         Path repoRoot = requireRepoRoot(projectDir);
         String projectPath = repoRoot.toAbsolutePath().toString();
 
@@ -126,7 +134,7 @@ public class SessionService {
             savedChanges.add(changeRepository.save(change));
         }
 
-        String failure = generateSummary(session, savedChanges);
+        String failure = generateSummary(session, savedChanges, progress);
         if (failure != null) {
             session.setSummary(null);
             session.setSummaryStatus(Session.SummaryStatus.FAILED);
@@ -158,7 +166,7 @@ public class SessionService {
         }
         List<Change> changes = changeRepository.findBySessionIdOrderByDisplayOrder(sessionId);
 
-        String failure = generateSummary(session, changes);
+        String failure = generateSummary(session, changes, message -> {});
         if (failure != null && session.getSummaryStatus() != Session.SummaryStatus.COMPLETE) {
             session.setSummary(null);
             session.setSummaryStatus(Session.SummaryStatus.FAILED);
@@ -172,7 +180,7 @@ public class SessionService {
      * session and changes and returns null. On failure, changes nothing and returns a short
      * reason that is safe to show the user (never contains the API key).
      */
-    private String generateSummary(Session session, List<Change> changes) {
+    private String generateSummary(Session session, List<Change> changes, Consumer<String> progress) {
         try {
             List<AiService.ChangeInput> aiInputs = changes.stream()
                     .map(c -> new AiService.ChangeInput(c.getDisplayOrder(), c.getFilePath(),
@@ -181,7 +189,7 @@ public class SessionService {
 
             SummaryResponse summary = aiInputs.size() <= SUMMARY_BATCH_SIZE
                     ? askSummary(aiInputs, session.getReason())
-                    : summarizeInParts(aiInputs, session.getReason());
+                    : summarizeInGroups(aiInputs, session.getReason(), progress);
             if (summary == null || summary.sessionSummary() == null || summary.sessionSummary().isBlank()) {
                 throw new AiUnavailableException("AI returned an empty summary.");
             }
@@ -215,24 +223,60 @@ public class SessionService {
     }
 
     /**
-     * Summarizes a big session in parts of SUMMARY_BATCH_SIZE changes, a few parts at a time,
-     * then asks for one session summary (and goal check) from the parts' summaries. If any
-     * call fails the whole summary fails, so a session never ends up half described.
+     * Splits changes into groups of at most SUMMARY_BATCH_SIZE, keeping each file's changes
+     * together: an AI that saw only part of a file called that file unfinished. Only a file
+     * with more than SUMMARY_BATCH_SIZE changes is split, into groups of its own.
      */
-    private SummaryResponse summarizeInParts(List<AiService.ChangeInput> inputs, String reason) {
+    static List<List<AiService.ChangeInput>> summaryGroups(List<AiService.ChangeInput> inputs) {
+        Map<String, List<AiService.ChangeInput>> byFile = new LinkedHashMap<>();
+        for (AiService.ChangeInput c : inputs) {
+            byFile.computeIfAbsent(c.filePath(), path -> new ArrayList<>()).add(c);
+        }
+        List<List<AiService.ChangeInput>> groups = new ArrayList<>();
+        List<AiService.ChangeInput> current = new ArrayList<>();
+        for (List<AiService.ChangeInput> file : byFile.values()) {
+            if (file.size() > SUMMARY_BATCH_SIZE) {
+                for (int i = 0; i < file.size(); i += SUMMARY_BATCH_SIZE) {
+                    groups.add(file.subList(i, Math.min(i + SUMMARY_BATCH_SIZE, file.size())));
+                }
+                continue;
+            }
+            if (current.size() + file.size() > SUMMARY_BATCH_SIZE) {
+                groups.add(current);
+                current = new ArrayList<>();
+            }
+            current.addAll(file);
+        }
+        if (!current.isEmpty()) groups.add(current);
+        return groups;
+    }
+
+    /**
+     * Summarizes a big session in groups (see summaryGroups), a few groups at a time, then
+     * asks for one session summary (and goal check) from the groups' summaries. If any call
+     * fails the whole summary fails, so a session never ends up half described.
+     */
+    private SummaryResponse summarizeInGroups(List<AiService.ChangeInput> inputs, String reason,
+                                              Consumer<String> progress) {
+        List<List<AiService.ChangeInput>> groups = summaryGroups(inputs);
+        progress.accept("Summarizing " + inputs.size() + " changes in " + groups.size() + " groups...");
+        AtomicInteger done = new AtomicInteger();
         ExecutorService pool = Executors.newFixedThreadPool(SUMMARY_THREADS);
         List<SummaryResponse> parts = new ArrayList<>();
         try {
             List<CompletableFuture<SummaryResponse>> futures = new ArrayList<>();
-            for (int i = 0; i < inputs.size(); i += SUMMARY_BATCH_SIZE) {
-                List<AiService.ChangeInput> batch = inputs.subList(i, Math.min(i + SUMMARY_BATCH_SIZE, inputs.size()));
-                futures.add(CompletableFuture.supplyAsync(() -> askSummary(batch, reason), pool));
+            for (List<AiService.ChangeInput> group : groups) {
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    SummaryResponse part = askSummary(group, reason);
+                    progress.accept("  " + done.incrementAndGet() + " of " + groups.size() + " groups done.");
+                    return part;
+                }, pool));
             }
             for (CompletableFuture<SummaryResponse> f : futures) {
                 try {
                     parts.add(f.join());
                 } catch (CompletionException e) {
-                    // Rethrow the part's own error, so an AiUnavailableException keeps its message.
+                    // Rethrow the group's own error, so an AiUnavailableException keeps its message.
                     if (e.getCause() instanceof RuntimeException cause) throw cause;
                     throw e;
                 }
@@ -241,6 +285,7 @@ public class SessionService {
             pool.shutdownNow();
         }
 
+        progress.accept("Writing the session summary...");
         SummaryResponse combined = AiOutputCheck.askWithRetry(
                 () -> aiService.combineSummaries(parts, reason), AiOutputCheck::problems);
         List<SummaryResponse.ChangeDescription> descriptions = new ArrayList<>();
