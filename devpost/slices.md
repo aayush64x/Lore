@@ -24,7 +24,7 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 - [x] **7. Open the browser on Linux and Windows too.** The fallback only works on macOS today.
 - [x] **8. Installer.** Install the `lore` command so it works from any folder, not just inside the Lore repo.
 - [x] **9. Rewrite the README for strangers.** Install, API key, start, stop, ui. Remove the AWS setup and "planned" labels.
-- [ ] **10. Downloadable release on GitHub.** Build the JAR and publish a GitHub Release. Needs `gh` (`brew install gh`) or a manual upload.
+- [ ] **10. Downloadable release on GitHub.** *(On hold Oct 21, Aayush.)* Files are ready in `~/Desktop/Lore-release-v0.1.0/` (`lore.jar`, `install.sh`, `RELEASE_NOTES.md`; notes also in `devpost/release-notes-v0.1.0.md`). To publish: either `brew install gh` + `gh auth login` and let the agent run `gh release create v0.1.0`, or by hand on GitHub (Releases → Draft a new release → tag `v0.1.0` → upload both files → paste the notes). The README already points at this release.
 - [ ] **11. Fresh-install test.** *(On hold Oct 21, Aayush.)* Follow the README as a brand-new user with an empty setup. Fix anything that breaks.
 - [ ] **11b. UI polish pass** (before Oct 23). Spacing, buttons, empty and error states, readable on a small screen.
 
@@ -67,7 +67,9 @@ Replaces slice 19 (no multiple-choice quiz). Order: 20 → 21 → 16 (middle opt
 
 ## Not code slices
 
+- [ ] **End-to-end test, step 9** (Aayush): after a restart, check practice paste + "Partly there", that the countWords session still shows everything, and that an older session opens.
+
 - [x] **Delete the 2 fake demo sessions** from `~/.lore` ("Add user authentication", "Fix pagination bug in project list").
 - [ ] **Close the old Oct 3 session** (Aayush, before the demo): run `lore stop` in the Lore folder.
-- [ ] **Demo video** (Aayush, after the freeze).
-- [ ] **Devpost write-up** (Aayush, after the freeze).
+- [ ] **Demo video** (Aayush, by Oct 24). Record in `testProject` (the Oct 3 session is in the Lore folder and won't show). Never show the API key. Upload unlisted and check the link in a private window.
+- [ ] **Devpost write-up** (Aayush, after the freeze). Must be written by Aayush (hackathon ship guide); the agent may only ask questions, point out gaps and fix spelling/grammar.
