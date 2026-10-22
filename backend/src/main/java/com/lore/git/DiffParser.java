@@ -145,12 +145,10 @@ public class DiffParser {
         if (file == null || hunk == null) return;
         file.hadHunk = true;
         if (shouldSkip(file)) return;
-        if ("ADDED".equals(file.type) && hunk.oldCount == 0 && hunk.newCount > NewFileChunker.MAX) {
-            addNewFileChunks(file, hunk, changes, order);
-            return;
-        }
-        if (hunk.text.toString().lines().count() - 1 > HunkSplitter.MAX) {
-            addHunkPieces(file, hunk, changes, order);
+        List<String> body = hunk.text.toString().lines().skip(1).toList(); // drop the @@ line
+        List<Integer> starts = HunkSplitter.pieceStarts(body);
+        if (starts.size() > 1) {
+            addHunkPieces(file, hunk, body, starts, changes, order);
             return;
         }
         changes.add(new ParsedChange(
@@ -161,42 +159,12 @@ public class DiffParser {
     }
 
     /**
-     * A long new file becomes several changes, one per chunk, each with its own
-     * "@@ -0,0 +start,count @@" header so it reads like a normal hunk.
-     */
-    private void addNewFileChunks(FileState file, HunkState hunk, List<ParsedChange> changes, int[] order) {
-        List<String> body = hunk.text.toString().lines().skip(1).toList(); // drop the @@ line
-        // "\ No newline at end of file" isn't a line of the file; keep it with the last chunk.
-        boolean noNewline = !body.isEmpty() && body.get(body.size() - 1).startsWith("\\");
-        List<String> code = (noNewline ? body.subList(0, body.size() - 1) : body).stream()
-                .map(l -> l.isEmpty() ? l : l.substring(1))
-                .toList();
-
-        List<Integer> starts = NewFileChunker.chunkStarts(code);
-        for (int c = 0; c < starts.size(); c++) {
-            int from = starts.get(c);
-            int to = c + 1 < starts.size() ? starts.get(c + 1) : code.size();
-            int newStart = hunk.newStart + from;
-            StringBuilder text = new StringBuilder()
-                    .append("@@ -0,0 +").append(newStart).append(',').append(to - from).append(" @@\n");
-            for (String l : body.subList(from, to)) text.append(l).append('\n');
-            if (noNewline && to == code.size()) text.append(body.get(body.size() - 1)).append('\n');
-            changes.add(new ParsedChange(
-                    file.path, file.type, file.oldPath,
-                    0, 0, newStart, to - from,
-                    text.toString(), false, order[0]++
-            ));
-        }
-    }
-
-    /**
-     * A long hunk of edits becomes several changes, one per piece of whole functions (see
-     * HunkSplitter), each with its own "@@ -oldStart,oldCount +newStart,newCount @@" header
+     * A long hunk (edits, or a whole new file) becomes several changes, one per piece of
+     * whole functions (see HunkSplitter), each with its own "@@ -oldStart,oldCount +newStart,newCount @@" header
      * counted from the lines before it, so it reads like a hunk git could have written.
      */
-    private void addHunkPieces(FileState file, HunkState hunk, List<ParsedChange> changes, int[] order) {
-        List<String> body = hunk.text.toString().lines().skip(1).toList(); // drop the @@ line
-        List<Integer> starts = HunkSplitter.pieceStarts(body);
+    private void addHunkPieces(FileState file, HunkState hunk, List<String> body, List<Integer> starts,
+                               List<ParsedChange> changes, int[] order) {
         // The next line number on each side. Git writes "-5,0" for "after line 5".
         int oldLine = hunk.oldCount == 0 ? hunk.oldStart + 1 : hunk.oldStart;
         int newLine = hunk.newCount == 0 ? hunk.newStart + 1 : hunk.newStart;

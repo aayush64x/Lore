@@ -114,6 +114,124 @@ class HunkSplitterTest {
         }
     }
 
+    // --- new files: every line is "+" ---
+
+    private static List<String> added(List<String> lines) {
+        return lines.stream().map(l -> "+" + l).toList();
+    }
+
+    @Test
+    void a_new_class_file_is_cut_at_its_methods_not_only_at_top_level() {
+        List<String> lines = new ArrayList<>(List.of("package app;", "", "import java.util.List;", "",
+                "public class Big {"));
+        for (int m = 0; m < 6; m++) {
+            lines.add("");
+            lines.add("    /** m" + m + " */");
+            lines.add("    void m" + m + "() {");
+            for (int i = 0; i < 20; i++) lines.add("        step" + i + "();");
+            lines.add("    }");
+        }
+        lines.add("}");
+        List<String> body = added(lines);
+
+        List<Integer> starts = HunkSplitter.pieceStarts(body);
+
+        assertTrue(starts.size() >= 2, "starts: " + starts);
+        for (int s : starts.subList(1, starts.size())) {
+            assertTrue(body.get(s).contains("/** m"), "piece should start at a method: " + body.get(s));
+        }
+        for (int size : sizes(body, starts)) assertTrue(size <= 80, "size " + size);
+    }
+
+    @Test
+    void a_long_methods_header_is_never_packed_with_the_method_before_it() {
+        List<String> lines = new ArrayList<>(List.of("class A {", ""));
+        lines.addAll(List.of("    /** a */", "    void a() {"));
+        for (int i = 0; i < 40; i++) lines.add("        a" + i + "();");
+        lines.addAll(List.of("    }", "", "    /** huge */", "    void huge() {"));
+        for (int i = 0; i < 120; i++) lines.add(i % 30 == 29 ? "" : "        h" + i + "();");
+        lines.addAll(List.of("    }", "", "    /** c */", "    void c() {", "        c();", "    }", "}"));
+        List<String> body = added(lines);
+
+        List<Integer> starts = HunkSplitter.pieceStarts(body);
+
+        assertTrue(starts.contains(body.indexOf("+    /** huge */")), "huge starts a piece: " + starts);
+        assertTrue(starts.contains(body.indexOf("+    /** c */")), "the method after huge starts a piece: " + starts);
+        for (int size : sizes(body, starts)) assertTrue(size <= 80, "size " + size);
+    }
+
+    @Test
+    void a_files_imports_join_the_start_of_the_long_class_after_them() {
+        List<String> lines = new ArrayList<>(List.of("package app;", "", "import java.util.List;", "",
+                "public class Big {", "    private int n;"));
+        for (int m = 0; m < 6; m++) {
+            lines.addAll(List.of("", "    /** m" + m + " */", "    void m" + m + "() {"));
+            for (int i = 0; i < 20; i++) lines.add("        step" + i + "();");
+            lines.add("    }");
+        }
+        lines.add("}");
+        List<String> body = added(lines);
+
+        List<Integer> sizes = sizes(body, HunkSplitter.pieceStarts(body));
+
+        assertTrue(sizes.get(0) >= HunkSplitter.MIN, "no tiny imports-only piece: " + sizes);
+    }
+
+    @Test
+    void a_top_level_closing_brace_is_never_a_start() {
+        List<String> lines = new ArrayList<>();
+        lines.add("function f() {");
+        for (int i = 0; i < 40; i++) lines.add("  a" + i + "();");
+        lines.addAll(List.of("", "}", "", "// g", "function g() {"));
+        for (int i = 0; i < 40; i++) lines.add("  b" + i + "();");
+        lines.add("}");
+        List<String> body = added(lines);
+
+        List<Integer> starts = HunkSplitter.pieceStarts(body);
+
+        assertEquals(2, starts.size(), "starts: " + starts);
+        assertEquals("+// g", body.get(starts.get(1)));
+    }
+
+    @Test
+    void inside_a_big_block_it_cuts_at_the_least_indented_section() {
+        List<String> lines = new ArrayList<>(List.of("function Page() {"));
+        for (int i = 0; i < 40; i++) lines.add("  const a" + i + " = 1;");
+        lines.add("");
+        lines.add("  return (");                        // indent 2: the cut
+        for (int i = 0; i < 20; i++) lines.add("    <p>" + i + "</p>");
+        lines.add("");
+        lines.add("      <span>deep</span>");          // indent 6: deeper, not used
+        for (int i = 0; i < 40; i++) lines.add("    <p>more</p>");
+        lines.add("  );");
+        lines.add("}");
+        List<String> body = added(lines);
+
+        List<Integer> starts = HunkSplitter.pieceStarts(body);
+
+        assertEquals(List.of(0, 42), starts);
+        assertEquals("+  return (", body.get(42));
+    }
+
+    @Test
+    void a_block_with_no_empty_lines_is_cut_into_even_pieces() {
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < 200; i++) lines.add("x" + i);
+        List<String> body = added(lines);
+        assertEquals(List.of(67, 67, 66), sizes(body, HunkSplitter.pieceStarts(body)));
+
+        List<String> short85 = added(lines.subList(0, 85));
+        assertEquals(List.of(43, 42), sizes(short85, HunkSplitter.pieceStarts(short85)));
+    }
+
+    @Test
+    void an_80_line_file_with_the_no_newline_marker_is_one_piece() {
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < 80; i++) lines.add("+x" + i);
+        lines.add("\\ No newline at end of file");
+        assertEquals(List.of(0), HunkSplitter.pieceStarts(lines));
+    }
+
     @Test
     void the_no_newline_marker_stays_with_the_line_before_it() {
         List<String> body = hunk(30, 30, 30);
