@@ -86,6 +86,11 @@ export default function SessionPage() {
   const [testBusyId, setTestBusyId] = useState<string | null>(null);
   const [passNote, setPassNote] = useState<{ forChangeId: string; file: string } | null>(null);
   const [diffScrolled, setDiffScrolled] = useState(false);
+  // On wide screens only the three columns scroll, so the header would always stay on
+  // screen. It slides away once any column is scrolled down a bit, and comes back when
+  // they're all at the top again. (Narrow screens scroll the whole page, header and all.)
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const columnTops = useRef({ files: 0, diff: 0, panel: 0 });
   const diffBoxRef = useRef<HTMLDivElement>(null);
   // Files sidebar folded to a thin rail (wide screens). Remembered in this browser.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
@@ -461,31 +466,51 @@ export default function SessionPage() {
     );
   }
 
+  // Hides after 40px, shows again only at the very top: the gap stops it flickering when
+  // the header's own height is what decides whether a column can scroll at all.
+  function onColumnScroll(column: keyof typeof columnTops.current, top: number) {
+    columnTops.current[column] = top;
+    const tops = Object.values(columnTops.current);
+    setHeaderHidden((hidden) => (hidden ? tops.some((t) => t > 0) : tops.some((t) => t > 40)));
+  }
+
   return (
     <div className="min-[1000px]:h-screen min-[1000px]:flex min-[1000px]:flex-col">
       {navbar}
-      <SessionHeader
-        session={session}
-        fileCount={files.length}
-        added={files.reduce((n, f) => n + f.added, 0)}
-        removed={files.reduce((n, f) => n + f.removed, 0)}
-        understood={understood}
-        total={total}
-        onStartLearning={startLearning}
-        onRetrySummary={handleRetrySummary}
-        retrying={retrying}
-        retryError={retryError}
-        onDelete={handleDelete}
-        deleting={deleting}
-        deleteError={deleteError}
-      />
+      <div
+        className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+          headerHidden ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
+        }`}
+        inert={headerHidden}
+      >
+        <div className="overflow-hidden min-h-0">
+          <SessionHeader
+            session={session}
+            fileCount={files.length}
+            added={files.reduce((n, f) => n + f.added, 0)}
+            removed={files.reduce((n, f) => n + f.removed, 0)}
+            understood={understood}
+            total={total}
+            onStartLearning={startLearning}
+            onRetrySummary={handleRetrySummary}
+            retrying={retrying}
+            retryError={retryError}
+            onDelete={handleDelete}
+            deleting={deleting}
+            deleteError={deleteError}
+          />
+        </div>
+      </div>
       {/* The sidebar's width is a CSS variable in the grid, so changing it animates the
           column and the diff grows into the space instead of jumping. */}
       <main
         style={{ "--sidebar-w": sidebarCollapsed ? "52px" : "280px" } as CSSProperties}
         className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid min-[1000px]:grid-cols-[var(--sidebar-w)_minmax(0,1fr)_clamp(400px,30vw,480px)] transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none"
       >
-        <aside className="bg-white border-b border-gray-200 min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto min-[1000px]:overflow-x-hidden">
+        <aside
+          onScroll={(e) => onColumnScroll("files", e.currentTarget.scrollTop)}
+          className="bg-white border-b border-gray-200 min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto min-[1000px]:overflow-x-hidden"
+        >
           <FileSidebar
             files={sidebarFiles}
             selected={filePath}
@@ -498,7 +523,10 @@ export default function SessionPage() {
 
         <div
           ref={diffBoxRef}
-          onScroll={(e) => setDiffScrolled(e.currentTarget.scrollTop > 0)}
+          onScroll={(e) => {
+            setDiffScrolled(e.currentTarget.scrollTop > 0);
+            onColumnScroll("diff", e.currentTarget.scrollTop);
+          }}
           className="min-w-0 px-6 py-5 min-[1000px]:overflow-y-auto"
         >
           {!currentFile ? (
@@ -529,7 +557,10 @@ export default function SessionPage() {
           )}
         </div>
 
-        <aside className="bg-white border-t border-gray-200 min-[1000px]:border-t-0 min-[1000px]:border-l min-[1000px]:overflow-y-auto">
+        <aside
+          onScroll={(e) => onColumnScroll("panel", e.currentTarget.scrollTop)}
+          className="bg-white border-t border-gray-200 min-[1000px]:border-t-0 min-[1000px]:border-l min-[1000px]:overflow-y-auto"
+        >
           {selected && passNote?.forChangeId === selected.id && (
             <p className="mx-5 mt-4 px-3 py-2 rounded-md bg-green-50 border border-green-200 text-sm text-green-800">
               ✓ Passed <span className="font-mono text-xs">{passNote.file}</span>. Here's the next one.
