@@ -166,4 +166,30 @@ class MigrationTest {
                     + "'00000000-0000-0000-0000-00000000000a', 'Loops', FALSE)");
         }
     }
+
+    @Test
+    void v11_puts_changes_already_understood_in_the_review_queue_due_tomorrow() throws Exception {
+        String url = newDb();
+        migrateTo(url, "10");
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            s.execute("INSERT INTO sessions (id, project_path, start_ref, status, started_at) "
+                    + "VALUES ('00000000-0000-0000-0000-000000000001', '/p', 'r', 'COMPLETE', CURRENT_TIMESTAMP)");
+            s.execute("INSERT INTO changes (id, session_id, file_path, change_type, understood, understood_by) VALUES "
+                    + "('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000001', 'done.js', 'MODIFIED', TRUE, 'SELF'), "
+                    + "('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-000000000001', 'todo.js', 'MODIFIED', FALSE, NULL)");
+        }
+
+        migrateTo(url, "11");
+
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement();
+             ResultSet r = s.executeQuery("SELECT change_id, step, DATEDIFF('HOUR', CURRENT_TIMESTAMP, due_at), done_at "
+                     + "FROM review_items")) {
+            assertTrue(r.next());
+            assertEquals("00000000-0000-0000-0000-00000000000a", r.getString(1));
+            assertEquals(0, r.getInt(2));
+            assertTrue(r.getInt(3) >= 23 && r.getInt(3) <= 24, "due in about a day: " + r.getInt(3) + "h");
+            assertNull(r.getTimestamp(4));
+            assertFalse(r.next(), "only the understood change");
+        }
+    }
 }

@@ -13,6 +13,7 @@ import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
 import com.lore.cost.AiCall;
 import com.lore.cost.AiCallRecorder;
+import com.lore.review.ReviewSchedule;
 import com.lore.session.Session;
 import com.lore.session.SessionRepository;
 import org.slf4j.Logger;
@@ -40,19 +41,22 @@ public class ChangeController {
     private final AiService aiService;
     private final ApiKeyStore settings;
     private final AiCallRecorder recorder;
+    private final ReviewSchedule reviewSchedule;
 
     public ChangeController(ChangeRepository changeRepository,
                             ExplanationRepository explanationRepository,
                             SessionRepository sessionRepository,
                             AiService aiService,
                             ApiKeyStore settings,
-                            AiCallRecorder recorder) {
+                            AiCallRecorder recorder,
+                            ReviewSchedule reviewSchedule) {
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
         this.sessionRepository = sessionRepository;
         this.aiService = aiService;
         this.settings = settings;
         this.recorder = recorder;
+        this.reviewSchedule = reviewSchedule;
     }
 
     @PutMapping("/changes/{id}/understood")
@@ -63,6 +67,8 @@ public class ChangeController {
         // By hand (or "Skip test") always counts as self-marked; unmarking clears it.
         change.markUnderstood(change.isUnderstood() ? null : Change.UnderstoodBy.SELF);
         changeRepository.save(change);
+        // Understood: it comes back for review in a day. Unmarked: out of the review queue.
+        reviewSchedule.understoodChanged(change);
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("understood", change.isUnderstood());

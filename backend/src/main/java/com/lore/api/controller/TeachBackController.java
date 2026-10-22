@@ -13,6 +13,7 @@ import com.lore.change.TeachBackAttempt;
 import com.lore.change.TeachBackAttemptRepository;
 import com.lore.cost.AiCall;
 import com.lore.cost.AiCallRecorder;
+import com.lore.review.ReviewSchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -43,17 +44,20 @@ public class TeachBackController {
     private final TeachBackAttemptRepository attemptRepository;
     private final AiService aiService;
     private final AiCallRecorder recorder;
+    private final ReviewSchedule reviewSchedule;
 
     public TeachBackController(ChangeRepository changeRepository,
                                ExplanationRepository explanationRepository,
                                TeachBackAttemptRepository attemptRepository,
                                AiService aiService,
-                               AiCallRecorder recorder) {
+                               AiCallRecorder recorder,
+                               ReviewSchedule reviewSchedule) {
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
         this.attemptRepository = attemptRepository;
         this.aiService = aiService;
         this.recorder = recorder;
+        this.reviewSchedule = reviewSchedule;
     }
 
     public record TeachBackRequest(String answer) {}
@@ -120,6 +124,7 @@ public class TeachBackController {
         if (verdict == TeachBackAttempt.Verdict.PASS && !practice) {
             change.markUnderstood(Change.UnderstoodBy.TEACH_BACK);
             changeRepository.save(change);
+            reviewSchedule.understoodChanged(change);
         }
 
         Map<String, Object> out = new LinkedHashMap<>();

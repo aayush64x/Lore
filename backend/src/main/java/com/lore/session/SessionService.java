@@ -18,6 +18,7 @@ import com.lore.cost.AiCall;
 import com.lore.cost.AiCallRecorder;
 import com.lore.cost.AiCallRepository;
 import com.lore.git.DiffParser;
+import com.lore.review.ReviewItemRepository;
 import com.lore.git.GitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +73,7 @@ public class SessionService {
     private final AiCallRecorder recorder;
     private final ChangeConceptRepository conceptRepository;
     private final ConceptList conceptList;
+    private final ReviewItemRepository reviewRepository;
     private final TransactionTemplate transaction;
 
     public SessionService(SessionRepository sessionRepository,
@@ -85,6 +87,7 @@ public class SessionService {
                           AiCallRecorder recorder,
                           ChangeConceptRepository conceptRepository,
                           ConceptList conceptList,
+                          ReviewItemRepository reviewRepository,
                           PlatformTransactionManager transactionManager) {
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
@@ -97,6 +100,7 @@ public class SessionService {
         this.recorder = recorder;
         this.conceptRepository = conceptRepository;
         this.conceptList = conceptList;
+        this.reviewRepository = reviewRepository;
         this.transaction = new TransactionTemplate(transactionManager);
     }
 
@@ -193,9 +197,9 @@ public class SessionService {
 
     /**
      * Deletes a stopped (or discarded) session and everything saved for it: AI call costs,
-     * teach-back attempts, explanations (with their key points), concept tags, changes, then
-     * the session, in one
-     * transaction. The foreign keys don't cascade, so children go first. Only after that
+     * teach-back attempts, explanations (with their key points), concept tags, review items,
+     * changes, then the session, in one transaction. The foreign keys don't cascade, so
+     * children go first. Only after that
      * commits are the session's own snapshot refs removed from the project's repo.
      *
      * @throws NoSuchElementException if the session doesn't exist
@@ -209,6 +213,7 @@ public class SessionService {
             attemptRepository.deleteAll(attemptRepository.findByChangeSessionIdOrderByCreatedAt(sessionId));
             explanationRepository.deleteAll(explanationRepository.findByChangeSessionId(sessionId));
             conceptRepository.deleteAll(conceptRepository.findByChangeSessionId(sessionId));
+            reviewRepository.deleteAll(reviewRepository.findBySessionId(sessionId));
             changeRepository.deleteAll(changeRepository.findBySessionIdOrderByDisplayOrder(sessionId));
             sessionRepository.delete(s);
             return s;
