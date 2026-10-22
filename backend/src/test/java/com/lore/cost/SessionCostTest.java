@@ -48,7 +48,7 @@ class SessionCostTest {
         assertEquals(new BigDecimal("0.100000"), job(c, "summary").dollars());
         assertEquals(new BigDecimal("0.000280"), job(c, "grading").dollars());
         assertEquals(new BigDecimal("0.141630"), c.dollars());
-        assertEquals(List.of("summary", "explain", "grading"), c.jobs().stream().map(SessionCost.JobCost::job).toList());
+        assertEquals(List.of("summary", "explain", "grading", "follow_up"), c.jobs().stream().map(SessionCost.JobCost::job).toList());
         assertEquals(1, job(c, "explain").calls());
     }
 

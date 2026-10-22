@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { conceptsUrl } from "../api/client";
-import type { ChangeResponse, ExplanationData } from "../api/client";
+import type { ChangeResponse, ExplanationData, QuestionResponse } from "../api/client";
 import ExplainWalkthrough from "./ExplainWalkthrough";
+import FollowUp from "./FollowUp";
 
 interface ExplainPanelProps {
   change: ChangeResponse;
@@ -26,6 +27,8 @@ interface ExplainPanelProps {
   onTestMe: () => void;
   // "Explain again to enable testing": a new explanation with key points.
   onExplainForTest: () => void;
+  // A follow-up question was answered (or failed: null).
+  onQuestionAsked: (asked: QuestionResponse | null) => void;
 }
 
 const LINK = "text-xs text-gray-500 hover:text-gray-800 underline";
@@ -51,6 +54,7 @@ export default function ExplainPanel({
   onMarkUnderstood,
   onTestMe,
   onExplainForTest,
+  onQuestionAsked,
 }: ExplainPanelProps) {
   const passed = change.understoodBy === "teach_back";
   const canTest = explanation?.testable === true && !!explanation.hasKeyPoints;
@@ -204,6 +208,7 @@ export default function ExplainPanel({
             onMarkUnderstood={onMarkUnderstood}
             onTestMe={canTest && change.teachBack.attemptsLeft > 0 ? onTestMe : undefined}
           />
+          <FollowUp key={change.id} changeId={change.id} questions={change.questions} onAsked={onQuestionAsked} />
           <p className="text-xs text-gray-400 mt-4">Keys: ← → steps · [ ] files · b sidebar</p>
         </div>
       )}

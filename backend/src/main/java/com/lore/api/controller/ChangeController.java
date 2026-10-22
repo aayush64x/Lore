@@ -1,5 +1,6 @@
 package com.lore.api.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.AiOutputCheck;
 import com.lore.ai.AiService;
@@ -7,7 +8,10 @@ import com.lore.ai.AiUnavailableException;
 import com.lore.ai.ApiKeyStore;
 import com.lore.ai.UserProfile;
 import com.lore.ai.dto.ExplanationResponse;
+import com.lore.api.dto.QuestionResponse;
 import com.lore.change.Change;
+import com.lore.change.ChangeQuestion;
+import com.lore.change.ChangeQuestionRepository;
 import com.lore.change.ChangeRepository;
 import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
@@ -19,6 +23,7 @@ import com.lore.session.SessionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -42,6 +47,11 @@ public class ChangeController {
     private final ApiKeyStore settings;
     private final AiCallRecorder recorder;
     private final ReviewSchedule reviewSchedule;
+    private final ChangeQuestionRepository questionRepository;
+
+    /** Follow-up questions: the longest one accepted, and how many earlier ones the AI sees. */
+    static final int MAX_QUESTION_LENGTH = 1000;
+    static final int EARLIER_QUESTIONS = 5;
 
     public ChangeController(ChangeRepository changeRepository,
                             ExplanationRepository explanationRepository,
@@ -49,7 +59,8 @@ public class ChangeController {
                             AiService aiService,
                             ApiKeyStore settings,
                             AiCallRecorder recorder,
-                            ReviewSchedule reviewSchedule) {
+                            ReviewSchedule reviewSchedule,
+                            ChangeQuestionRepository questionRepository) {
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
         this.sessionRepository = sessionRepository;
@@ -57,6 +68,71 @@ public class ChangeController {
         this.settings = settings;
         this.recorder = recorder;
         this.reviewSchedule = reviewSchedule;
+        this.questionRepository = questionRepository;
+    }
+
+    public record QuestionRequest(String question) {}
+
+    /**
+     * A follow-up question about a change, answered for a beginner (Sonnet) with the diff,
+     * the saved explanation and the last few questions asked about it. Saved, so it shows
+     * again later. 200: {question, answer, createdAt}. 400: empty, too long, or a binary
+     * file. 404: no such change. 503: {error} when the AI couldn't answer; nothing is saved.
+     */
+    @PostMapping("/changes/{id}/questions")
+    public ResponseEntity<?> askQuestion(@PathVariable UUID id, @RequestBody(required = false) QuestionRequest body) {
+        Change change = changeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (change.isBinary() || change.getDiffContent() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "There's no code to ask about in this change."));
+        }
+        String question = body == null || body.question() == null ? "" : body.question().strip();
+        if (question.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Write your question first."));
+        if (question.length() > MAX_QUESTION_LENGTH) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Keep it under " + MAX_QUESTION_LENGTH + " characters."));
+        }
+
+        List<ChangeQuestion> asked = questionRepository.findByChangeIdOrderByCreatedAt(id);
+        List<AiService.QuestionAndAnswer> earlier = asked.subList(Math.max(0, asked.size() - EARLIER_QUESTIONS), asked.size())
+                .stream().map(q -> new AiService.QuestionAndAnswer(q.getQuestion(), q.getAnswer())).toList();
+        String explanation = explanationRepository.findByChangeId(id)
+                .filter(e -> e.getStatus() == Explanation.ExplanationStatus.COMPLETE)
+                .map(ChangeController::explanationText)
+                .orElse("");
+
+        AiService.FollowUpAnswer answer;
+        try {
+            answer = recorder.during(change.getSession().getId(), AiCall.Job.FOLLOW_UP, () -> AiOutputCheck.askWithRetry(
+                    () -> aiService.answerQuestion(change.getFilePath(), change.getDiffContent(), explanation, earlier, question),
+                    AiOutputCheck::problems));
+        } catch (AiUnavailableException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Follow-up question failed for change {}", id, e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", "Couldn't answer that. Try again."));
+        }
+        if (answer == null || answer.answer() == null || answer.answer().isBlank()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", "Couldn't answer that. Try again."));
+        }
+
+        ChangeQuestion saved = questionRepository.save(new ChangeQuestion(change, question, answer.answer(), answer.model()));
+        return ResponseEntity.ok(new QuestionResponse(saved.getQuestion(), saved.getAnswer(), saved.getCreatedAt()));
+    }
+
+    /** The explanation as the reader saw it: the overview, then each step. */
+    static String explanationText(Explanation explanation) {
+        StringBuilder sb = new StringBuilder(explanation.getOverview() == null ? "" : explanation.getOverview().strip());
+        try {
+            List<Map<String, Object>> steps = mapper.readValue(explanation.getSteps(),
+                    new TypeReference<List<Map<String, Object>>>() {});
+            for (Map<String, Object> step : steps) {
+                Object text = step.get("text");
+                if (text != null) sb.append("\n- ").append(text.toString().strip());
+            }
+        } catch (Exception e) {
+            // Steps that can't be read are left out; the overview is still useful.
+        }
+        return sb.toString();
     }
 
     @PutMapping("/changes/{id}/understood")

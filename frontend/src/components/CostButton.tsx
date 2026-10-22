@@ -16,6 +16,7 @@ type Job = SessionCost["jobs"][number];
 function jobName(j: Job): string {
   if (j.job === "summary") return "Summary";
   if (j.job === "explain") return `Explain (${j.calls} ${j.calls === 1 ? "call" : "calls"})`;
+  if (j.job === "follow_up") return `Follow-up questions (${j.calls})`;
   return "Teach-back grading";
 }
 

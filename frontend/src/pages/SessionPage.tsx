@@ -599,6 +599,10 @@ export default function SessionPage() {
               onMarkUnderstood={() => handleMarkUnderstood(selected)}
               onTestMe={() => startTest(selected)}
               onExplainForTest={() => handleExplain(selected.id, true)}
+              onQuestionAsked={(asked) => {
+                if (asked) updateChange(selected.id, { questions: [...selected.questions, asked] });
+                refreshCost();
+              }}
             />
           )}
         </aside>

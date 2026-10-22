@@ -165,6 +165,25 @@ class AnthropicAiServiceTest {
     }
 
     @Test
+    void a_follow_up_question_goes_to_the_explain_model_with_the_diff_explanation_and_earlier_questions(@TempDir Path home) throws Exception {
+        responseBody = message("{\"answer\": \"It reads the saved list.\"}");
+
+        AiService.FollowUpAnswer a = service(home, FAKE_KEY).answerQuestion("todo.js", "+const items = load();",
+                "Loads saved items.", List.of(new AiService.QuestionAndAnswer("What is const?", "A name you can't reassign.")),
+                "What does load() do?");
+
+        assertEquals("It reads the saved list.", a.answer());
+        assertEquals("claude-sonnet-5-5", a.model());
+        JsonNode body = seenBody.get();
+        assertEquals("claude-sonnet-5-5", body.get("model").asText());
+        String system = body.at("/system").toString();
+        assertTrue(system.contains("for a beginner") && system.contains("steer them back"), system);
+        String message = body.at("/messages/0/content").toString();
+        assertTrue(message.contains("+const items = load();") && message.contains("Loads saved items.")
+                && message.contains("Q: What is const?") && message.contains("What does load() do?"), message);
+    }
+
+    @Test
     void summarize_sends_structured_request_and_parses_answer(@TempDir Path home) throws Exception {
         responseBody = message("""
                 {"session_summary": "Added an app.", "change_descriptions": [

@@ -9,7 +9,7 @@ import java.util.UUID;
 @Table(name = "ai_calls")
 public class AiCall {
 
-    public enum Job { SUMMARY, EXPLAIN, GRADING }
+    public enum Job { SUMMARY, EXPLAIN, GRADING, FOLLOW_UP }
 
     @Id
     private UUID id;

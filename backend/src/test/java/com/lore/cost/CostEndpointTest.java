@@ -45,7 +45,7 @@ class CostEndpointTest {
                     // summary 20,000 x $0.10 + 3,000 x $0.50 = $0.0035; explain 4,000 x $2 + 1,500 x $10 = $0.023
                     .andExpect(jsonPath("$.cost.dollars").value(0.0265))
                     .andExpect(jsonPath("$.cost.tokens").value(28_500))
-                    .andExpect(jsonPath("$.cost.jobs[*].job", contains("summary", "explain", "grading")))
+                    .andExpect(jsonPath("$.cost.jobs[*].job", contains("summary", "explain", "grading", "follow_up")))
                     .andExpect(jsonPath("$.cost.jobs[0].dollars").value(0.0035))
                     .andExpect(jsonPath("$.cost.jobs[1].dollars").value(0.023))
                     .andExpect(jsonPath("$.cost.jobs[1].calls").value(1))

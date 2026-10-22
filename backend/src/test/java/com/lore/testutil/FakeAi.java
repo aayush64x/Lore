@@ -70,6 +70,9 @@ public class FakeAi implements AiService {
         explainTestable = true;
         gradeVerdicts.clear();
         gradeCalls = 0;
+        questionCalls = 0;
+        lastQuestionExplanation = null;
+        lastQuestionEarlier = null;
         lastGradeDiff = null;
         lastGradeKeyPoints = null;
         lastGradeAnswer = null;
@@ -138,6 +141,22 @@ public class FakeAi implements AiService {
                 List.of(new ExplanationResponse.Concept("logging", "printing text")),
                 explainTestable ? List.of("Point one", "Point two") : List.of(),
                 explainTestable, explainIssue);
+    }
+
+    /** What the last follow-up question got, and how many were asked. */
+    public volatile int questionCalls;
+    public volatile String lastQuestionExplanation;
+    public volatile List<QuestionAndAnswer> lastQuestionEarlier;
+
+    @Override
+    public FollowUpAnswer answerQuestion(String filePath, String diffContent, String explanation,
+                                         List<QuestionAndAnswer> earlier, String question) {
+        questionCalls++;
+        reportTokens("follow-up");
+        lastQuestionExplanation = explanation;
+        lastQuestionEarlier = earlier;
+        fail();
+        return new FollowUpAnswer("Answer to: " + question + tail(), "fake-tutor");
     }
 
     @Override

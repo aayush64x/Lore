@@ -33,6 +33,22 @@ public interface AiService {
         throw new AiUnavailableException(TEACH_BACK_ANTHROPIC_ONLY);
     }
 
+    /** One earlier question and answer about the same change, for context. */
+    record QuestionAndAnswer(String question, String answer) {}
+
+    /** model is the model that answered (saved with the answer). */
+    record FollowUpAnswer(String answer, String model) {}
+
+    /**
+     * Answers a follow-up question about one change, in simple language for a beginner.
+     * explanation is the change's saved explanation as text ("" if it has none); earlier
+     * is what was asked about this change before, oldest first.
+     */
+    default FollowUpAnswer answerQuestion(String filePath, String diffContent, String explanation,
+                                          List<QuestionAndAnswer> earlier, String question) {
+        throw new AiUnavailableException("Follow-up questions only work with the Anthropic provider.");
+    }
+
     /**
      * One change sent to the AI. displayOrder is the change's stable id within the
      * session; the AI must echo it back so each description lands on the right change.

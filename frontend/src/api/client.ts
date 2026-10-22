@@ -35,7 +35,7 @@ export interface SessionCost {
   dollars: number | null;
   tokens: number;
   jobs: {
-    job: "summary" | "explain" | "grading";
+    job: "summary" | "explain" | "grading" | "follow_up";
     dollars: number | null;
     tokens: number;
     calls: number;
@@ -66,6 +66,13 @@ export interface ChangeResponse {
   understoodBy: "teach_back" | "self" | null; // passed a teach-back, or marked by hand / skipped
   teachBack: TeachBackState;
   concepts: { name: string; other: boolean }[]; // concept tags from the summary; other = not on the list
+  questions: QuestionResponse[]; // follow-up questions asked under the explanation, oldest first
+}
+
+export interface QuestionResponse {
+  question: string;
+  answer: string;
+  createdAt: string;
 }
 
 export interface TeachBackState {
@@ -327,6 +334,21 @@ export async function fetchSessionCost(id: string): Promise<SessionCost | null> 
   }
   const data: { cost: SessionCost | null } = await response.json();
   return data.cost;
+}
+
+// POST /api/changes/{id}/questions: a follow-up question about one change.
+// On failure the server sends { error } that's safe to show.
+export async function askQuestion(changeId: string, question: string): Promise<QuestionResponse> {
+  const response = await fetch(`/api/changes/${changeId}/questions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Couldn't answer that. Try again.");
+  }
+  return response.json();
 }
 
 // DELETE /api/sessions/{id}

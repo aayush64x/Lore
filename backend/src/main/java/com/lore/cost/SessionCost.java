@@ -22,7 +22,7 @@ public class SessionCost {
 
     /**
      * dollars is null when a call used a model with no price; tokens is then what to show.
-     * jobs always lists summary, explain and grading, in that order (calls = 0 if unused).
+     * jobs always lists summary, explain, grading and follow_up, in that order (calls = 0 if unused).
      */
     public record Cost(BigDecimal dollars, long tokens, List<JobCost> jobs) {}
 

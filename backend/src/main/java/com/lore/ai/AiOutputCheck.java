@@ -87,6 +87,12 @@ public final class AiOutputCheck {
         return bad;
     }
 
+    public static List<String> problems(AiService.FollowUpAnswer r) {
+        List<String> bad = new ArrayList<>();
+        if (r != null && isDamaged(r.answer())) bad.add("answer");
+        return bad;
+    }
+
     public static List<String> problems(GradeResponse r) {
         List<String> bad = new ArrayList<>();
         if (r == null) return bad;

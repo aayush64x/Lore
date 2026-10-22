@@ -187,6 +187,10 @@ public class AnthropicAiService implements AiService {
             @JsonPropertyDescription("One-sentence explanation a beginner would understand")
             String meaning) {}
 
+    record FollowUpOutput(
+            @JsonPropertyDescription("The answer to their question, in simple words for a beginner")
+            String answer) {}
+
     enum Verdict { PASS, PARTLY, FAIL }
 
     record GradeOutput(
@@ -273,6 +277,16 @@ public class AnthropicAiService implements AiService {
                         .map(i -> new ExplanationResponse.Issue(i.diffLine(), i.text().strip()))
                         .orElse(null);
         return new ExplanationResponse(out.overview(), steps, concepts, keyPoints, out.testable(), issue);
+    }
+
+    /** On the explain model (Sonnet): answering well about code needs the stronger model. */
+    @Override
+    public FollowUpAnswer answerQuestion(String filePath, String diffContent, String explanation,
+                                         List<QuestionAndAnswer> earlier, String question) {
+        FollowUpOutput out = explainCall(FollowUpOutput.class, AiPrompts.followUpSystemPrompt(),
+                AiPrompts.followUpUserMessage(filePath, diffContent, explanation, earlier, question));
+        return new FollowUpAnswer(out.answer() == null ? null : out.answer().strip(),
+                keyStore.explainModelOverride().orElse(defaultExplainModel));
     }
 
     /**

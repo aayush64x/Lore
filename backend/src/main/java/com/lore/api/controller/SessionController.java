@@ -1,6 +1,7 @@
 package com.lore.api.controller;
 
 import com.lore.api.dto.ChangeResponse;
+import com.lore.api.dto.QuestionResponse;
 import com.lore.api.dto.SessionDetailResponse;
 import com.lore.api.dto.SessionResponse;
 import com.lore.change.Change;
@@ -8,6 +9,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.ApiKeyStore;
 import com.lore.ai.UserProfile;
+import com.lore.change.ChangeQuestion;
+import com.lore.change.ChangeQuestionRepository;
 import com.lore.change.ChangeRepository;
 import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
@@ -47,11 +50,12 @@ public class SessionController {
     private final TeachBackAttemptRepository attemptRepository;
     private final SessionCost sessionCost;
     private final ChangeConceptRepository conceptRepository;
+    private final ChangeQuestionRepository questionRepository;
 
     public SessionController(SessionService sessionService, SessionRepository sessionRepository, ChangeRepository changeRepository,
                              ExplanationRepository explanationRepository, ApiKeyStore settings,
                              TeachBackAttemptRepository attemptRepository, SessionCost sessionCost,
-                             ChangeConceptRepository conceptRepository){
+                             ChangeConceptRepository conceptRepository, ChangeQuestionRepository questionRepository){
         this.sessionService = sessionService;
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
@@ -60,6 +64,7 @@ public class SessionController {
         this.attemptRepository = attemptRepository;
         this.sessionCost = sessionCost;
         this.conceptRepository = conceptRepository;
+        this.questionRepository = questionRepository;
 
     }
 
@@ -162,6 +167,11 @@ public class SessionController {
         }
         concepts.values().forEach(tags -> tags.sort(
                 Comparator.comparing(ConceptTags.Tag::other).thenComparing(ConceptTags.Tag::name)));
+        Map<UUID, List<QuestionResponse>> questions = new HashMap<>();
+        for (ChangeQuestion q : questionRepository.findBySessionId(id)) {
+            questions.computeIfAbsent(q.getChange().getId(), k -> new ArrayList<>())
+                    .add(new QuestionResponse(q.getQuestion(), q.getAnswer(), q.getCreatedAt()));
+        }
         Map<UUID, Explanation> explanations = new HashMap<>();
         for (Explanation e : explanationRepository.findByChangeSessionId(id)) {
             if (e.getStatus() == Explanation.ExplanationStatus.COMPLETE) explanations.put(e.getChange().getId(), e);
@@ -189,7 +199,8 @@ public class SessionController {
                         c.getGoalReason(),
                         TeachBackView.understoodBy(c),
                         TeachBackView.state(attempts.getOrDefault(c.getId(), List.of()), explanations.get(c.getId())),
-                        concepts.getOrDefault(c.getId(), List.of())
+                        concepts.getOrDefault(c.getId(), List.of()),
+                        questions.getOrDefault(c.getId(), List.of())
                 ))
                 .toList();
 

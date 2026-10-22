@@ -356,4 +356,45 @@ public final class AiPrompts {
         }
         return sb.toString();
     }
+
+    /** A follow-up question about one change, asked under its explanation. */
+    public static String followUpSystemPrompt() {
+        return """
+                You are a tutor in Lore, a learning tool. Someone used an AI coding tool, it changed \
+                their code, and they read an explanation of one change. Now they have a question about it.
+
+                You will receive the file path, the change's diff, the explanation they read (if there \
+                is one), anything they already asked about this change, and their new question.
+
+                Return "answer": the answer to their question, for a beginner. Use simple words and \
+                short sentences, and explain any technical word the first time you use it. Answer \
+                about this change and this code, and point to the line or name in the diff when it \
+                helps. Keep it short: a few sentences, or a few short steps if they asked how \
+                something works. Never invent code or behavior that isn't in the diff; if the diff \
+                doesn't show it, say so.
+
+                If the question isn't about this change or its code, answer it in one or two \
+                sentences, then steer them back to the change, for example by suggesting a question \
+                about it.
+
+                The answer is plain sentences. Never end it with JSON characters such as }, ] or a \
+                quote: the JSON structure is handled for you.""";
+    }
+
+    public static String followUpUserMessage(String filePath, String diffContent, String explanation,
+                                             List<AiService.QuestionAndAnswer> earlier, String question) {
+        StringBuilder sb = new StringBuilder("File: ").append(filePath).append("\n\nDiff:\n")
+                .append(diffContent == null ? "" : diffContent.strip()).append("\n\n");
+        if (explanation != null && !explanation.isBlank()) {
+            sb.append("The explanation they read:\n").append(explanation.strip()).append("\n\n");
+        }
+        if (!earlier.isEmpty()) {
+            sb.append("What they already asked about this change:\n");
+            for (AiService.QuestionAndAnswer qa : earlier) {
+                sb.append("Q: ").append(qa.question().strip()).append("\nA: ").append(qa.answer().strip()).append("\n\n");
+            }
+        }
+        sb.append("Their question:\n").append(question.strip()).append('\n');
+        return sb.toString();
+    }
 }

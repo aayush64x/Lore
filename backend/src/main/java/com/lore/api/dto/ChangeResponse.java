@@ -30,5 +30,7 @@ public record ChangeResponse(
         // attemptsUsed, attemptsLeft, lastVerdict, keyPoints (null until revealed).
         Map<String, Object> teachBack,
         // Concept tags from the summary: list concepts first, by name; empty for older sessions.
-        List<ConceptTags.Tag> concepts
+        List<ConceptTags.Tag> concepts,
+        // Follow-up questions asked under the explanation, oldest first.
+        List<QuestionResponse> questions
 ) {}

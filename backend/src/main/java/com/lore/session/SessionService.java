@@ -7,6 +7,7 @@ import com.lore.ai.AiService;
 import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.SummaryResponse;
 import com.lore.change.Change;
+import com.lore.change.ChangeQuestionRepository;
 import com.lore.change.ChangeRepository;
 import com.lore.change.ExplanationRepository;
 import com.lore.change.TeachBackAttemptRepository;
@@ -74,6 +75,7 @@ public class SessionService {
     private final ChangeConceptRepository conceptRepository;
     private final ConceptList conceptList;
     private final ReviewItemRepository reviewRepository;
+    private final ChangeQuestionRepository questionRepository;
     private final TransactionTemplate transaction;
 
     public SessionService(SessionRepository sessionRepository,
@@ -88,6 +90,7 @@ public class SessionService {
                           ChangeConceptRepository conceptRepository,
                           ConceptList conceptList,
                           ReviewItemRepository reviewRepository,
+                          ChangeQuestionRepository questionRepository,
                           PlatformTransactionManager transactionManager) {
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
@@ -101,6 +104,7 @@ public class SessionService {
         this.conceptRepository = conceptRepository;
         this.conceptList = conceptList;
         this.reviewRepository = reviewRepository;
+        this.questionRepository = questionRepository;
         this.transaction = new TransactionTemplate(transactionManager);
     }
 
@@ -198,7 +202,7 @@ public class SessionService {
     /**
      * Deletes a stopped (or discarded) session and everything saved for it: AI call costs,
      * teach-back attempts, explanations (with their key points), concept tags, review items,
-     * changes, then the session, in one transaction. The foreign keys don't cascade, so
+     * follow-up questions, changes, then the session, in one transaction. The foreign keys don't cascade, so
      * children go first. Only after that
      * commits are the session's own snapshot refs removed from the project's repo.
      *
@@ -214,6 +218,7 @@ public class SessionService {
             explanationRepository.deleteAll(explanationRepository.findByChangeSessionId(sessionId));
             conceptRepository.deleteAll(conceptRepository.findByChangeSessionId(sessionId));
             reviewRepository.deleteAll(reviewRepository.findBySessionId(sessionId));
+            questionRepository.deleteAll(questionRepository.findBySessionId(sessionId));
             changeRepository.deleteAll(changeRepository.findBySessionIdOrderByDisplayOrder(sessionId));
             sessionRepository.delete(s);
             return s;
