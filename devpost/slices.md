@@ -27,6 +27,7 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 - [ ] **10. Downloadable release on GitHub.** *(On hold Oct 21, Aayush.)* Files are ready in `~/Desktop/Lore-release-v0.1.0/` (`lore.jar`, `install.sh`, `RELEASE_NOTES.md`; notes also in `devpost/release-notes-v0.1.0.md`). To publish: either `brew install gh` + `gh auth login` and let the agent run `gh release create v0.1.0`, or by hand on GitHub (Releases → Draft a new release → tag `v0.1.0` → upload both files → paste the notes). The README already points at this release.
 - [ ] **11. Fresh-install test.** *(On hold Oct 21, Aayush.)* Follow the README as a brand-new user with an empty setup. Fix anything that breaks.
 - [ ] **11b. UI polish pass** (before Oct 23). Spacing, buttons, empty and error states, readable on a small screen.
+  - [x] Part 1 (Oct 22): no sideways scrolling on any page at phone width (390px). Breadcrumbs get their own line, the toolbar wraps, code scrolls inside its box.
 
 ## Must fix before rollout (do not cut)
 

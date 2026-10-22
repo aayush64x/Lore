@@ -424,8 +424,8 @@ export default function SessionPage() {
     </div>
   );
   const progress = session && (
-    <div className="flex items-center gap-4">
-      <div className="w-56">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="w-40 sm:w-56">
         <ProgressBar understood={understood} total={total} />
       </div>
       <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer whitespace-nowrap">
@@ -516,7 +516,7 @@ export default function SessionPage() {
           column and the diff grows into the space instead of jumping. */}
       <main
         style={{ "--sidebar-w": sidebarCollapsed ? "52px" : "280px" } as CSSProperties}
-        className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid min-[1000px]:grid-cols-[var(--sidebar-w)_minmax(0,1fr)_clamp(400px,30vw,480px)] transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none"
+        className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid grid-cols-[minmax(0,1fr)] min-[1000px]:grid-cols-[var(--sidebar-w)_minmax(0,1fr)_clamp(400px,30vw,480px)] transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none"
       >
         <aside
           onScroll={(e) => onColumnScroll("files", e.currentTarget.scrollTop)}

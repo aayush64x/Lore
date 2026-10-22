@@ -82,7 +82,8 @@ export default function SessionHeader({
             ))}
           </div>
         </div>
-        <div className="shrink-0 pt-3 flex flex-col items-end gap-2">
+        {/* Side by side on a phone, stacked on the right on wider screens. */}
+        <div className="shrink-0 pt-3 flex items-center gap-4 sm:flex-col sm:items-end sm:gap-2">
           {allDone ? (
             <span className="inline-block text-sm font-medium px-4 py-2 rounded-md bg-green-50 text-green-700 border border-green-200">
               All understood 🎉

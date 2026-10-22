@@ -69,14 +69,14 @@ function StudyRow({
   return (
     <li id={conceptAnchor(concept.name)} className={highlighted ? "bg-yellow-50" : open ? "bg-gray-50" : ""}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="w-full text-left px-4 py-3 hover:bg-gray-50">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-medium text-gray-900">{concept.name}</span>
           {isNew && (
             <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
               New this session
             </span>
           )}
-          <span className="ml-auto text-xs text-gray-500" aria-hidden="true">
+          <span className="ml-auto text-xs text-gray-500 whitespace-nowrap" aria-hidden="true">
             {open ? "Hide changes ▴" : "Show changes ▾"}
           </span>
         </div>

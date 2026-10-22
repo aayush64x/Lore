@@ -1,13 +1,20 @@
 // Light/dark switch in the navbar. Adds or removes the "dark" class on <html> (index.css
 // swaps the colors) and remembers the choice; until one is made, index.html follows the
-// system setting.
+// system setting. The icon follows the <html> class, so every copy of the switch (the
+// navbar has one for phones and one for wider screens) always agrees.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const KEY = "lore-theme";
 
 export default function ThemeToggle() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setDark(document.documentElement.classList.contains("dark")));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   function toggle() {
     const next = !dark;
@@ -17,7 +24,6 @@ export default function ThemeToggle() {
     } catch {
       // Private window or storage blocked: the switch still works until the page reloads.
     }
-    setDark(next);
   }
 
   return (

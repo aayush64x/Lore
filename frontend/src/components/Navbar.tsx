@@ -5,6 +5,8 @@
 // Every crumb with a link is clickable. Long names are cut off with "…";
 // hover one to see it in full. Pages can add their own items in the
 // middle and on the right. A soft shadow shows once the page is scrolled.
+// On a phone the breadcrumbs get their own line (cut short to fit) and the
+// light/dark switch moves up next to the buttons, so nothing sticks out sideways.
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -112,10 +114,10 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
       }`}
     >
       <div
-        className={`px-6 min-h-12 py-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}
+        className={`px-4 sm:px-6 min-h-12 py-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}
       >
       {/* basis: room for the Concepts and Review pills and the breadcrumbs before the rest wraps below. */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-3 min-w-0 flex-1 basis-[36rem]">
+      <nav aria-label="Breadcrumb" className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 min-w-0 flex-1 basis-full sm:basis-[36rem]">
         <Link to={sessionsUrl(project)} className="font-semibold text-base text-gray-900 shrink-0">
           Lore
         </Link>
@@ -127,9 +129,13 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
           </>
         )}
 
-        {all.length > 0 && <span className="h-5 w-px bg-gray-200 shrink-0" aria-hidden="true" />}
+        {all.length > 0 && <span className="hidden sm:block h-5 w-px bg-gray-200 shrink-0" aria-hidden="true" />}
 
-        <ol className="flex items-center gap-1.5 min-w-0">
+        <div className="sm:hidden ml-auto shrink-0">
+          <ThemeToggle />
+        </div>
+
+        <ol className="flex items-center gap-1.5 min-w-0 basis-full order-last sm:order-none sm:basis-auto">
           {all.map((crumb, i) => {
             const last = i === all.length - 1;
             // The project and the file stay whole (up to a limit); the session
@@ -137,7 +143,7 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
             const edge = i === 0 || last;
             const text = `truncate ${crumb.mono ? "font-mono text-xs" : ""}`;
             return (
-              <li key={i} className={`flex items-center gap-1.5 min-w-0 ${edge ? "shrink-0 max-w-[16rem]" : "shrink"}`}>
+              <li key={i} className={`flex items-center gap-1.5 min-w-0 ${edge ? "sm:shrink-0 max-w-[16rem]" : "shrink"}`}>
                 {i > 0 && <span className="text-gray-400 shrink-0" aria-hidden="true">›</span>}
                 {crumb.to ? (
                   <Link to={crumb.to} title={crumb.label} className={`${text} text-blue-600 hover:underline`}>
@@ -154,8 +160,8 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
         </ol>
       </nav>
       {center && <div className="shrink-0">{center}</div>}
-      {right && <div className="shrink-0 ml-auto">{right}</div>}
-      <div className={right ? "shrink-0" : "shrink-0 ml-auto"}>
+      {right && <div className="min-w-0 sm:shrink-0 sm:ml-auto">{right}</div>}
+      <div className={`hidden sm:block ${right ? "shrink-0" : "shrink-0 ml-auto"}`}>
         <ThemeToggle />
       </div>
       </div>
