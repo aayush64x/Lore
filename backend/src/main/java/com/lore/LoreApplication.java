@@ -6,12 +6,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.nio.file.Path;
+
 @SpringBootApplication
 public class LoreApplication {
 
     public static void main(String[] args) {
         // Before Spring starts, so the database isn't open yet.
-        DbBackup.run();
+        Path backup = DbBackup.run();
 
         WebApplicationType webType = WebApplicationType.NONE;
         boolean help = false;
@@ -42,6 +44,9 @@ public class LoreApplication {
                 .web(webType)
                 .logStartupInfo(false)
                 .run(args);
+
+        // Spring is up, so the database opened (and migrated) fine: the copy made above is good.
+        DbBackup.markGood(backup);
 
         // Every command but ui is done here. Close Spring now, which closes the database while
         // the JVM is still running normally, instead of in a shutdown hook as the JVM exits.
