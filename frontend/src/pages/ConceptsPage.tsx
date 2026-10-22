@@ -6,14 +6,18 @@
 // Concepts are grouped under their heading in concepts.txt; groups that come up most go
 // first. "Other" suggestions (nothing on the list fit) are shown apart, to review.
 //
+// A Table / Graph switch picks the view (?view=graph); the graph shows the same concepts as
+// circles, linked when they were tagged on the same change.
+//
 // URL: /concepts?project=/path/to/project, optionally #concept-<name> (from a concept chip on
 // the session page) to scroll to that row and highlight it, or #concept-suggested for the
 // suggestions.
 
 import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { conceptAnchor, fetchConcepts } from "../api/client";
-import type { ConceptCount, ConceptsResponse } from "../api/client";
+import { conceptAnchor, fetchConceptGraph, fetchConcepts } from "../api/client";
+import type { ConceptCount, ConceptGraphData, ConceptsResponse } from "../api/client";
+import ConceptGraph from "../components/ConceptGraph";
 import Navbar from "../components/Navbar";
 import ProgressBar from "../components/ProgressBar";
 
@@ -83,7 +87,9 @@ function ConceptTable({ concepts, showProgress, target }: { concepts: ConceptCou
 
 export default function ConceptsPage() {
   const [result, setResult] = useState<LoadResult | null>(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const graphView = searchParams.get("view") === "graph";
+  const [graph, setGraph] = useState<{ project: string; data: ConceptGraphData | null; error: string | null } | null>(null);
   const project = searchParams.get("project");
   const target = useLocation().hash.slice(1);
 
@@ -104,6 +110,25 @@ export default function ConceptsPage() {
     };
   }, [project]);
 
+  // The graph is only fetched once its view is opened.
+  useEffect(() => {
+    if (!project || !graphView) return;
+    let ignore = false;
+    fetchConceptGraph(project)
+      .then((data) => !ignore && setGraph({ project, data, error: null }))
+      .catch(() => !ignore && setGraph({ project, data: null, error: "Couldn't load the graph. Refresh to try again." }));
+    return () => {
+      ignore = true;
+    };
+  }, [project, graphView]);
+
+  function showView(view: "table" | "graph") {
+    const next = new URLSearchParams(searchParams);
+    if (view === "graph") next.set("view", "graph");
+    else next.delete("view");
+    setSearchParams(next);
+  }
+
   // Once the rows are on the page, bring the linked one into view.
   const loaded = result !== null;
   useEffect(() => {
@@ -114,6 +139,7 @@ export default function ConceptsPage() {
   const loading = !!project && current === null;
   const data = current?.data ?? null;
   const empty = data !== null && data.concepts.length === 0 && data.others.length === 0;
+  const graphData = graph?.project === project ? graph : null;
 
   return (
     <>
@@ -153,14 +179,36 @@ export default function ConceptsPage() {
               </p>
             )}
 
-            {groupsOf(data.concepts).map(([group, concepts]) => (
+            <div role="tablist" aria-label="View" className="mt-4 inline-flex rounded-md border border-gray-300 p-0.5 text-sm">
+              {(["table", "graph"] as const).map((view) => {
+                const active = view === "graph" ? graphView : !graphView;
+                return (
+                  <button
+                    key={view}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => showView(view)}
+                    className={`px-3 py-1 rounded ${active ? "bg-blue-600 text-white" : "text-gray-600 hover:text-gray-900"}`}
+                  >
+                    {view === "table" ? "Table" : "Graph"}
+                  </button>
+                );
+              })}
+            </div>
+
+            {graphView && !graphData && <p className="text-gray-500 text-center py-12">Loading the graph...</p>}
+            {graphView && graphData?.error && <p className="text-red-600 text-center py-12">{graphData.error}</p>}
+            {graphView && graphData?.data && <ConceptGraph data={graphData.data} />}
+
+            {!graphView && groupsOf(data.concepts).map(([group, concepts]) => (
               <section key={group} className="mt-6">
                 <h2 className="text-sm font-semibold text-gray-900">{group}</h2>
                 <ConceptTable concepts={concepts} showProgress target={target} />
               </section>
             ))}
 
-            {data.others.length > 0 && (
+            {!graphView && data.others.length > 0 && (
               <section
                 id={conceptAnchor("suggested")}
                 className={`mt-8 rounded-lg border p-4 ${

@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -142,5 +143,44 @@ class ConceptApiTest {
                 .andExpect(jsonPath("$.changes[?(@.id == '" + suggested.getId() + "')].concepts[0].other",
                         contains(true)))
                 .andExpect(jsonPath("$.changes[?(@.id == '" + untagged.getId() + "')].concepts[*]", hasSize(0)));
+    }
+
+    @Test
+    void the_graph_links_concepts_tagged_on_the_same_change() throws Exception {
+        Session first = session(project, Session.SessionStatus.COMPLETE, earlier);
+        Change both = change(first, true, "Loops", "Functions");
+        change(first, false, "Loops", "Functions", "Testing");
+        Session second = session(project, Session.SessionStatus.COMPLETE, later);
+        Change latest = change(second, false, "Loops");
+        change(second, false, "Other: WebSockets");
+        change(session(project + "-other", Session.SessionStatus.COMPLETE, later), true, "Loops", "State");
+
+        mvc.perform(get("/api/concepts/graph").param("project", project))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nodes[*].id", contains("Loops", "Functions", "Testing", "other:websockets")))
+                .andExpect(jsonPath("$.nodes[0].seen").value(3))
+                .andExpect(jsonPath("$.nodes[0].understood").value(1))
+                .andExpect(jsonPath("$.nodes[0].group").value("Programming fundamentals"))
+                // Its changes, newest session first, with what the side panel needs.
+                .andExpect(jsonPath("$.nodes[0].changes", hasSize(3)))
+                .andExpect(jsonPath("$.nodes[0].changes[0].changeId").value(latest.getId().toString()))
+                .andExpect(jsonPath("$.nodes[0].changes[0].sessionId").value(second.getId().toString()))
+                .andExpect(jsonPath("$.nodes[?(@.id == 'other:websockets')].other", contains(true)))
+                .andExpect(jsonPath("$.nodes[?(@.id == 'other:websockets')].name", contains("WebSockets")))
+                // Loops+Functions on two changes; Loops+Testing and Functions+Testing on one.
+                .andExpect(jsonPath("$.links", hasSize(3)))
+                .andExpect(jsonPath("$.links[?(@.source == 'Functions' && @.target == 'Loops')].count", contains(2)))
+                .andExpect(jsonPath("$.links[?(@.source == 'Loops' && @.target == 'Testing')].count", contains(1)))
+                // Headings with a node, in concepts.txt order; State (other project) is left out.
+                .andExpect(jsonPath("$.groups", contains("Programming fundamentals", "General")));
+        assertTrue(both.isUnderstood());
+    }
+
+    @Test
+    void an_empty_project_has_an_empty_graph() throws Exception {
+        mvc.perform(get("/api/concepts/graph").param("project", project))
+                .andExpect(jsonPath("$.nodes", hasSize(0)))
+                .andExpect(jsonPath("$.links", hasSize(0)))
+                .andExpect(jsonPath("$.groups", hasSize(0)));
     }
 }

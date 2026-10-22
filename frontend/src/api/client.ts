@@ -237,6 +237,41 @@ export interface ConceptsResponse {
   understoodChanges: number; // of those, understood
 }
 
+// The Concepts page's graph view. A node is a concept (id is its name, or "other:<name>"
+// for a suggestion); a link joins two concepts tagged on the same change, count times.
+export interface ConceptGraphNode {
+  id: string;
+  name: string;
+  group: string | null; // heading in concepts.txt; null for suggestions
+  other: boolean;
+  seen: number;
+  understood: number;
+  changes: {
+    changeId: string;
+    sessionId: string;
+    sessionReason: string | null;
+    filePath: string;
+    description: string | null;
+    understood: boolean;
+    stoppedAt: string | null;
+  }[];
+}
+
+export interface ConceptGraphData {
+  nodes: ConceptGraphNode[];
+  links: { source: string; target: string; count: number }[];
+  groups: string[]; // headings that have a node, in concepts.txt order
+}
+
+// GET /api/concepts/graph?project=...
+export async function fetchConceptGraph(project: string): Promise<ConceptGraphData> {
+  const response = await fetch(`/api/concepts/graph?project=${encodeURIComponent(project)}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+  return response.json();
+}
+
 // GET /api/concepts?project=...
 export async function fetchConcepts(project: string): Promise<ConceptsResponse> {
   const response = await fetch(`/api/concepts?project=${encodeURIComponent(project)}`);
