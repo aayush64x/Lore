@@ -681,3 +681,13 @@ Most of the list was already covered by steps 1–4. Added for the gaps:
 - **Also fixed in my test setup:** `pkill` didn't match the scratch test servers (their data folder is an environment variable), so old ones kept running and held the scratch database. They're now stopped by their port.
 
 **Files:** `frontend/src/components/TeachBackPanel.tsx`, `frontend/src/pages/SessionPage.tsx`
+
+---
+
+## Slice 9: README for strangers
+
+- Rewritten for someone who has never seen Lore: what it is and why, how it works, what you get (goal check, explanations, issue badge, teach-back, progress), requirements, install from a release or from source, first run, everyday use, commands, costs, your data, troubleshooting, update and uninstall.
+- Removed the old AWS/Bedrock setup and the "In progress / Planned" table.
+- Every command, message and setting in it was checked against the code (`lore --help`, the first-run commands, error messages, config keys).
+
+**Files:** `README.md`, `devpost/slices.md` (9 done, 11 on hold)

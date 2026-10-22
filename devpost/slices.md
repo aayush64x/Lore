@@ -23,9 +23,9 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 
 - [x] **7. Open the browser on Linux and Windows too.** The fallback only works on macOS today.
 - [x] **8. Installer.** Install the `lore` command so it works from any folder, not just inside the Lore repo.
-- [ ] **9. Rewrite the README for strangers.** Install, API key, start, stop, ui. Remove the AWS setup and "planned" labels.
+- [x] **9. Rewrite the README for strangers.** Install, API key, start, stop, ui. Remove the AWS setup and "planned" labels.
 - [ ] **10. Downloadable release on GitHub.** Build the JAR and publish a GitHub Release. Needs `gh` (`brew install gh`) or a manual upload.
-- [ ] **11. Fresh-install test.** Follow the README as a brand-new user with an empty setup. Fix anything that breaks.
+- [ ] **11. Fresh-install test.** *(On hold Oct 21, Aayush.)* Follow the README as a brand-new user with an empty setup. Fix anything that breaks.
 - [ ] **11b. UI polish pass** (before Oct 23). Spacing, buttons, empty and error states, readable on a small screen.
 
 ## Must fix before rollout (do not cut)
