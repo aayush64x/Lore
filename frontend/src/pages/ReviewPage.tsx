@@ -23,9 +23,9 @@ type LoadResult =
   | { project: string; data: null; error: string };
 
 const VERDICT = {
-  pass: { label: "Passed", className: "bg-green-50 text-green-700 border-green-300" },
-  partly: { label: "Partly", className: "bg-amber-50 text-amber-800 border-amber-300" },
-  fail: { label: "Not yet", className: "bg-red-50 text-red-700 border-red-200" },
+  pass: { label: "Passed", className: "bg-ok-soft text-ok border-ok/30" },
+  partly: { label: "Partly", className: "bg-warn-soft text-warn border-warn/30" },
+  fail: { label: "Not yet", className: "bg-bad-soft text-bad border-bad/30" },
 };
 
 function comesBack(result: ReviewResult): string {
@@ -54,15 +54,15 @@ function ReviewCard({ item, question, project }: { item: ReviewItem; question: s
 
   const verdict = result ? VERDICT[result.verdict] : null;
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-5">
+    <li className="rounded-card border border-line bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="font-mono text-sm text-gray-900 break-all">{item.filePath}</div>
-          <Link to={`/sessions/${item.sessionId}`} className="text-xs text-blue-600 hover:underline">
+          <div className="font-mono text-sm text-ink break-all">{item.filePath}</div>
+          <Link to={`/sessions/${item.sessionId}`} className="text-xs text-accent hover:underline">
             {sessionTitle(item.sessionReason)}
           </Link>
         </div>
-        <span className="shrink-0 text-xs text-gray-500">{item.gapDays}-day review</span>
+        <span className="shrink-0 text-xs text-ink-3">{item.gapDays}-day review</span>
       </div>
 
       {item.concepts.length > 0 && (
@@ -73,8 +73,8 @@ function ReviewCard({ item, question, project }: { item: ReviewItem; question: s
               to={conceptsUrl(project, c.other ? "suggested" : c.name)}
               className={`text-xs px-2 py-0.5 rounded-full border ${
                 c.other
-                  ? "border-dashed border-gray-300 text-gray-500 hover:text-gray-800"
-                  : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  ? "border-dashed border-line-strong text-ink-3 hover:text-ink"
+                  : "border-accent/30 bg-accent-soft text-accent hover:bg-accent/15"
               }`}
             >
               {c.other ? `Other: ${c.name}` : c.name}
@@ -84,8 +84,8 @@ function ReviewCard({ item, question, project }: { item: ReviewItem; question: s
       )}
 
       {item.diffContent && (
-        <details className="mt-3 rounded-md border border-gray-200">
-          <summary className="cursor-pointer select-none px-3 py-2 text-xs text-gray-600 hover:text-gray-900">
+        <details className="mt-3 rounded-control border border-line">
+          <summary className="cursor-pointer select-none px-3 py-2 text-xs text-ink-2 hover:text-ink">
             Show the change
           </summary>
           <DiffView
@@ -95,7 +95,7 @@ function ReviewCard({ item, question, project }: { item: ReviewItem; question: s
         </details>
       )}
 
-      <label className="mt-4 block text-sm font-medium text-gray-900" htmlFor={`answer-${item.changeId}`}>
+      <label className="mt-4 block text-sm font-medium text-ink" htmlFor={`answer-${item.changeId}`}>
         {question}
       </label>
       <textarea
@@ -105,7 +105,7 @@ function ReviewCard({ item, question, project }: { item: ReviewItem; question: s
         disabled={busy || result !== null}
         rows={3}
         placeholder="Explain it in a sentence or two, without looking first."
-        className="mt-1.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none disabled:bg-gray-50"
+        className="mt-1.5 w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none disabled:bg-sunk"
       />
 
       {!result && (
@@ -114,11 +114,11 @@ function ReviewCard({ item, question, project }: { item: ReviewItem; question: s
             type="button"
             onClick={check}
             disabled={busy || answer.trim() === ""}
-            className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="text-sm font-medium px-4 py-2 rounded-control bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {busy ? "Checking..." : "Check"}
           </button>
-          {error && <span role="alert" className="text-sm text-red-600">{error}</span>}
+          {error && <span role="alert" className="text-sm text-bad">{error}</span>}
         </div>
       )}
 
@@ -128,23 +128,23 @@ function ReviewCard({ item, question, project }: { item: ReviewItem; question: s
             {verdict.label}
           </span>
           {result.gotRight.length > 0 && (
-            <ul className="text-gray-700">
+            <ul className="text-ink-2">
               {result.gotRight.map((g) => (
                 <li key={g}>✓ {g}</li>
               ))}
             </ul>
           )}
           {result.missing.length > 0 && (
-            <ul className="list-disc pl-5 text-gray-600">
+            <ul className="list-disc pl-5 text-ink-2">
               {result.missing.map((m) => (
                 <li key={m}>Hint: {m}</li>
               ))}
             </ul>
           )}
-          <p className="text-gray-500">{comesBack(result)}</p>
+          <p className="text-ink-3">{comesBack(result)}</p>
           {/* Only now: shown before answering, the summary would give the answer away. */}
           {item.description && (
-            <p className="rounded-md bg-gray-50 px-3 py-2 text-gray-700">
+            <p className="rounded-control bg-sunk px-3 py-2 text-ink-2">
               <span className="font-medium">What it does:</span> {item.description}
             </p>
           )}
@@ -170,12 +170,12 @@ function DemoClock({ daysAhead, onMoved }: { daysAhead: number; onMoved: () => v
   }
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-purple-300 bg-purple-50 px-3 py-2 text-sm text-purple-700">
+    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-control border border-dashed border-line-strong bg-sunk px-3 py-2 text-sm text-ink-2">
       <span className="font-medium">Demo:</span> pretend
       <select
         value={days}
         onChange={(e) => setDays(Number(e.target.value))}
-        className="rounded border border-purple-300 bg-white px-1.5 py-0.5 text-gray-900"
+        className="rounded border border-line-strong bg-surface px-1.5 py-0.5 text-ink"
         aria-label="Days"
       >
         {[1, 3, 7, 14].map((d) => (
@@ -185,7 +185,7 @@ function DemoClock({ daysAhead, onMoved }: { daysAhead: number; onMoved: () => v
         ))}
       </select>
       {days === 1 ? "day" : "days"} passed
-      <button type="button" onClick={() => move(days)} disabled={busy} className="rounded bg-purple-700 px-2.5 py-0.5 text-white hover:opacity-90 disabled:opacity-50">
+      <button type="button" onClick={() => move(days)} disabled={busy} className="rounded bg-ink px-2.5 py-0.5 text-paper hover:opacity-90 disabled:opacity-50">
         Go
       </button>
       <button type="button" onClick={() => move("reset")} disabled={busy || daysAhead === 0} className="underline disabled:no-underline disabled:opacity-50">
@@ -225,31 +225,31 @@ export default function ReviewPage() {
   const data = current?.data ?? null;
 
   return (
-    <>
+    <div className="min-h-screen bg-paper text-ink">
       <Navbar project={project} crumbs={[{ label: "Review" }]} />
-      <div className="px-6 py-6 max-w-3xl">
-        <h1 className="text-xl font-semibold">Review</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-8">
+        <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-ink">Review</h1>
+        <p className="mt-1 text-sm text-ink-3">
           Changes you understood come back after 1 day, then 3, 7 and 14. Pass to move on; miss it and it comes back
           tomorrow.
         </p>
 
-        {!project && <p className="text-gray-500 text-center py-12">No project selected. Run lore ui from inside your project folder.</p>}
-        {project && !current && <p className="text-gray-500 text-center py-12">Loading reviews...</p>}
-        {current?.error && <p className="text-red-600 text-center py-12">{current.error}</p>}
+        {!project && <p className="text-ink-3 text-center py-12">No project selected. Run lore ui from inside your project folder.</p>}
+        {project && !current && <p className="text-ink-3 text-center py-12">Loading reviews...</p>}
+        {current?.error && <p className="text-bad text-center py-12">{current.error}</p>}
 
         {data && project && (
           <>
             {data.demo.enabled && <DemoClock daysAhead={data.demo.daysAhead} onMoved={() => setReloads((n) => n + 1)} />}
 
-            <p className="mt-4 text-sm text-gray-700">
-              <span className="font-semibold text-gray-900">{data.dueCount}</span> due today ·{" "}
-              <span className="font-semibold text-gray-900">{data.upcomingCount}</span> coming up ·{" "}
-              <span className="font-semibold text-gray-900">{data.doneCount}</span> finished
+            <p className="mt-4 text-sm text-ink-2">
+              <span className="font-semibold text-ink">{data.dueCount}</span> due today ·{" "}
+              <span className="font-semibold text-ink">{data.upcomingCount}</span> coming up ·{" "}
+              <span className="font-semibold text-ink">{data.doneCount}</span> finished
             </p>
 
             {data.due.length === 0 ? (
-              <p className="text-gray-500 text-center py-12">
+              <p className="text-ink-3 text-center py-12">
                 Nothing to review today.
                 {data.upcomingCount === 0 && " Mark changes understood, and they'll come back here a day later."}
               </p>
@@ -264,6 +264,6 @@ export default function ReviewPage() {
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }

@@ -81,16 +81,16 @@ export default function SessionList() {
   const error = current?.error ?? null;
 
   return (
-    <>
+    <div className="min-h-screen bg-paper text-ink">
     <Navbar project={project} />
-    <div className="px-6 py-6">
-      <h1 className="text-xl font-semibold mb-4">Sessions</h1>
+    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-8">
+      <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-ink mb-6">Sessions</h1>
 
       {!project && (
-        <div className="text-gray-500 text-center py-12">
+        <div className="text-ink-3 text-center py-12">
           <p>
             No project selected. Run{" "}
-            <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">
+            <code className="bg-sunk px-1.5 py-0.5 rounded text-sm font-mono">
               lore ui
             </code>{" "}
             from inside your project folder to see its sessions.
@@ -99,18 +99,18 @@ export default function SessionList() {
       )}
 
       {loading && (
-        <div className="text-gray-500 text-center py-12">Loading sessions...</div>
+        <div className="text-ink-3 text-center py-12">Loading sessions...</div>
       )}
 
       {error && (
-        <div className="text-red-600 text-center py-12">{error}</div>
+        <div className="text-bad text-center py-12">{error}</div>
       )}
 
       {!loading && sessions && sessions.length === 0 && (
-        <div className="text-gray-500 text-center py-12">
+        <div className="text-ink-3 text-center py-12">
           <p>
             No sessions yet. Run{" "}
-            <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">
+            <code className="bg-sunk px-1.5 py-0.5 rounded text-sm font-mono">
               lore start
             </code>{" "}
             in your terminal to record your first one.
@@ -119,7 +119,7 @@ export default function SessionList() {
       )}
 
       {deleteError && (
-        <div role="alert" className="mb-3 text-sm text-red-600">{deleteError}</div>
+        <div role="alert" className="mb-3 text-sm text-bad">{deleteError}</div>
       )}
 
       {!loading && sessions && sessions.length > 0 && (
@@ -130,22 +130,22 @@ export default function SessionList() {
               <li
                 key={session.id}
                 onClick={running ? undefined : () => navigate(`/sessions/${session.id}`)}
-                className={`p-4 border border-gray-200 rounded-lg bg-white transition-colors flex items-start gap-4 ${
-                  running ? "" : "cursor-pointer hover:border-blue-500"
+                className={`p-4 sm:px-5 border border-line rounded-card bg-surface transition-colors duration-150 flex items-start gap-4 ${
+                  running ? "" : "cursor-pointer hover:border-line-strong hover:bg-sunk/50"
                 }`}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium break-words">
+                  <div className="font-serif text-[17px] leading-snug font-semibold text-ink break-words">
                     {running ? "Session in progress" : sessionTitle(session.reason)}
                   </div>
-                  <div className="text-sm text-gray-500 flex gap-4 mt-1">
+                  <div className="text-sm text-ink-3 flex gap-4 mt-1">
                     <span>{new Date(session.startedAt).toLocaleString()}</span>
                     {!running && <span>{session.fileCount} files</span>}
                     {!running && <span>{session.changeCount} changes</span>}
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-ink-3 mt-1">
                     {running ? (
-                      <span className="inline-block px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                      <span className="inline-block px-2 py-0.5 rounded bg-warn-soft text-warn border border-warn/30">
                         Running. Run lore stop to review it.
                       </span>
                     ) : (
@@ -162,7 +162,7 @@ export default function SessionList() {
                     e.stopPropagation();
                     handleDelete(session.id);
                   }}
-                  className="shrink-0 text-sm px-3 py-1 rounded-md border border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-200 disabled:text-gray-400 disabled:bg-white disabled:border-gray-200 disabled:cursor-not-allowed"
+                  className="shrink-0 text-sm px-3 py-1 rounded-control border border-line text-bad hover:bg-bad-soft hover:border-bad/30 disabled:text-ink-3 disabled:bg-surface disabled:border-line disabled:cursor-not-allowed"
                 >
                   {deletingId === session.id ? "Deleting..." : "Delete"}
                 </button>
@@ -172,6 +172,6 @@ export default function SessionList() {
         </ul>
       )}
     </div>
-    </>
+    </div>
   );
 }
