@@ -53,6 +53,21 @@ class SessionCostTest {
     }
 
     @Test
+    void each_job_has_tokens_in_and_out_and_its_models() {
+        SessionCost.Cost c = cost(Path.of("/nonexistent"), "anthropic",
+                call(AiCall.Job.EXPLAIN, "claude-sonnet-5-5", 10_000, 2_000, 1_000, 500),
+                call(AiCall.Job.EXPLAIN, "claude-opus-5-5", 3_000, 700, 0, 0),
+                call(AiCall.Job.EXPLAIN, "claude-sonnet-5-5", 1, 1, 0, 0)).of(session).orElseThrow();
+
+        SessionCost.JobCost explain = job(c, "explain");
+        assertEquals(3, explain.calls());
+        assertEquals(10_000 + 1_000 + 500 + 3_000 + 1, explain.tokensIn(), "cache reads and writes are tokens in");
+        assertEquals(2_000 + 700 + 1, explain.tokensOut());
+        assertEquals(List.of("claude-opus-5-5", "claude-sonnet-5-5"), explain.models());
+        assertEquals(List.of(), job(c, "grading").models());
+    }
+
+    @Test
     void a_model_with_no_price_shows_tokens_not_dollars() {
         SessionCost.Cost c = cost(Path.of("/nonexistent"), "anthropic",
                 call(AiCall.Job.SUMMARY, "claude-haiku-5-5", 1_000, 100, 0, 0),

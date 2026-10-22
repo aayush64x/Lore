@@ -26,7 +26,9 @@ public class SessionCost {
      */
     public record Cost(BigDecimal dollars, long tokens, List<JobCost> jobs) {}
 
-    public record JobCost(String job, BigDecimal dollars, long tokens, int calls) {}
+    /** tokensIn counts cache reads and writes too; models are the model names the calls used. */
+    public record JobCost(String job, BigDecimal dollars, long tokens, int calls,
+                          long tokensIn, long tokensOut, List<String> models) {}
 
     private final AiCallRepository repository;
     private final Prices prices;
@@ -51,7 +53,10 @@ public class SessionCost {
             List<AiCall> ofJob = calls.stream().filter(c -> c.getJob() == job).toList();
             BigDecimal dollars = dollars(ofJob);
             long jobTokens = ofJob.stream().mapToLong(AiCall::totalTokens).sum();
-            jobs.add(new JobCost(job.name().toLowerCase(), dollars, jobTokens, ofJob.size()));
+            long tokensOut = ofJob.stream().mapToLong(AiCall::getOutputTokens).sum();
+            List<String> models = ofJob.stream().map(AiCall::getModel).distinct().sorted().toList();
+            jobs.add(new JobCost(job.name().toLowerCase(), dollars, jobTokens, ofJob.size(),
+                    jobTokens - tokensOut, tokensOut, models));
             total = total == null || dollars == null ? null : total.add(dollars);
             tokens += jobTokens;
         }

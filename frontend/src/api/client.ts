@@ -34,7 +34,15 @@ export interface SessionDetailResponse {
 export interface SessionCost {
   dollars: number | null;
   tokens: number;
-  jobs: { job: "summary" | "explain" | "grading"; dollars: number | null; tokens: number; calls: number }[];
+  jobs: {
+    job: "summary" | "explain" | "grading";
+    dollars: number | null;
+    tokens: number;
+    calls: number;
+    tokensIn: number; // includes cache reads and writes
+    tokensOut: number;
+    models: string[];
+  }[];
 }
 
 // One hunk from a diff — a single chunk of modified code

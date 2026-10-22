@@ -48,6 +48,10 @@ class CostEndpointTest {
                     .andExpect(jsonPath("$.cost.jobs[*].job", contains("summary", "explain", "grading")))
                     .andExpect(jsonPath("$.cost.jobs[0].dollars").value(0.0035))
                     .andExpect(jsonPath("$.cost.jobs[1].dollars").value(0.023))
+                    .andExpect(jsonPath("$.cost.jobs[1].calls").value(1))
+                    .andExpect(jsonPath("$.cost.jobs[1].tokensIn").value(4_000))
+                    .andExpect(jsonPath("$.cost.jobs[1].tokensOut").value(1_500))
+                    .andExpect(jsonPath("$.cost.jobs[1].models", contains("claude-sonnet-5-5")))
                     .andExpect(jsonPath("$.cost.jobs[2].calls").value(0));
         }
     }
