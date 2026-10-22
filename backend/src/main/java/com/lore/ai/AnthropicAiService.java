@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
+import com.lore.concept.ConceptList;
 import com.lore.cost.AiCallRecorder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +53,8 @@ public class AnthropicAiService implements AiService {
     private final String baseUrl;
     /** Saves each call's token counts for the session's cost. Null in tests that don't need it. */
     private final AiCallRecorder recorder;
+    /** The concepts each change is tagged with during the summary. Null in tests that don't need it. */
+    private final ConceptList conceptList;
 
     private AnthropicClient client;
     private String clientKey;
@@ -61,19 +64,21 @@ public class AnthropicAiService implements AiService {
                               @Value("${lore.anthropic.explain-model}") String defaultExplainModel,
                               @Value("${lore.anthropic.summary-model}") String defaultSummaryModel,
                               @Value("${lore.anthropic.grading-model}") String defaultGradingModel,
-                              AiCallRecorder recorder) {
-        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, API_BASE_URL, recorder);
+                              AiCallRecorder recorder,
+                              ConceptList conceptList) {
+        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, API_BASE_URL, recorder, conceptList);
     }
 
     /** Tests only: points the client at a local stub server instead of api.anthropic.com. */
     AnthropicAiService(ApiKeyStore keyStore, String defaultExplainModel, String defaultSummaryModel,
                        String defaultGradingModel, String baseUrl) {
-        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, baseUrl, null);
+        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, baseUrl, null, null);
     }
 
     AnthropicAiService(ApiKeyStore keyStore, String defaultExplainModel, String defaultSummaryModel,
-                       String defaultGradingModel, String baseUrl, AiCallRecorder recorder) {
+                       String defaultGradingModel, String baseUrl, AiCallRecorder recorder, ConceptList conceptList) {
         this.recorder = recorder;
+        this.conceptList = conceptList;
         this.keyStore = keyStore;
         this.defaultExplainModel = defaultExplainModel;
         this.defaultSummaryModel = defaultSummaryModel;
@@ -99,7 +104,9 @@ public class AnthropicAiService implements AiService {
             @JsonPropertyDescription("file path copied from the change's header")
             String filePath,
             @JsonPropertyDescription("One line saying what this change does")
-            String description) {}
+            String description,
+            @JsonPropertyDescription("1-3 concept names copied exactly from the CONCEPTS list, or one \"Other: <name>\"")
+            List<String> concepts) {}
 
     /** The schema lists these names as they are, so the prompt uses them too. */
     enum GoalMatch { YES, PARTLY, NO }
@@ -130,7 +137,9 @@ public class AnthropicAiService implements AiService {
             GoalMatch matchesGoal,
             @JsonProperty("goal_reason")
             @JsonPropertyDescription("One short line saying why")
-            String goalReason) {}
+            String goalReason,
+            @JsonPropertyDescription("1-3 concept names copied exactly from the CONCEPTS list, or one \"Other: <name>\"")
+            List<String> concepts) {}
 
     /** One summary joined from the summaries of a big session's parts. */
     record CombinedOutput(
@@ -194,21 +203,22 @@ public class AnthropicAiService implements AiService {
         if (reason != null && !reason.isBlank()) return summarizeWithGoal(changes, reason);
 
         SummaryOutput out = summaryCall(SummaryOutput.class,
-                AiPrompts.summarySystemPrompt(),
+                AiPrompts.summarySystemPrompt() + conceptInstructions(),
                 AiPrompts.summaryUserMessage(changes, reason));
 
         List<SummaryResponse.ChangeDescription> descriptions = out.changeDescriptions() == null
                 ? List.of()
                 : out.changeDescriptions().stream()
                         .filter(Objects::nonNull)
-                        .map(d -> new SummaryResponse.ChangeDescription(d.filePath(), d.displayOrder(), d.description()))
+                        .map(d -> new SummaryResponse.ChangeDescription(d.filePath(), d.displayOrder(), d.description(),
+                                null, null, d.concepts()))
                         .toList();
         return new SummaryResponse(out.sessionSummary(), descriptions);
     }
 
     private SummaryResponse summarizeWithGoal(List<ChangeInput> changes, String reason) {
         GoalSummaryOutput out = summaryCall(GoalSummaryOutput.class,
-                AiPrompts.summaryWithGoalSystemPrompt(),
+                AiPrompts.summaryWithGoalSystemPrompt() + conceptInstructions(),
                 AiPrompts.summaryUserMessage(changes, reason));
 
         List<SummaryResponse.ChangeDescription> descriptions = out.changeDescriptions() == null
@@ -217,11 +227,16 @@ public class AnthropicAiService implements AiService {
                         .filter(Objects::nonNull)
                         .map(d -> new SummaryResponse.ChangeDescription(d.filePath(), d.displayOrder(), d.description(),
                                 d.matchesGoal() == null ? null : d.matchesGoal().name().toLowerCase(),
-                                d.goalReason()))
+                                d.goalReason(), d.concepts()))
                         .toList();
         List<String> gaps = out.goalPartsNotDone() == null ? List.of()
                 : out.goalPartsNotDone().stream().filter(g -> g != null && !g.isBlank()).map(String::strip).toList();
         return new SummaryResponse(out.sessionSummary(), descriptions, gaps);
+    }
+
+    /** The concept list for the summary prompt; empty when there's no list (some tests). */
+    private String conceptInstructions() {
+        return conceptList == null ? "" : AiPrompts.conceptInstructions(conceptList.names());
     }
 
     @Override

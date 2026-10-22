@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
+import com.lore.concept.ConceptList;
 import com.lore.cost.AiCall;
 import com.lore.cost.AiCallRecorder;
 import com.lore.cost.AiCallRepository;
@@ -87,7 +88,7 @@ class AnthropicAiServiceTest {
     private AnthropicAiService recordingService(Path home, AiCallRecorder recorder) {
         ApiKeyStore store = new ApiKeyStore(home, name -> ApiKeyStore.ENV_VAR.equals(name) ? FAKE_KEY : null);
         return new AnthropicAiService(store, "claude-sonnet-5-5", "claude-haiku-5-5", "claude-haiku-5-5",
-                "http://127.0.0.1:" + server.getAddress().getPort(), recorder);
+                "http://127.0.0.1:" + server.getAddress().getPort(), recorder, null);
     }
 
     @Test
@@ -141,6 +142,26 @@ class AnthropicAiServiceTest {
 
         assertEquals("Still here.", r.sessionSummary());
         verify(repository).save(any(AiCall.class));
+    }
+
+    @Test
+    void the_summary_asks_for_concepts_from_the_list_and_passes_them_on(@TempDir Path home) throws Exception {
+        ApiKeyStore store = new ApiKeyStore(home, name -> ApiKeyStore.ENV_VAR.equals(name) ? FAKE_KEY : null);
+        AnthropicAiService ai = new AnthropicAiService(store, "claude-sonnet-5-5", "claude-haiku-5-5", "claude-haiku-5-5",
+                "http://127.0.0.1:" + server.getAddress().getPort(), null, new ConceptList(home));
+        responseBody = message("""
+                {"session_summary": "Added a loop.", "change_descriptions": [
+                  {"display_order": 0, "file_path": "a.js", "description": "Loops over items.", "concepts": ["Loops", "Other: Iterators"]}]}""");
+
+        SummaryResponse r = ai.summarize(List.of(new AiService.ChangeInput(0, "a.js", "MODIFIED", "+for (x of y) {}\n", false)), null);
+
+        assertEquals(List.of("Loops", "Other: Iterators"), r.changeDescriptions().get(0).concepts(),
+                "passed on as sent; checking against the list happens when they're saved");
+        JsonNode body = seenBody.get();
+        String system = body.at("/system").toString();
+        assertTrue(system.contains("CONCEPTS:") && system.contains("- Loops") && system.contains("- Side effects (useEffect)"), system);
+        assertTrue(body.at("/output_config/format/schema/properties/change_descriptions/items/properties").has("concepts"),
+                body.toString());
     }
 
     @Test

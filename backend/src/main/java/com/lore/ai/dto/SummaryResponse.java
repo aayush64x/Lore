@@ -16,11 +16,20 @@ public record SummaryResponse(
         this(sessionSummary, changeDescriptions, null);
     }
 
-    /** goalMatch is "yes", "partly" or "no"; null (with goalReason) when the goal wasn't checked. */
+    /**
+     * goalMatch is "yes", "partly" or "no"; null (with goalReason) when the goal wasn't checked.
+     * concepts are the names the AI picked, as sent (checked against the list when saved);
+     * null when the provider doesn't tag concepts.
+     */
     public record ChangeDescription(String filePath, int displayOrder, String description,
-                                    String goalMatch, String goalReason) {
+                                    String goalMatch, String goalReason, List<String> concepts) {
         public ChangeDescription(String filePath, int displayOrder, String description) {
-            this(filePath, displayOrder, description, null, null);
+            this(filePath, displayOrder, description, null, null, null);
+        }
+
+        public ChangeDescription(String filePath, int displayOrder, String description,
+                                 String goalMatch, String goalReason) {
+            this(filePath, displayOrder, description, goalMatch, goalReason, null);
         }
     }
 }

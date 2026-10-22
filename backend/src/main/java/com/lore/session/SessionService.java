@@ -10,6 +10,10 @@ import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.change.ExplanationRepository;
 import com.lore.change.TeachBackAttemptRepository;
+import com.lore.concept.ChangeConcept;
+import com.lore.concept.ChangeConceptRepository;
+import com.lore.concept.ConceptList;
+import com.lore.concept.ConceptTags;
 import com.lore.cost.AiCall;
 import com.lore.cost.AiCallRecorder;
 import com.lore.cost.AiCallRepository;
@@ -27,11 +31,13 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -64,6 +70,8 @@ public class SessionService {
     private final TeachBackAttemptRepository attemptRepository;
     private final AiCallRepository aiCallRepository;
     private final AiCallRecorder recorder;
+    private final ChangeConceptRepository conceptRepository;
+    private final ConceptList conceptList;
     private final TransactionTemplate transaction;
 
     public SessionService(SessionRepository sessionRepository,
@@ -75,6 +83,8 @@ public class SessionService {
                           TeachBackAttemptRepository attemptRepository,
                           AiCallRepository aiCallRepository,
                           AiCallRecorder recorder,
+                          ChangeConceptRepository conceptRepository,
+                          ConceptList conceptList,
                           PlatformTransactionManager transactionManager) {
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
@@ -85,6 +95,8 @@ public class SessionService {
         this.attemptRepository = attemptRepository;
         this.aiCallRepository = aiCallRepository;
         this.recorder = recorder;
+        this.conceptRepository = conceptRepository;
+        this.conceptList = conceptList;
         this.transaction = new TransactionTemplate(transactionManager);
     }
 
@@ -181,7 +193,8 @@ public class SessionService {
 
     /**
      * Deletes a stopped (or discarded) session and everything saved for it: AI call costs,
-     * teach-back attempts, explanations (with their key points), changes, then the session, in one
+     * teach-back attempts, explanations (with their key points), concept tags, changes, then
+     * the session, in one
      * transaction. The foreign keys don't cascade, so children go first. Only after that
      * commits are the session's own snapshot refs removed from the project's repo.
      *
@@ -195,6 +208,7 @@ public class SessionService {
             aiCallRepository.deleteAll(aiCallRepository.findBySessionId(sessionId));
             attemptRepository.deleteAll(attemptRepository.findByChangeSessionIdOrderByCreatedAt(sessionId));
             explanationRepository.deleteAll(explanationRepository.findByChangeSessionId(sessionId));
+            conceptRepository.deleteAll(conceptRepository.findByChangeSessionId(sessionId));
             changeRepository.deleteAll(changeRepository.findBySessionIdOrderByDisplayOrder(sessionId));
             sessionRepository.delete(s);
             return s;
@@ -285,6 +299,7 @@ public class SessionService {
             });
             applyDescriptions(changes, summary.changeDescriptions());
             changeRepository.saveAll(changes);
+            saveConcepts(sessionId, changes, summary.changeDescriptions());
             return null;
         } catch (AiUnavailableException e) {
             // Expected (e.g. no key yet). The reason goes back to the caller, which shows it.
@@ -397,6 +412,31 @@ public class SessionService {
             target.setGoalReason(target.getGoalMatch() == null || d.goalReason() == null || d.goalReason().isBlank()
                     ? null : d.goalReason().strip());
         }
+    }
+
+    /**
+     * Replaces the session's concept tags with the ones the AI picked, checked against
+     * concepts.txt (see ConceptTags). Matched to changes like descriptions are: by
+     * display_order, and only if the file_path agrees.
+     */
+    private void saveConcepts(UUID sessionId, List<Change> changes, List<SummaryResponse.ChangeDescription> descriptions) {
+        conceptRepository.deleteAll(conceptRepository.findByChangeSessionId(sessionId));
+        if (descriptions == null) return;
+        Map<Integer, Change> byOrder = new HashMap<>();
+        for (Change c : changes) byOrder.put(c.getDisplayOrder(), c);
+        List<String> names = conceptList.names();
+        Set<UUID> tagged = new HashSet<>();
+        List<ChangeConcept> rows = new ArrayList<>();
+        for (SummaryResponse.ChangeDescription d : descriptions) {
+            if (d == null) continue;
+            Change target = byOrder.get(d.displayOrder());
+            if (target == null || (d.filePath() != null && !d.filePath().equals(target.getFilePath()))) continue;
+            if (!tagged.add(target.getId())) continue; // one set of tags per change
+            for (ConceptTags.Tag tag : ConceptTags.clean(d.concepts(), names)) {
+                rows.add(new ChangeConcept(target, tag.name(), tag.other()));
+            }
+        }
+        conceptRepository.saveAll(rows);
     }
 
     /** "yes" / "partly" / "no" from the AI; anything else counts as not checked. */

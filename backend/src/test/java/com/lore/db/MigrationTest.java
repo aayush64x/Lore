@@ -142,4 +142,28 @@ class MigrationTest {
                     + "'00000000-0000-0000-0000-000000000001', 'EXPLAIN', 'claude-sonnet-5-5', 1, 1, 0, 0, CURRENT_TIMESTAMP)");
         }
     }
+
+    @Test
+    void v10_adds_an_empty_concept_table_and_old_changes_have_no_tags() throws Exception {
+        String url = newDb();
+        migrateTo(url, "9");
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            s.execute("INSERT INTO sessions (id, project_path, start_ref, status, started_at) "
+                    + "VALUES ('00000000-0000-0000-0000-000000000001', '/p', 'r', 'COMPLETE', CURRENT_TIMESTAMP)");
+            s.execute("INSERT INTO changes (id, session_id, file_path, change_type) VALUES "
+                    + "('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000001', 'a.js', 'MODIFIED')");
+        }
+
+        migrateTo(url, "10");
+
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            try (ResultSet r = s.executeQuery("SELECT (SELECT COUNT(*) FROM changes), (SELECT COUNT(*) FROM change_concepts)")) {
+                assertTrue(r.next());
+                assertEquals(1, r.getInt(1));
+                assertEquals(0, r.getInt(2));
+            }
+            s.execute("INSERT INTO change_concepts (id, change_id, name, other) VALUES ('00000000-0000-0000-0000-0000000000c1', "
+                    + "'00000000-0000-0000-0000-00000000000a', 'Loops', FALSE)");
+        }
+    }
 }

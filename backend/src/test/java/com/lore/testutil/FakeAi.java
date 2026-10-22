@@ -65,6 +65,7 @@ public class FakeAi implements AiService {
         explainCalls = 0;
         garbledAnswers = 0;
         goalGaps = List.of("Add a test");
+        conceptNames = List.of("functions", "Made-up concept", "Loops");
         explainIssue = null;
         explainTestable = true;
         gradeVerdicts.clear();
@@ -81,6 +82,17 @@ public class FakeAi implements AiService {
         return "}]}";
     }
 
+    /**
+     * The concept names the summary sends for a file, as an AI might write them: a file
+     * named "other…" gets only an off-list suggestion; any other file gets conceptNames.
+     */
+    public volatile List<String> conceptNames = List.of("functions", "Made-up concept", "Loops");
+
+    private List<String> conceptsFor(String path) {
+        String name = path.substring(path.lastIndexOf('/') + 1);
+        return name.startsWith("other") ? List.of("Other: WebSockets") : conceptNames;
+    }
+
     /** synchronized: a big session's parts are summarized at the same time. */
     @Override
     public synchronized SummaryResponse summarize(List<ChangeInput> changes, String reason) {
@@ -92,12 +104,13 @@ public class FakeAi implements AiService {
         // Like the real service: the goal check only when a goal was given.
         if (reason == null || reason.isBlank()) {
             return new SummaryResponse(summary, changes.stream()
-                    .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath()))
+                    .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath(),
+                            null, null, conceptsFor(c.filePath())))
                     .toList());
         }
         return new SummaryResponse(summary, changes.stream()
                 .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath(),
-                        goalMatch(c.filePath()), "because of " + c.filePath()))
+                        goalMatch(c.filePath()), "because of " + c.filePath(), conceptsFor(c.filePath())))
                 .toList(), goalGaps);
     }
 

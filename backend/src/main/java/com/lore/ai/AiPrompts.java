@@ -92,6 +92,28 @@ public final class AiPrompts {
         return sb.toString();
     }
 
+    /**
+     * Added to the summary prompt: tag each change with 1-3 concepts from the list.
+     * General lessons only; "Other: <name>" only when nothing on the list fits.
+     */
+    public static String conceptInstructions(List<String> concepts) {
+        StringBuilder sb = new StringBuilder("""
+
+
+                CONCEPTS: for each entry in "change_descriptions" also return "concepts": the 1 to 3 \
+                concepts from the list below that someone would need to learn to understand this \
+                change. They are general lessons, the kind a beginner course has one lesson on, not \
+                details: pick "Loops", never "for-of loop over chunks". Copy each name exactly as it \
+                is written in the list. Pick the fewest that fit; 1 is fine. Only if nothing on the \
+                list fits at all, return exactly one item: "Other: " followed by a general lesson \
+                name of 1 to 4 words.
+
+                The list:
+                """);
+        for (String c : concepts) sb.append("- ").append(c).append('\n');
+        return sb.toString();
+    }
+
     /** For a session summarized in parts: one summary from the parts' summaries. */
     public static String combineSystemPrompt() {
         return """
