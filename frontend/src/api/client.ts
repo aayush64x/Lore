@@ -211,6 +211,33 @@ export async function retrySummary(id: string): Promise<SessionDetailResponse> {
   return response.json();
 }
 
+// One concept on the Concepts page. group is its heading in concepts.txt (null for
+// suggestions, and for a concept no longer on the list).
+export interface ConceptCount {
+  name: string;
+  group: string | null;
+  seen: number;       // changes tagged with it
+  understood: number; // of those, marked understood or passed in teach-back
+  sessions: number;
+  lastSeen: string | null; // ISO timestamp
+}
+
+export interface ConceptsResponse {
+  concepts: ConceptCount[]; // from the list, most seen first
+  others: ConceptCount[];   // "Other" suggestions, to review and maybe add to the list
+  changes: number;           // tagged changes, each counted once however many tags it has
+  understoodChanges: number; // of those, understood
+}
+
+// GET /api/concepts?project=...
+export async function fetchConcepts(project: string): Promise<ConceptsResponse> {
+  const response = await fetch(`/api/concepts?project=${encodeURIComponent(project)}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+  return response.json();
+}
+
 // GET /api/sessions/{id}/cost
 // The cost so far, re-read after an Explain or a teach-back answer adds to it.
 export async function fetchSessionCost(id: string): Promise<SessionCost | null> {
@@ -240,6 +267,11 @@ export const DELETE_CONFIRM = "Delete this session? This can't be undone.";
 // The session list's address for a project.
 export function sessionsUrl(project: string | null): string {
   return project ? `/?project=${encodeURIComponent(project)}` : "/";
+}
+
+// The Concepts page's address for a project.
+export function conceptsUrl(project: string): string {
+  return `/concepts?project=${encodeURIComponent(project)}`;
 }
 
 // "What were you trying to do?" can be many lines. The first line is the title;

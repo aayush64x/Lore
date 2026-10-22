@@ -26,7 +26,8 @@ public class ConceptStats {
     /** group is the concept's heading in concepts.txt; null if it's no longer on the list. */
     public record ConceptCount(String name, String group, int seen, int understood, int sessions, Instant lastSeen) {}
 
-    public record Result(List<ConceptCount> concepts, List<ConceptCount> others) {}
+    /** changes = tagged changes (each counted once, however many tags), understoodChanges = of those. */
+    public record Result(List<ConceptCount> concepts, List<ConceptCount> others, int changes, int understoodChanges) {}
 
     private final ChangeConceptRepository repository;
     private final ConceptList conceptList;
@@ -42,12 +43,15 @@ public class ConceptStats {
 
         Map<String, List<ChangeConcept>> listed = new LinkedHashMap<>();
         Map<String, List<ChangeConcept>> others = new LinkedHashMap<>();
+        Map<UUID, Boolean> changes = new HashMap<>();
         for (ChangeConcept tag : repository.findInProject(project)) {
+            changes.put(tag.getChange().getId(), tag.getChange().isUnderstood());
             // Others are suggestions: the same idea in different case counts once.
             String key = tag.isOther() ? ConceptList.key(tag.getName()) : tag.getName();
             (tag.isOther() ? others : listed).computeIfAbsent(key, k -> new ArrayList<>()).add(tag);
         }
-        return new Result(counts(listed, groups), counts(others, Map.of()));
+        int understood = (int) changes.values().stream().filter(u -> u).count();
+        return new Result(counts(listed, groups), counts(others, Map.of()), changes.size(), understood);
     }
 
     /** Most seen first, then by name. */

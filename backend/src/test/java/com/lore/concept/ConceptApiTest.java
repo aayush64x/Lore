@@ -90,7 +90,10 @@ class ConceptApiTest {
                 .andExpect(jsonPath("$.others[0].seen").value(2))
                 .andExpect(jsonPath("$.others[0].understood").value(0))
                 .andExpect(jsonPath("$.others[0].sessions").value(2))
-                .andExpect(jsonPath("$.others[0].group").value(nullValue()));
+                .andExpect(jsonPath("$.others[0].group").value(nullValue()))
+                // 5 tagged changes in this project, 2 understood: each change once, not once per tag.
+                .andExpect(jsonPath("$.changes").value(5))
+                .andExpect(jsonPath("$.understoodChanges").value(2));
     }
 
     @Test
@@ -120,6 +123,7 @@ class ConceptApiTest {
         mvc.perform(get("/api/concepts").param("project", project))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.concepts", hasSize(0)))
-                .andExpect(jsonPath("$.others", hasSize(0)));
+                .andExpect(jsonPath("$.others", hasSize(0)))
+                .andExpect(jsonPath("$.changes").value(0));
     }
 }

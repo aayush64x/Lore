@@ -113,6 +113,14 @@ A tip: the more specific you are at `lore stop` ("add login with password reset"
 
 Lore must run inside a git repository. If the folder isn't one, it tells you to run `git init` and does nothing else.
 
+## Concepts
+
+When you run `lore stop`, each change is tagged with 1–3 general concepts, like "Loops" or "Fetching data from APIs", picked from a fixed list. The **Concepts** page (link in the top bar) shows every concept from your sessions in this project: how many changes used it, and how many of those you understood.
+
+When nothing on the list fits a change, the AI suggests a name instead. Those show up apart, under "Suggested, not on your list".
+
+To change the list, put your own copy at `~/.lore/concepts.txt`. **It replaces the built-in list completely**, so start from a full copy of [`backend/src/main/resources/concepts.txt`](backend/src/main/resources/concepts.txt) and add or remove lines. One concept per line; a `#` line right above a group of concepts is that group's heading. Changes count from the next `lore stop` on; already tagged sessions keep their tags.
+
 ## Costs
 
 Lore calls Claude with your key only when:

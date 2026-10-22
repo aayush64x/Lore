@@ -4,6 +4,7 @@
 //   /              → SessionList (home page, shows all sessions)
 //   /sessions/:id  → SessionPage (one session: goal, files, diff and explanations)
 //   /sessions/:id/file?path=... → the same page, with that file selected
+//   /concepts      → ConceptsPage (concepts across the project's sessions)
 //   One route with an optional "file" part, so moving between files keeps the page
 //   (and anything already explained) instead of loading it again.
 //
@@ -13,6 +14,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import SessionList from './pages/SessionList';
 import SessionPage from './pages/SessionPage';
+import ConceptsPage from './pages/ConceptsPage';
 
 export default function App() {
   return (
@@ -20,6 +22,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<SessionList />} />
         <Route path="/sessions/:id/file?" element={<SessionPage />} />
+        <Route path="/concepts" element={<ConceptsPage />} />
       </Routes>
     </BrowserRouter>
   );

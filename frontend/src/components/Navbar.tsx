@@ -8,8 +8,8 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
-import { sessionsUrl } from "../api/client";
+import { Link, useLocation } from "react-router-dom";
+import { conceptsUrl, sessionsUrl } from "../api/client";
 
 export interface Crumb {
   label: string;
@@ -34,6 +34,7 @@ function projectName(project: string): string {
 
 export default function Navbar({ project, crumbs = [], center, right, scrolled = false }: NavbarProps) {
   const [windowScrolled, setWindowScrolled] = useState(false);
+  const onConcepts = useLocation().pathname === "/concepts";
 
   useEffect(() => {
     const onScroll = () => setWindowScrolled(window.scrollY > 0);
@@ -87,6 +88,15 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
           })}
         </ol>
       </nav>
+      {project && (
+        <Link
+          to={conceptsUrl(project)}
+          aria-current={onConcepts ? "page" : undefined}
+          className={`shrink-0 ${onConcepts ? "font-semibold text-gray-900" : "text-gray-600 hover:text-gray-900"}`}
+        >
+          Concepts
+        </Link>
+      )}
       {center && <div className="shrink-0">{center}</div>}
       {right && <div className="shrink-0 ml-auto">{right}</div>}
       </div>

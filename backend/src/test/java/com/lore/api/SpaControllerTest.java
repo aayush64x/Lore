@@ -31,4 +31,11 @@ class SpaControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("/index.html"));
     }
+
+    @Test
+    void conceptsPageLoadsApp() throws Exception {
+        mvc.perform(get("/concepts").param("project", "/p"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"));
+    }
 }
