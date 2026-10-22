@@ -53,13 +53,16 @@ public class SessionController {
 
     }
 
+    /** Stopped sessions, plus the running one (if any), so the page can show it as Running. */
     @GetMapping("/sessions")
     public List<SessionResponse> getAllSessions(@RequestParam String project){
-        List<Session> sessionList = sessionRepository.findByProjectPathAndStatusOrderByStartedAtDesc(project, Session.SessionStatus.COMPLETE);
+        List<Session> sessionList = sessionRepository.findByProjectPathAndStatusInOrderByStartedAtDesc(
+                project, List.of(Session.SessionStatus.ACTIVE, Session.SessionStatus.COMPLETE));
         List<SessionResponse> sessionResponseList = new ArrayList<>();
         for(Session session : sessionList){
             SessionResponse sessionResponse = new SessionResponse(
                     session.getId(),
+                    session.getStatus().toString(),
                     session.getReason(),
                     session.getSummary(),
                     session.getSummaryStatus().toString(),
@@ -105,6 +108,22 @@ public class SessionController {
         return ResponseEntity.ok(toDetail(result.session()));
     }
 
+    /**
+     * Deletes a session and everything saved for it, then its snapshot refs.
+     * 204: deleted. 404: no such session. 409: {"error": "..."} when it is still running.
+     */
+    @DeleteMapping("/sessions/{id}")
+    public ResponseEntity<?> deleteSession(@PathVariable UUID id) {
+        try {
+            sessionService.delete(id);
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        }
+        return ResponseEntity.noContent().build();
+    }
+
     private SessionDetailResponse toDetail(Session session) {
         UUID id = session.getId();
         // Saved explanations ride along, so the page shows them without asking the AI again.
@@ -146,6 +165,7 @@ public class SessionController {
 
         return new SessionDetailResponse(
                 session.getId(),
+                session.getStatus().toString(),
                 session.getProjectPath(),
                 session.getReason(),
                 session.getSummary(),

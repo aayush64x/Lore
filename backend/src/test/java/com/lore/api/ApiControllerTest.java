@@ -80,11 +80,12 @@ class ApiControllerTest {
     // --- GET /api/sessions ---
 
     @Test
-    void list_shows_only_finished_sessions_for_this_project_newest_first() throws Exception {
+    void list_shows_finished_and_running_sessions_for_this_project_newest_first() throws Exception {
         Session older = session(project, Session.SessionStatus.COMPLETE, "older");
         Thread.sleep(5);
         Session newer = session(project, Session.SessionStatus.COMPLETE, "newer");
-        session(project, Session.SessionStatus.ACTIVE, "running");
+        Thread.sleep(5);
+        Session running = session(project, Session.SessionStatus.ACTIVE, "running");
         session(project, Session.SessionStatus.DISCARDED, "discarded");
         session(project + "-other", Session.SessionStatus.COMPLETE, "other project");
 
@@ -96,13 +97,16 @@ class ApiControllerTest {
 
         mvc.perform(get("/api/sessions").param("project", project))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id").value(newer.getId().toString()))
-                .andExpect(jsonPath("$[0].fileCount").value(2))
-                .andExpect(jsonPath("$[0].changeCount").value(3))
-                .andExpect(jsonPath("$[0].understoodCount").value(1))
-                .andExpect(jsonPath("$[1].id").value(older.getId().toString()))
-                .andExpect(jsonPath("$[1].changeCount").value(0));
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].id").value(running.getId().toString()))
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$[1].id").value(newer.getId().toString()))
+                .andExpect(jsonPath("$[1].status").value("COMPLETE"))
+                .andExpect(jsonPath("$[1].fileCount").value(2))
+                .andExpect(jsonPath("$[1].changeCount").value(3))
+                .andExpect(jsonPath("$[1].understoodCount").value(1))
+                .andExpect(jsonPath("$[2].id").value(older.getId().toString()))
+                .andExpect(jsonPath("$[2].changeCount").value(0));
     }
 
     @Test

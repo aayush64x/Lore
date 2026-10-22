@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { sessionsUrl } from "../api/client";
 
 export interface Crumb {
   label: string;
@@ -25,10 +26,6 @@ interface NavbarProps {
   scrolled?: boolean;
 }
 
-// The session list's address for a project.
-function sessionsUrl(project: string | null): string {
-  return project ? `/?project=${encodeURIComponent(project)}` : "/";
-}
 
 // "/Users/me/code/my-app" → "my-app" (also works with Windows "\").
 function projectName(project: string): string {

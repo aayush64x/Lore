@@ -13,7 +13,18 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { CSSProperties } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { TeachBackError, explainChange, fetchSession, retrySummary, sessionTitle, teachBack, toggleUnderstood } from "../api/client";
+import {
+  DELETE_CONFIRM,
+  TeachBackError,
+  deleteSession,
+  explainChange,
+  fetchSession,
+  retrySummary,
+  sessionTitle,
+  sessionsUrl,
+  teachBack,
+  toggleUnderstood,
+} from "../api/client";
 import type { ChangeResponse, ExplanationConcept, ExplanationData, SessionDetailResponse, TeachBackResult } from "../api/client";
 import ChangeDiff from "../components/ChangeDiff";
 import ExplainPanel from "../components/ExplainPanel";
@@ -53,6 +64,8 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
 
   // Per change, so switching changes (or files) keeps what was already explained.
@@ -222,6 +235,19 @@ export default function SessionPage() {
       .then((data) => setSession(data))
       .catch((err: Error) => setRetryError(err.message))
       .finally(() => setRetrying(false));
+  }
+
+  // Asks first; once deleted there's nothing to show here, so go back to the list.
+  function handleDelete() {
+    if (!session || !window.confirm(DELETE_CONFIRM)) return;
+    setDeleting(true);
+    setDeleteError(null);
+    deleteSession(session.id)
+      .then(() => navigate(sessionsUrl(session.projectPath)))
+      .catch((err: Error) => {
+        setDeleteError(err.message);
+        setDeleting(false);
+      });
   }
 
   async function handleExplain(changeId: string, refresh = false) {
@@ -438,6 +464,9 @@ export default function SessionPage() {
         onRetrySummary={handleRetrySummary}
         retrying={retrying}
         retryError={retryError}
+        onDelete={handleDelete}
+        deleting={deleting}
+        deleteError={deleteError}
       />
       {/* The sidebar's width is a CSS variable in the grid, so changing it animates the
           column and the diff grows into the space instead of jumping. */}

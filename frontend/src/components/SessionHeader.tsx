@@ -14,6 +14,9 @@ interface SessionHeaderProps {
   onRetrySummary: () => void;
   retrying: boolean;
   retryError: string | null;
+  onDelete: () => void;
+  deleting: boolean;
+  deleteError: string | null;
 }
 
 // "42 min", "1 h 5 min", "under 1 min". Null while the session is still running.
@@ -40,11 +43,15 @@ export default function SessionHeader({
   onRetrySummary,
   retrying,
   retryError,
+  onDelete,
+  deleting,
+  deleteError,
 }: SessionHeaderProps) {
   const [summaryOpen, setSummaryOpen] = useState(true);
   const details = sessionDetails(session.reason);
   const time = duration(session.startedAt, session.stoppedAt);
   const allDone = total > 0 && understood === total;
+  const running = session.status === "ACTIVE";
 
   const stats: ReactNode[] = [
     time,
@@ -72,7 +79,7 @@ export default function SessionHeader({
             ))}
           </div>
         </div>
-        <div className="shrink-0 pt-3">
+        <div className="shrink-0 pt-3 flex flex-col items-end gap-2">
           {allDone ? (
             <span className="inline-block text-sm font-medium px-4 py-2 rounded-md bg-green-50 text-green-700 border border-green-200">
               All understood 🎉
@@ -85,6 +92,19 @@ export default function SessionHeader({
               Start learning →
             </button>
           )}
+          <div className="flex items-center gap-2 text-xs">
+            {running && <span className="text-amber-800">Running</span>}
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={running || deleting}
+              title={running ? "Stop this session first with lore stop." : "Delete this session"}
+              className="text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+            >
+              {deleting ? "Deleting..." : "Delete session"}
+            </button>
+          </div>
+          {deleteError && <span role="alert" className="text-xs text-red-600 max-w-xs text-right">{deleteError}</span>}
         </div>
       </div>
 

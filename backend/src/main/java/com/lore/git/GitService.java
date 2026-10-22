@@ -108,6 +108,23 @@ public class GitService {
     }
 
     /**
+     * True if this exact ref (a full name like refs/lore/sessions/...) exists.
+     */
+    public boolean refExists(Path repoDir, String ref) throws IOException {
+        Process process = new ProcessBuilder("git", "show-ref", "--verify", "--quiet", ref)
+                .directory(repoDir.toFile())
+                .redirectErrorStream(true)
+                .start();
+        try {
+            process.getInputStream().readAllBytes();
+            return process.waitFor() == 0;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while checking ref", e);
+        }
+    }
+
+    /**
      * Deletes a git ref (for discarding sessions).
      */
     public void deleteRef(Path repoDir, String ref) throws IOException {

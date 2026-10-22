@@ -10,4 +10,6 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
 
     Optional<Session> findByProjectPathAndStatus(String projectPath, Session.SessionStatus status);
     List<Session> findByProjectPathAndStatusOrderByStartedAtDesc(String projectPath, Session.SessionStatus status);
+
+    List<Session> findByProjectPathAndStatusInOrderByStartedAtDesc(String projectPath, List<Session.SessionStatus> statuses);
 }

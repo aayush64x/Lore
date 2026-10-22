@@ -8,13 +8,18 @@ import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.SummaryResponse;
 import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
+import com.lore.change.ExplanationRepository;
+import com.lore.change.TeachBackAttemptRepository;
 import com.lore.git.DiffParser;
 import com.lore.git.GitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,6 +27,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -51,17 +57,26 @@ public class SessionService {
     private final GitService gitService;
     private final DiffParser diffParser;
     private final AiService aiService;
+    private final ExplanationRepository explanationRepository;
+    private final TeachBackAttemptRepository attemptRepository;
+    private final TransactionTemplate transaction;
 
     public SessionService(SessionRepository sessionRepository,
                           ChangeRepository changeRepository,
                           GitService gitService,
                           DiffParser diffParser,
-                          AiService aiService) {
+                          AiService aiService,
+                          ExplanationRepository explanationRepository,
+                          TeachBackAttemptRepository attemptRepository,
+                          PlatformTransactionManager transactionManager) {
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
         this.gitService = gitService;
         this.diffParser = diffParser;
         this.aiService = aiService;
+        this.explanationRepository = explanationRepository;
+        this.attemptRepository = attemptRepository;
+        this.transaction = new TransactionTemplate(transactionManager);
     }
 
     public Session start(Path projectDir) throws IOException {
@@ -150,6 +165,58 @@ public class SessionService {
         String projectPath = repoRoot.toAbsolutePath().toString();
         return sessionRepository.findByProjectPathAndStatus(
                 projectPath, Session.SessionStatus.ACTIVE);
+    }
+
+    /** Shown when someone tries to delete a session that is still recording. */
+    public static final String STOP_FIRST = "Stop this session first with lore stop.";
+
+    /**
+     * Deletes a stopped (or discarded) session and everything saved for it: teach-back
+     * attempts, explanations (with their key points), changes, then the session, in one
+     * transaction. The foreign keys don't cascade, so children go first. Only after that
+     * commits are the session's own snapshot refs removed from the project's repo.
+     *
+     * @throws NoSuchElementException if the session doesn't exist
+     * @throws IllegalStateException if the session is still running
+     */
+    public void delete(UUID sessionId) {
+        Session session = transaction.execute(status -> {
+            Session s = sessionRepository.findById(sessionId).orElseThrow();
+            if (s.getStatus() == Session.SessionStatus.ACTIVE) throw new IllegalStateException(STOP_FIRST);
+            attemptRepository.deleteAll(attemptRepository.findByChangeSessionIdOrderByCreatedAt(sessionId));
+            explanationRepository.deleteAll(explanationRepository.findByChangeSessionId(sessionId));
+            changeRepository.deleteAll(changeRepository.findBySessionIdOrderByDisplayOrder(sessionId));
+            sessionRepository.delete(s);
+            return s;
+        });
+        deleteSnapshotRefs(session);
+    }
+
+    /**
+     * Removes the session's start and stop refs, and nothing else: a ref is only deleted
+     * if it is exactly refs/lore/sessions/{id} or refs/lore/sessions/{id}-stop. The rows
+     * are already gone, so a missing folder or a git error is logged, never thrown.
+     */
+    private void deleteSnapshotRefs(Session session) {
+        String own = "refs/lore/sessions/" + session.getId();
+        List<String> refs = new ArrayList<>();
+        for (String ref : new String[]{session.getStartRef(), session.getStopRef()}) {
+            if (ref != null && (ref.equals(own) || ref.equals(own + "-stop"))) refs.add(ref);
+        }
+        if (refs.isEmpty()) return;
+        Path repo = Path.of(session.getProjectPath());
+        try {
+            if (!Files.isDirectory(repo) || !gitService.isGitRepo(repo)) {
+                log.info("Session {} deleted; its project {} is no longer a git repo, so no refs to remove.",
+                        session.getId(), repo);
+                return;
+            }
+            for (String ref : refs) {
+                if (gitService.refExists(repo, ref)) gitService.deleteRef(repo, ref);
+            }
+        } catch (IOException | RuntimeException e) {
+            log.warn("Session {} deleted, but its snapshot refs couldn't be removed: {}", session.getId(), e.getMessage());
+        }
     }
 
     /**

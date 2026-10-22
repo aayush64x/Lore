@@ -5,6 +5,8 @@ import java.util.UUID;
 
 public record SessionResponse(
         UUID id,
+        // ACTIVE (still recording: lore start without lore stop) or COMPLETE.
+        String status,
         String reason,
         String summary,
         String summaryStatus,

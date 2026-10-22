@@ -3,6 +3,7 @@
 // Used by the session list page — one per session row
 export interface SessionResponse {
   id: string;
+  status: "ACTIVE" | "COMPLETE"; // ACTIVE = still recording (lore start without lore stop)
   reason: string | null;
   summary: string | null;
   summaryStatus: string;       // "PENDING", "COMPLETE", or "FAILED"
@@ -16,6 +17,7 @@ export interface SessionResponse {
 // Used by the session detail page — one session with all its changes
 export interface SessionDetailResponse {
   id: string;
+  status: "ACTIVE" | "COMPLETE" | "DISCARDED";
   projectPath: string;
   reason: string | null;
   summary: string | null;
@@ -190,6 +192,26 @@ export async function retrySummary(id: string): Promise<SessionDetailResponse> {
     throw new Error(body?.error ?? "Couldn't create the summary. Try again.");
   }
   return response.json();
+}
+
+// DELETE /api/sessions/{id}
+// Deletes the session and everything saved for it. A running session is refused
+// with { error } ("Stop this session first with lore stop.").
+export async function deleteSession(id: string): Promise<void> {
+  const response = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Couldn't delete the session. Try again.");
+  }
+}
+
+// Asked before every delete, on the list and on the session page.
+export const DELETE_CONFIRM = "Delete this session? This can't be undone.";
+
+// The session list's address for a project.
+export function sessionsUrl(project: string | null): string {
+  return project ? `/?project=${encodeURIComponent(project)}` : "/";
 }
 
 // "What were you trying to do?" can be many lines. The first line is the title;

@@ -12,11 +12,15 @@
 //   - Empty: show the empty state message (no sessions yet)
 //   - Loaded: render the session rows
 //
-// NAVIGATION: Clicking a row goes to /sessions/:id
+// NAVIGATION: Clicking a row goes to /sessions/:id. A running session (lore start
+// without lore stop) has nothing to study yet, so its row isn't clickable.
+//
+// DELETE: each row has a Delete button (disabled while the session is running).
+// It asks first, then removes the row once the server has deleted the session.
 
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchSessions, sessionTitle } from "../api/client";
+import { DELETE_CONFIRM, deleteSession, fetchSessions, sessionTitle } from "../api/client";
 import type { SessionResponse } from "../api/client";
 import Navbar from "../components/Navbar";
 
@@ -28,6 +32,8 @@ type LoadResult =
 
 export default function SessionList() {
   const [result, setResult] = useState<LoadResult | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [searchParams] = useSearchParams();
   const project = searchParams.get("project");
@@ -54,6 +60,20 @@ export default function SessionList() {
       ignore = true;
     };
   }, [project]);
+
+  async function handleDelete(id: string) {
+    if (!window.confirm(DELETE_CONFIRM)) return;
+    setDeletingId(id);
+    setDeleteError(null);
+    try {
+      await deleteSession(id);
+      setResult((r) => (r && r.sessions ? { ...r, sessions: r.sessions.filter((s) => s.id !== id) } : r));
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Couldn't delete the session. Try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const current = project && result?.project === project ? result : null;
   const loading = !!project && current === null;
@@ -98,25 +118,57 @@ export default function SessionList() {
         </div>
       )}
 
+      {deleteError && (
+        <div role="alert" className="mb-3 text-sm text-red-600">{deleteError}</div>
+      )}
+
       {!loading && sessions && sessions.length > 0 && (
         <ul className="space-y-2">
-          {sessions.map((session) => (
-            <li
-              key={session.id}
-              onClick={() => navigate(`/sessions/${session.id}`)}
-              className="p-4 border border-gray-200 rounded-lg cursor-pointer bg-white hover:border-blue-500 transition-colors"
-            >
-              <div className="font-medium break-words">{sessionTitle(session.reason)}</div>
-              <div className="text-sm text-gray-500 flex gap-4 mt-1">
-                <span>{new Date(session.startedAt).toLocaleString()}</span>
-                <span>{session.fileCount} files</span>
-                <span>{session.changeCount} changes</span>
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                {session.understoodCount} of {session.changeCount} understood
-              </div>
-            </li>
-          ))}
+          {sessions.map((session) => {
+            const running = session.status === "ACTIVE";
+            return (
+              <li
+                key={session.id}
+                onClick={running ? undefined : () => navigate(`/sessions/${session.id}`)}
+                className={`p-4 border border-gray-200 rounded-lg bg-white transition-colors flex items-start gap-4 ${
+                  running ? "" : "cursor-pointer hover:border-blue-500"
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium break-words">
+                    {running ? "Session in progress" : sessionTitle(session.reason)}
+                  </div>
+                  <div className="text-sm text-gray-500 flex gap-4 mt-1">
+                    <span>{new Date(session.startedAt).toLocaleString()}</span>
+                    {!running && <span>{session.fileCount} files</span>}
+                    {!running && <span>{session.changeCount} changes</span>}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    {running ? (
+                      <span className="inline-block px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                        Running. Run lore stop to review it.
+                      </span>
+                    ) : (
+                      `${session.understoodCount} of ${session.changeCount} understood`
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={running || deletingId === session.id}
+                  title={running ? "Stop this session first with lore stop." : "Delete this session"}
+                  onClick={(e) => {
+                    // The row opens the session on click; this button must not.
+                    e.stopPropagation();
+                    handleDelete(session.id);
+                  }}
+                  className="shrink-0 text-sm px-3 py-1 rounded-md border border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-200 disabled:text-gray-400 disabled:bg-white disabled:border-gray-200 disabled:cursor-not-allowed"
+                >
+                  {deletingId === session.id ? "Deleting..." : "Delete"}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
