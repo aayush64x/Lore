@@ -104,9 +104,13 @@ public final class AiPrompts {
                 concepts from the list below that someone would need to learn to understand this \
                 change. They are general lessons, the kind a beginner course has one lesson on, not \
                 details: pick "Loops", never "for-of loop over chunks". Copy each name exactly as it \
-                is written in the list. Pick the fewest that fit; 1 is fine. Only if nothing on the \
-                list fits at all, return exactly one item: "Other: " followed by a general lesson \
-                name of 1 to 4 words.
+                is written in the list. Pick what the change is mainly about first, and only add a \
+                second or third concept if it's a big part of the change; 1 is fine. "Other" is rare: \
+                before using it, read the whole list again, and use a listed concept if any of them \
+                covers what the change does (code that uses a regex is "Regular expressions", even \
+                if it parses logs). Only when no concept on the list applies at all, like a \
+                Dockerfile when the list has nothing about containers, return exactly one item: \
+                "Other: " followed by a general lesson name of 1 to 4 words.
 
                 The list:
                 """);

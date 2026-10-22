@@ -15,11 +15,13 @@ class ConceptListTest {
     void the_built_in_list_has_every_concept_with_its_group(@TempDir Path home) {
         List<ConceptList.Concept> concepts = new ConceptList(home).concepts();
 
-        assertEquals(38, concepts.size());
+        assertEquals(39, concepts.size());
         assertEquals(new ConceptList.Concept("HTML structure", "Web basics"), concepts.get(0));
         assertEquals(new ConceptList.Concept("Side effects (useEffect)", "React"),
                 concepts.stream().filter(c -> c.name().startsWith("Side effects")).findFirst().orElseThrow());
-        assertEquals(new ConceptList.Concept("Dependencies & packages", "General"), concepts.get(37));
+        assertEquals(new ConceptList.Concept("Dependencies & packages", "General"), concepts.get(38));
+        assertEquals(new ConceptList.Concept("Regular expressions", "Programming fundamentals"),
+                concepts.stream().filter(c -> c.name().equals("Regular expressions")).findFirst().orElseThrow());
         assertTrue(concepts.stream().noneMatch(c -> c.name().startsWith("#")), "comments are never concepts");
     }
 

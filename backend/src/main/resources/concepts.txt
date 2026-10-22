@@ -22,6 +22,7 @@ Objects & maps
 Classes & objects (OOP)
 Error handling
 Modules & imports
+Regular expressions
 
 # JavaScript / frontend
 DOM & events
