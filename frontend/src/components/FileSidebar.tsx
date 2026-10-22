@@ -49,9 +49,9 @@ function FileIcon() {
 // Solid green: every change passed a teach-back. Green ring: all understood, some only
 // self-marked. Orange: something left to learn.
 function status(file: FileSummary): { label: string; dot: string } {
-  if (file.understood < file.total) return { label: "not understood yet", dot: "bg-orange-400" };
-  if (file.passed === file.total) return { label: "passed", dot: "bg-green-500" };
-  return { label: "understood (self-marked)", dot: "border-2 border-green-500" };
+  if (file.understood < file.total) return { label: "not understood yet", dot: "bg-fill-some" };
+  if (file.passed === file.total) return { label: "passed", dot: "bg-fill-most" };
+  return { label: "understood (self-marked)", dot: "border-2 border-fill-most" };
 }
 
 function StatusDot({ file }: { file: FileSummary }) {
@@ -59,7 +59,7 @@ function StatusDot({ file }: { file: FileSummary }) {
   return <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} aria-label={label} title={label} />;
 }
 
-const toggleButton = "p-1 rounded text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors";
+const toggleButton = "p-1 rounded text-ink-3 hover:text-ink hover:bg-sunk transition-colors";
 
 // Left column of the session page: every changed file, then the session's concepts.
 // Collapsed (wide screens): a thin rail with a file count and one status dot per file.
@@ -74,9 +74,9 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
         <button onClick={onToggle} title="Show files (b)" aria-label="Show files" aria-expanded="false" className={toggleButton}>
           <Chevron left={false} />
         </button>
-        <span className="relative text-gray-500" title={`${files.length} ${files.length === 1 ? "file" : "files"}`}>
+        <span className="relative text-ink-3" title={`${files.length} ${files.length === 1 ? "file" : "files"}`}>
           <FileIcon />
-          <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-gray-700 text-white text-[10px] leading-4 text-center">
+          <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-ink-2 text-paper text-[10px] leading-4 text-center">
             {files.length}
           </span>
         </span>
@@ -90,7 +90,7 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
                   title={`${file.path} · ${status(file).label}`}
                   aria-label={file.path}
                   aria-current={active ? "page" : undefined}
-                  className={`w-8 h-7 flex items-center justify-center rounded ${active ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-gray-100"}`}
+                  className={`w-8 h-7 flex items-center justify-center rounded ${active ? "bg-accent-soft ring-1 ring-accent/50" : "hover:bg-sunk"}`}
                 >
                   <StatusDot file={file} />
                 </button>
@@ -103,7 +103,7 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
     {/* min-w keeps the text from re-wrapping while the column animates; the aside clips it. */}
     <nav aria-label="Changed files" className={`py-3 min-[1000px]:min-w-[280px] ${collapsed ? "min-[1000px]:hidden" : ""}`}>
       <div className="px-4 pb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <span className="text-[13px] font-medium text-ink-2">
           Files <span className="font-normal">({files.length})</span>
         </span>
         <button
@@ -117,7 +117,7 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
         </button>
       </div>
       {files.length === 0 && (
-        <p className="px-4 py-2 text-sm text-gray-500">Nothing left to review.</p>
+        <p className="px-4 py-2 text-sm text-ink-3">Nothing left to review.</p>
       )}
       <ul>
         {files.map((file) => {
@@ -130,17 +130,17 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
                 title={file.path}
                 aria-current={active ? "page" : undefined}
                 className={`w-full text-left px-4 py-2 flex items-center gap-2.5 border-l-[3px] transition-colors ${
-                  active ? "bg-blue-50 border-blue-500" : "border-transparent hover:bg-gray-50"
+                  active ? "bg-accent-soft border-accent" : "border-transparent hover:bg-sunk"
                 }`}
               >
                 <StatusDot file={file} />
                 <span className="flex-1 min-w-0">
-                  <span className="block font-mono text-sm truncate text-gray-900">{name}</span>
-                  {folder && <span className="block font-mono text-[11px] text-gray-400 truncate">{folder}</span>}
+                  <span className="block font-mono text-sm truncate text-ink">{name}</span>
+                  {folder && <span className="block font-mono text-[11px] text-ink-3 truncate">{folder}</span>}
                 </span>
                 <span className="font-mono text-[11px] whitespace-nowrap">
-                  <span className="text-green-700">+{file.added}</span>{" "}
-                  <span className="text-red-700">−{file.removed}</span>
+                  <span className="text-ok">+{file.added}</span>{" "}
+                  <span className="text-bad">−{file.removed}</span>
                 </span>
               </button>
             </li>
@@ -149,8 +149,8 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
       </ul>
 
       {concepts.length > 0 && (
-        <div className="px-4 pt-5 mt-3 border-t border-gray-100">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Concepts in this session</div>
+        <div className="px-4 pt-5 mt-3 border-t border-line">
+          <div className="text-[13px] font-medium text-ink-2 mb-2">Concepts in this session</div>
           <div className="flex flex-wrap gap-1.5">
             {concepts.map((c) => (
               <button
@@ -159,15 +159,15 @@ export default function FileSidebar({ files, selected, onSelect, concepts, colla
                 title={c.meaning}
                 className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
                   openConcept === c.name
-                    ? "bg-gray-800 text-white border-gray-800"
-                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    ? "bg-ink text-paper border-ink"
+                    : "bg-sunk text-ink-2 border-line hover:bg-sunk"
                 }`}
               >
                 {c.name}
               </button>
             ))}
           </div>
-          {concept && <p className="text-xs text-gray-600 mt-2">{concept.meaning}</p>}
+          {concept && <p className="text-xs text-ink-2 mt-2">{concept.meaning}</p>}
         </div>
       )}
     </nav>

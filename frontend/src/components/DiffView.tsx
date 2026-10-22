@@ -14,16 +14,16 @@ interface DiffViewProps {
 }
 
 const ROW_CLASS: Record<DiffRow["kind"], string> = {
-  added: "diff-row-added bg-green-50 text-green-900",
-  removed: "diff-row-removed bg-red-50 text-red-900",
-  header: "bg-gray-100 text-gray-500",
+  added: "diff-row-added bg-ok-soft text-ok",
+  removed: "diff-row-removed bg-bad-soft text-bad",
+  header: "bg-sunk text-ink-3",
   context: "",
-  note: "text-gray-400",
+  note: "text-ink-3",
 };
 
 function Gutter({ value }: { value: number | null }) {
   return (
-    <span className="diff-gutter select-none text-gray-400 bg-gray-50 text-right w-12 px-2 shrink-0 border-r border-gray-200">
+    <span className="diff-gutter select-none text-ink-3 bg-sunk text-right w-12 px-2 shrink-0 border-r border-line">
       {value ?? ""}
     </span>
   );
@@ -41,7 +41,7 @@ export default function DiffView({ rows, highlightStart, highlightEnd, plainCode
   // The inner div is as wide as the longest line (or the box, if wider), so row
   // colors and the highlight fill the whole row even when it scrolls sideways.
   return (
-    <pre className="overflow-x-auto text-xs leading-5 border-t border-gray-100">
+    <pre className="overflow-x-auto text-xs leading-5 border-t border-line">
       <div className="min-w-full w-max">
         {rows.map((row, i) => {
           // Plain code keeps each row's index i (the @@ header is still "line 1"
@@ -63,14 +63,14 @@ export default function DiffView({ rows, highlightStart, highlightEnd, plainCode
                       setIssueOpen(!issueOpen);
                     }}
                     aria-expanded={issueOpen}
-                    className="font-sans text-[11px] font-medium px-1.5 py-px mr-4 rounded border bg-red-50 text-red-700 border-red-300 hover:bg-red-100 whitespace-nowrap"
+                    className="font-sans text-[11px] font-medium px-1.5 py-px mr-4 rounded border bg-bad-soft text-bad border-bad/30 hover:bg-bad/15 whitespace-nowrap"
                   >
                     ⚠ Lore found an issue
                   </button>
                 )}
               </div>
               {hasIssue && issueOpen && (
-                <div className="font-sans text-xs whitespace-normal text-red-900 bg-red-50 border-y border-red-200 px-4 py-2 sticky left-0 max-w-[min(100%,48rem)]">
+                <div className="font-sans text-xs whitespace-normal text-bad bg-bad-soft border-y border-bad/30 px-4 py-2 sticky left-0 max-w-[min(100%,48rem)]">
                   {issue.text}
                 </div>
               )}

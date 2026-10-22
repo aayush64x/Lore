@@ -48,7 +48,7 @@ export default function CostButton({ cost }: { cost: SessionCost }) {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="text-gray-500 hover:text-gray-900 underline decoration-dotted underline-offset-2"
+        className="text-ink-3 hover:text-ink underline decoration-dotted underline-offset-2"
       >
         AI cost {money(cost.dollars, cost.tokens)}
       </button>
@@ -56,19 +56,19 @@ export default function CostButton({ cost }: { cost: SessionCost }) {
         <div
           role="dialog"
           aria-label="AI cost"
-          className="absolute left-0 top-full mt-2 z-30 w-80 rounded-lg border border-gray-200 bg-white shadow-lg p-3 text-sm text-gray-700"
+          className="absolute left-0 top-full mt-2 z-30 w-80 rounded-card border border-line bg-surface shadow-lg p-3 text-sm text-ink-2"
         >
           <ul className="space-y-2">
             {cost.jobs.map((j) => (
               <li key={j.job}>
                 <div className="flex justify-between gap-3">
                   <span>{jobName(j)}</span>
-                  <span className="font-medium text-gray-900 tabular-nums">
+                  <span className="font-medium text-ink tabular-nums">
                     {j.calls === 0 ? "none yet" : money(j.dollars, j.tokens)}
                   </span>
                 </div>
                 {details && j.calls > 0 && (
-                  <div className="mt-0.5 text-xs text-gray-500">
+                  <div className="mt-0.5 text-xs text-ink-3">
                     {j.tokensIn.toLocaleString()} tokens in · {j.tokensOut.toLocaleString()} out ·{" "}
                     <span className="font-mono">{j.models.join(", ")}</span>
                   </div>
@@ -80,11 +80,11 @@ export default function CostButton({ cost }: { cost: SessionCost }) {
             type="button"
             onClick={() => setDetails(!details)}
             aria-expanded={details}
-            className="mt-3 text-xs text-blue-600 hover:underline"
+            className="mt-3 text-xs text-accent hover:underline"
           >
             {details ? "Hide details" : "Show details"}
           </button>
-          <p className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+          <p className="mt-2 pt-2 border-t border-line text-xs text-ink-3">
             Estimate. Charged to your own API key.
           </p>
         </div>

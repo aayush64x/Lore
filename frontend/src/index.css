@@ -135,21 +135,21 @@ code,
 }
 
 .diff-row-added::before {
-  background-color: #16a34a;
+  background-color: var(--ok);
 }
 
 .diff-row-removed::before {
-  background-color: #dc2626;
+  background-color: var(--bad);
 }
 
 /* Lines an explain step is about: the whole row, with a 3px blue bar on the left. */
 .diff-line-highlighted {
-  background-color: var(--color-blue-100) !important; /* #dbeafe; dark in dark mode */
+  background-color: var(--accent-soft) !important;
 }
 
 .diff-line-highlighted::before {
   width: 3px;
-  background-color: #3b82f6;
+  background-color: var(--accent);
 }
 
 .diff-line-highlighted .diff-gutter {

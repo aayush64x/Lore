@@ -34,7 +34,7 @@ interface ExplainPanelProps {
   onNoteSaved: (note: string | null) => void;
 }
 
-const LINK = "text-xs text-gray-500 hover:text-gray-800 underline";
+const LINK = "text-xs text-ink-3 hover:text-ink underline";
 
 // The right side of the session page: summary, status, what to do next (test, skip,
 // explain), and the step-by-step explanation for the selected change.
@@ -75,40 +75,40 @@ export default function ExplainPanel({
   return (
     <div className="p-5">
       {count > 1 && (
-        <div className="flex items-center justify-between mb-4 text-xs text-gray-500">
-          <button onClick={onPrevChange} disabled={index === 0} className="hover:text-gray-900 disabled:text-gray-300">
+        <div className="flex items-center justify-between mb-4 text-xs text-ink-3">
+          <button onClick={onPrevChange} disabled={index === 0} className="hover:text-ink disabled:text-line-strong">
             ← Prev change
           </button>
           <span>
             Change {index + 1} of {count}
           </span>
-          <button onClick={onNextChange} disabled={index === count - 1} className="hover:text-gray-900 disabled:text-gray-300">
+          <button onClick={onNextChange} disabled={index === count - 1} className="hover:text-ink disabled:text-line-strong">
             Next change →
           </button>
         </div>
       )}
 
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Change summary</div>
+        <div className="text-[13px] font-medium text-ink-2 pt-1">Change summary</div>
         {passed ? (
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-green-600 text-white border-green-600">
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-ok text-on-accent border-ok">
             ✓ Passed
           </span>
         ) : change.understood ? (
           <button
             onClick={onToggleUnderstood}
             title="Marked by you, not tested. Click to undo."
-            className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+            className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-ok-soft text-ok border-ok/30 hover:bg-ok/15"
           >
             ✓ Self-marked
           </button>
         ) : (
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-orange-50 text-orange-700 border-orange-200">
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap bg-warn-soft text-warn border-warn/30">
             Not understood yet
           </span>
         )}
       </div>
-      <p className="text-sm text-gray-500 mb-4">{change.description ?? "No summary for this change."}</p>
+      <p className="text-sm text-ink-3 mb-4">{change.description ?? "No summary for this change."}</p>
 
       {change.concepts.length > 0 && (
         // What you'd learn from this change; each opens its row on the Concepts page.
@@ -120,8 +120,8 @@ export default function ExplainPanel({
               title={c.other ? "Suggested by the AI, not on your concept list" : "See this concept across your sessions"}
               className={`text-xs px-2 py-0.5 rounded-full border ${
                 c.other
-                  ? "border-dashed border-gray-300 text-gray-500 hover:text-gray-800"
-                  : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  ? "border-dashed border-line-strong text-ink-3 hover:text-ink"
+                  : "border-accent/30 bg-accent-soft text-accent hover:bg-accent/15"
               }`}
             >
               {c.other ? `Other: ${c.name}` : c.name}
@@ -140,7 +140,7 @@ export default function ExplainPanel({
         <div className="mb-4">
           <button
             onClick={onTestMe}
-            className="w-full text-sm font-medium py-2.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="w-full text-sm font-medium py-2.5 rounded-control bg-accent text-on-accent hover:bg-accent-hover transition-colors"
           >
             {change.teachBack.attemptsLeft === 0 ? "See the key points" : "Test me"}
           </button>
@@ -148,11 +148,11 @@ export default function ExplainPanel({
         </div>
       )}
       {!passed && madeBeforeTesting && (
-        <div className="mb-4 px-3 py-2 rounded-md bg-gray-50 border border-gray-200 text-xs text-gray-600">
+        <div className="mb-4 px-3 py-2 rounded-control bg-sunk border border-line text-xs text-ink-2">
           <button
             onClick={onExplainForTest}
             disabled={loading}
-            className="font-medium text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+            className="font-medium text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
           >
             {loading ? "Explaining…" : "Explain again to enable testing"}
           </button>
@@ -160,9 +160,9 @@ export default function ExplainPanel({
         </div>
       )}
       {nothingToTest && !change.understood && (
-        <div className="mb-4 text-xs text-gray-500">
+        <div className="mb-4 text-xs text-ink-3">
           Nothing to test here (formatting, imports or renames).{" "}
-          <button onClick={onMarkUnderstood} className="font-medium text-blue-600 hover:underline">
+          <button onClick={onMarkUnderstood} className="font-medium text-accent hover:underline">
             Mark as understood
           </button>
         </div>
@@ -173,19 +173,19 @@ export default function ExplainPanel({
           <button
             onClick={onExplain}
             disabled={loading}
-            className="w-full text-sm font-medium py-2.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+            className="w-full text-sm font-medium py-2.5 rounded-control bg-accent text-on-accent hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
             {loading ? "Explaining…" : "Explain this"}
           </button>
-          {error && <p className="text-sm text-red-600 mt-2">{error} Click the button to try again.</p>}
+          {error && <p className="text-sm text-bad mt-2">{error} Click the button to try again.</p>}
           {skipLink}
         </>
       )}
 
       {explanation && (
-        <div className="border-t border-gray-100 pt-4">
+        <div className="border-t border-line pt-4">
           {explanation.current === false && (
-            <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-md bg-gray-50 border border-gray-200 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-control bg-sunk border border-line text-xs text-ink-2">
               <span>
                 {explanation.damaged
                   ? "This explanation came back garbled when it was made."
@@ -194,13 +194,13 @@ export default function ExplainPanel({
               <button
                 onClick={onExplain}
                 disabled={loading}
-                className="font-medium text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline whitespace-nowrap"
+                className="font-medium text-accent hover:underline disabled:text-ink-3 disabled:no-underline whitespace-nowrap"
               >
                 {loading ? "Explaining…" : "Explain again"}
               </button>
             </div>
           )}
-          {explanation.current === false && error && <p className="text-xs text-red-600 mb-3">{error}</p>}
+          {explanation.current === false && error && <p className="text-xs text-bad mb-3">{error}</p>}
           <ExplainWalkthrough
             explanation={explanation}
             active={activeStep}
@@ -213,7 +213,7 @@ export default function ExplainPanel({
             onTestMe={canTest && change.teachBack.attemptsLeft > 0 ? onTestMe : undefined}
           />
           <FollowUp key={change.id} changeId={change.id} questions={change.questions} onAsked={onQuestionAsked} />
-          <p className="text-xs text-gray-400 mt-4">Keys: ← → steps · [ ] files · b sidebar</p>
+          <p className="text-xs text-ink-3 mt-4">Keys: ← → steps · [ ] files · b sidebar</p>
         </div>
       )}
 

@@ -35,8 +35,8 @@ export default function NoteBox({ changeId, note, onSaved }: NoteBoxProps) {
   }
 
   return (
-    <section className="mt-6 border-t border-gray-100 pt-4" aria-label="My note">
-      <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">My note</h3>
+    <section className="mt-6 border-t border-line pt-4" aria-label="My note">
+      <h3 className="text-[13px] font-medium text-ink-2">My note</h3>
       <textarea
         value={draft}
         onChange={(e) => {
@@ -48,19 +48,19 @@ export default function NoteBox({ changeId, note, onSaved }: NoteBoxProps) {
         maxLength={5000}
         placeholder="What I learned / why I kept this"
         aria-label="My note on this change"
-        className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none disabled:bg-gray-50"
+        className="mt-2 w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-accent disabled:bg-sunk"
       />
       <div className="mt-1.5 flex items-center gap-3">
         <button
           type="button"
           onClick={save}
           disabled={busy || !changed}
-          className="text-sm font-medium px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="text-sm font-medium px-3 py-1.5 rounded-control border border-line-strong text-ink-2 hover:bg-sunk disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save note"}
         </button>
-        {saved && !changed && <span className="text-xs text-green-700">Saved</span>}
-        {error && <span role="alert" className="text-xs text-red-600">{error}</span>}
+        {saved && !changed && <span className="text-xs text-ok">Saved</span>}
+        {error && <span role="alert" className="text-xs text-bad">{error}</span>}
       </div>
     </section>
   );

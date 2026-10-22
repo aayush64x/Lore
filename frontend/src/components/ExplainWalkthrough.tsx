@@ -47,12 +47,12 @@ export default function ExplainWalkthrough({
               onMouseLeave={() => onHoverStep(null)}
               className={`w-full text-left text-sm pl-3 pr-2 py-2 rounded-r border-l-[3px] transition-colors ${
                 active === i
-                  ? "border-blue-500 bg-blue-50 text-gray-900 font-medium"
-                  : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                  ? "border-accent bg-accent-soft text-ink font-medium"
+                  : "border-transparent text-ink-3 hover:text-ink-2 hover:bg-sunk"
               }`}
             >
               {step.diff_line_start >= 1 && (
-                <span className="block font-mono text-xs font-normal text-gray-500 mb-0.5">
+                <span className="block font-mono text-xs font-normal text-ink-3 mb-0.5">
                   {stepLabel(step.diff_line_start, step.diff_line_end)}
                 </span>
               )}
@@ -67,17 +67,17 @@ export default function ExplainWalkthrough({
           <button
             onClick={() => onActivate(active - 1)}
             disabled={active === 0}
-            className="text-sm px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:border-gray-200 disabled:hover:bg-transparent"
+            className="text-sm px-3 py-1 rounded-control border border-line-strong text-ink-2 hover:bg-sunk disabled:text-line-strong disabled:border-line disabled:hover:bg-transparent"
           >
             ← Back
           </button>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-ink-3">
             Step {active + 1} of {steps.length}
           </span>
           <button
             onClick={() => onActivate(active + 1)}
             disabled={active === last}
-            className="text-sm px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:border-gray-200 disabled:hover:bg-transparent"
+            className="text-sm px-3 py-1 rounded-control border border-line-strong text-ink-2 hover:bg-sunk disabled:text-line-strong disabled:border-line disabled:hover:bg-transparent"
           >
             Next →
           </button>
@@ -85,9 +85,9 @@ export default function ExplainWalkthrough({
       )}
 
       {active === last && (
-        <div className="mt-4 p-3 rounded-lg border border-green-200 bg-green-50 text-center">
+        <div className="mt-4 p-3 rounded-card border border-ok/30 bg-ok-soft text-center">
           {understood ? (
-            <p className="text-sm text-green-700 font-medium">
+            <p className="text-sm text-ok font-medium">
               {understoodBy === "teach_back" ? "✓ Passed" : "✓ Self-marked as understood"}
             </p>
           ) : (
@@ -95,17 +95,17 @@ export default function ExplainWalkthrough({
               {onTestMe && (
                 <button
                   onClick={onTestMe}
-                  className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                  className="text-sm font-medium px-4 py-2 rounded-control bg-accent text-on-accent hover:bg-accent-hover"
                 >
                   Test me
                 </button>
               )}
               <button
                 onClick={onMarkUnderstood}
-                className={`text-sm font-medium px-4 py-2 rounded-md ${
+                className={`text-sm font-medium px-4 py-2 rounded-control ${
                   onTestMe
-                    ? "border border-green-300 text-green-800 hover:bg-green-100"
-                    : "bg-green-600 text-white hover:bg-green-700"
+                    ? "border border-ok/30 text-ok hover:bg-ok/15"
+                    : "bg-ok text-on-accent hover:bg-ok/90"
                 }`}
               >
                 Got it? Mark as understood
@@ -117,7 +117,7 @@ export default function ExplainWalkthrough({
 
       {concepts.length > 0 && (
         <div className="mt-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Concepts</div>
+          <div className="text-[13px] font-medium text-ink-2 mb-1.5">Concepts</div>
           <div className="flex flex-wrap gap-1.5">
             {concepts.map((c, i) => (
               <button
@@ -126,15 +126,15 @@ export default function ExplainWalkthrough({
                 title={c.meaning}
                 className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
                   openConcept === i
-                    ? "bg-gray-800 text-white border-gray-800"
-                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    ? "bg-ink text-paper border-ink"
+                    : "bg-sunk text-ink-2 border-line hover:bg-sunk"
                 }`}
               >
                 {c.name}
               </button>
             ))}
           </div>
-          {concept && <p className="text-xs text-gray-600 mt-2">{concept.meaning}</p>}
+          {concept && <p className="text-xs text-ink-2 mt-2">{concept.meaning}</p>}
         </div>
       )}
     </div>

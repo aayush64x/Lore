@@ -407,17 +407,17 @@ export default function SessionPage() {
   const total = allChanges.length;
   const understood = allChanges.filter((c) => c.understood).length;
 
-  const navButton = "text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-default";
+  const navButton = "text-ink-2 hover:text-ink disabled:text-line-strong disabled:cursor-default";
   const fileNav = fileIndex >= 0 && (
     <div className="flex items-center gap-3 text-sm whitespace-nowrap">
       <button onClick={() => goToFile(prevFile)} disabled={!prevFile} title="Previous file ( [ )" className={navButton}>
         ← Prev file
       </button>
-      <span className="text-gray-400">·</span>
-      <span className="text-gray-700">
+      <span className="text-ink-3">·</span>
+      <span className="text-ink-2">
         File {fileIndex + 1} of {sidebarFiles.length}
       </span>
-      <span className="text-gray-400">·</span>
+      <span className="text-ink-3">·</span>
       <button onClick={() => goToFile(nextFile)} disabled={!nextFile} title="Next file ( ] )" className={navButton}>
         Next file →
       </button>
@@ -428,7 +428,7 @@ export default function SessionPage() {
       <div className="w-40 sm:w-56">
         <ProgressBar understood={understood} total={total} />
       </div>
-      <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer whitespace-nowrap">
+      <label className="flex items-center gap-2 text-sm text-ink-2 cursor-pointer whitespace-nowrap">
         <input
           type="checkbox"
           checked={unreviewedOnly}
@@ -459,21 +459,21 @@ export default function SessionPage() {
 
   if (loading) {
     return (
-      <>
+      <div className="min-h-screen bg-paper text-ink">
         {navbar}
-        <div className="px-6 py-6 text-gray-500">Loading session...</div>
-      </>
+        <div className="px-6 py-6 text-ink-3">Loading session...</div>
+      </div>
     );
   }
 
   if (error || !session) {
     return (
-      <>
+      <div className="min-h-screen bg-paper text-ink">
         <Navbar project={null} crumbs={[{ label: "Session not found" }]} />
         <div className="px-6 py-6">
-          <p className="text-red-600">{error ?? "Session not found."}</p>
+          <p className="text-bad">{error ?? "Session not found."}</p>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -486,7 +486,7 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="min-[1000px]:h-screen min-[1000px]:flex min-[1000px]:flex-col">
+    <div className="min-h-screen bg-paper text-ink min-[1000px]:h-screen min-[1000px]:flex min-[1000px]:flex-col">
       {navbar}
       <div
         className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
@@ -520,7 +520,7 @@ export default function SessionPage() {
       >
         <aside
           onScroll={(e) => onColumnScroll("files", e.currentTarget.scrollTop)}
-          className="bg-white border-b border-gray-200 min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto min-[1000px]:overflow-x-hidden"
+          className="bg-surface border-b border-line min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto min-[1000px]:overflow-x-hidden"
         >
           <FileSidebar
             files={sidebarFiles}
@@ -541,14 +541,14 @@ export default function SessionPage() {
           className="min-w-0 px-6 py-5 min-[1000px]:overflow-y-auto"
         >
           {!currentFile ? (
-            <p className="text-sm text-gray-500 py-10 text-center">
+            <p className="text-sm text-ink-3 py-10 text-center">
               {pathParam ? "This file has no changes in this session." : "This session has no changes."}
             </p>
           ) : changes.length === 0 ? (
-            <p className="text-sm text-gray-500 py-10 text-center">
+            <p className="text-sm text-ink-3 py-10 text-center">
               Every change in this file is understood.{" "}
               {nextFile && (
-                <button onClick={() => goToFile(nextFile)} className="text-blue-600 hover:underline">
+                <button onClick={() => goToFile(nextFile)} className="text-accent hover:underline">
                   Next file →
                 </button>
               )}
@@ -570,10 +570,10 @@ export default function SessionPage() {
 
         <aside
           onScroll={(e) => onColumnScroll("panel", e.currentTarget.scrollTop)}
-          className="bg-white border-t border-gray-200 min-[1000px]:border-t-0 min-[1000px]:border-l min-[1000px]:overflow-y-auto"
+          className="bg-surface border-t border-line min-[1000px]:border-t-0 min-[1000px]:border-l min-[1000px]:overflow-y-auto"
         >
           {selected && passNote?.forChangeId === selected.id && (
-            <p className="mx-5 mt-4 px-3 py-2 rounded-md bg-green-50 border border-green-200 text-sm text-green-800">
+            <p className="mx-5 mt-4 px-3 py-2 rounded-control bg-ok-soft border border-ok/30 text-sm text-ok">
               ✓ Passed <span className="font-mono text-xs">{passNote.file}</span>. Here's the next one.
             </p>
           )}

@@ -58,25 +58,25 @@ export default function SessionHeader({
     time,
     `${fileCount} ${fileCount === 1 ? "file" : "files"}`,
     <span className="font-mono text-xs">
-      <span className="text-green-700">+{added}</span> <span className="text-red-700">−{removed}</span>
+      <span className="text-ok">+{added}</span> <span className="text-bad">−{removed}</span>
     </span>,
     <span>
-      <span className="font-semibold text-gray-900">{understood} of {total}</span> understood
+      <span className="font-semibold text-ink">{understood} of {total}</span> understood
     </span>,
     // Hidden for older sessions (no cost saved) and when the provider isn't the Anthropic API.
     session.cost && <CostButton cost={session.cost} />,
   ].filter(Boolean);
 
   return (
-    <header className="px-6 py-4 border-b border-gray-200 bg-white">
+    <header className="px-6 py-4 border-b border-line bg-surface">
       <div className="flex items-start gap-6 flex-wrap">
         <div className="flex-1 min-w-[280px]">
-          <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Goal</div>
-          <h1 className="text-xl font-semibold text-gray-900 break-words">{sessionTitle(session.reason)}</h1>
-          <div className="mt-1 text-sm text-gray-500 flex flex-wrap items-center gap-x-2">
+          <div className="text-[13px] font-medium text-ink-2">Goal</div>
+          <h1 className="mt-0.5 font-serif text-[26px] leading-tight font-semibold tracking-tight text-ink break-words">{sessionTitle(session.reason)}</h1>
+          <div className="mt-1 text-sm text-ink-3 flex flex-wrap items-center gap-x-2">
             {stats.map((s, i) => (
               <Fragment key={i}>
-                {i > 0 && <span className="text-gray-300" aria-hidden="true">·</span>}
+                {i > 0 && <span className="text-line-strong" aria-hidden="true">·</span>}
                 {s}
               </Fragment>
             ))}
@@ -85,35 +85,35 @@ export default function SessionHeader({
         {/* Side by side on a phone, stacked on the right on wider screens. */}
         <div className="shrink-0 pt-3 flex items-center gap-4 sm:flex-col sm:items-end sm:gap-2">
           {allDone ? (
-            <span className="inline-block text-sm font-medium px-4 py-2 rounded-md bg-green-50 text-green-700 border border-green-200">
+            <span className="inline-block text-sm font-medium px-4 py-2 rounded-control bg-ok-soft text-ok border border-ok/30">
               All understood 🎉
             </span>
           ) : (
             <button
               onClick={onStartLearning}
-              className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              className="text-sm font-medium px-4 py-2 rounded-control bg-accent text-on-accent hover:bg-accent-hover transition-colors"
             >
               Start learning →
             </button>
           )}
           <div className="flex items-center gap-2 text-xs">
-            {running && <span className="text-amber-800">Running</span>}
+            {running && <span className="text-warn">Running</span>}
             <button
               type="button"
               onClick={onDelete}
               disabled={running || deleting}
               title={running ? "Stop this session first with lore stop." : "Delete this session"}
-              className="text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+              className="text-bad hover:underline disabled:text-ink-3 disabled:no-underline disabled:cursor-not-allowed"
             >
               {deleting ? "Deleting..." : "Delete session"}
             </button>
           </div>
-          {deleteError && <span role="alert" className="text-xs text-red-600 max-w-xs text-right">{deleteError}</span>}
+          {deleteError && <span role="alert" className="text-xs text-bad max-w-xs text-right">{deleteError}</span>}
         </div>
       </div>
 
       {session.goalGaps && session.goalGaps.length > 0 && (
-        <div role="note" className="mt-3 max-w-4xl px-3 py-2 rounded-md border border-amber-300 bg-amber-50 text-sm text-amber-900">
+        <div role="note" className="mt-3 max-w-4xl px-3 py-2 rounded-control border border-warn/30 bg-warn-soft text-sm text-warn">
           <span className="font-medium">Not done yet from your goal:</span>
           <ul className="list-disc pl-5 mt-1">
             {session.goalGaps.map((gap, i) => (
@@ -127,13 +127,13 @@ export default function SessionHeader({
         <button
           onClick={() => setSummaryOpen(!summaryOpen)}
           aria-expanded={summaryOpen}
-          className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-800"
+          className="text-[13px] font-medium text-ink-2 hover:text-ink"
         >
           <span className="inline-block w-3">{summaryOpen ? "▾" : "▸"}</span> AI summary
         </button>
         {summaryOpen && (
-          <div className="mt-1 pl-3 max-w-4xl text-sm text-gray-500 space-y-2">
-            {details && <p className="whitespace-pre-wrap break-words text-gray-700">{details}</p>}
+          <div className="mt-1 pl-3 max-w-4xl text-sm text-ink-3 space-y-2">
+            {details && <p className="whitespace-pre-wrap break-words text-ink-2">{details}</p>}
             {session.summary ? (
               <p>{session.summary}</p>
             ) : (
@@ -144,11 +144,11 @@ export default function SessionHeader({
                 <button
                   onClick={onRetrySummary}
                   disabled={retrying}
-                  className="text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                  className="text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
                 >
                   {retrying ? "Creating summary..." : "Retry"}
                 </button>
-                {retryError && <span className="block text-red-600 mt-1">{retryError}</span>}
+                {retryError && <span className="block text-bad mt-1">{retryError}</span>}
               </p>
             )}
           </div>
