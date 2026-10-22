@@ -314,6 +314,72 @@ class SessionServiceTest {
         assertEquals(1, changeRepository.countBySessionId(s.getId()));
     }
 
+    // --- big sessions ---
+
+    private void writeFiles(int count) throws IOException {
+        for (int i = 0; i < count; i++) {
+            Files.writeString(repo.resolve("f" + i + ".txt"), "line " + i + "\n");
+        }
+    }
+
+    @Test
+    void stop_summarizes_a_big_session_in_parts_and_joins_them() throws Exception {
+        sessionService.start(repo);
+        writeFiles(130);
+        ai.goalGaps = List.of("add tests");
+
+        SessionService.StopResult r = sessionService.stop(repo, "add many files");
+
+        assertEquals(List.of(10, 60, 60), ai.summarizeSizes.stream().sorted().toList());
+        assertEquals(1, ai.combineCalls);
+        assertEquals(3, ai.lastCombineParts.size());
+        Session saved = sessionRepository.findById(r.session().getId()).orElseThrow();
+        assertEquals(Session.SummaryStatus.COMPLETE, saved.getSummaryStatus());
+        assertEquals("Combined 3 parts", saved.getSummary());
+        assertEquals("[\"add tests\"]", saved.getGoalGaps());
+        List<Change> changes = changeRepository.findBySessionIdOrderByDisplayOrder(saved.getId());
+        assertEquals(130, changes.size());
+        for (Change c : changes) {
+            assertEquals("about " + c.getFilePath(), c.getDescription(), c.getFilePath());
+            assertEquals(Change.GoalMatch.YES, c.getGoalMatch(), c.getFilePath());
+        }
+    }
+
+    @Test
+    void a_session_at_the_batch_size_is_still_one_call() throws Exception {
+        sessionService.start(repo);
+        writeFiles(SessionService.SUMMARY_BATCH_SIZE);
+
+        sessionService.stop(repo, "r");
+
+        assertEquals(1, ai.summarizeCalls);
+        assertEquals(0, ai.combineCalls);
+    }
+
+    @Test
+    void a_big_session_whose_join_fails_saves_no_descriptions() throws Exception {
+        ai.crashCombine = true;
+        sessionService.start(repo);
+        writeFiles(70);
+
+        SessionService.StopResult r = sessionService.stop(repo, "r");
+
+        assertEquals("AI summary failed.", r.summaryError());
+        assertFailedWithNoText(r.session().getId());
+    }
+
+    @Test
+    void a_big_session_with_ai_not_set_up_shows_the_reason() throws Exception {
+        ai.reset(FakeAi.Mode.NOT_SET_UP);
+        sessionService.start(repo);
+        writeFiles(70);
+
+        SessionService.StopResult r = sessionService.stop(repo, "r");
+
+        assertEquals("AI is not set up.", r.summaryError());
+        assertFailedWithNoText(r.session().getId());
+    }
+
     private void assertFailedWithNoText(UUID id) {
         Session saved = sessionRepository.findById(id).orElseThrow();
         assertEquals(Session.SessionStatus.COMPLETE, saved.getStatus());

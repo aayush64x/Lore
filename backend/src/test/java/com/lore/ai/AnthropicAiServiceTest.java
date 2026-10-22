@@ -129,6 +129,40 @@ class AnthropicAiServiceTest {
     }
 
     @Test
+    void combine_sends_each_parts_summary_and_gaps_and_reads_the_goal_check(@TempDir Path home) throws Exception {
+        responseBody = message("""
+                {"session_summary": "Added login and its tests.", "goal_parts_not_done": ["password reset"]}""");
+
+        SummaryResponse r = service(home, FAKE_KEY).combineSummaries(List.of(
+                new SummaryResponse("Added login.", List.of(), List.of("tests", "password reset")),
+                new SummaryResponse("Added tests.", List.of(), List.of("password reset"))),
+                "add login, tests and password reset");
+
+        assertEquals("Added login and its tests.", r.sessionSummary());
+        assertEquals(List.of("password reset"), r.goalPartsNotDone());
+        assertTrue(r.changeDescriptions().isEmpty());
+        JsonNode body = seenBody.get();
+        String message = body.at("/messages/0/content").toString();
+        assertTrue(message.contains("### Part 1") && message.contains("Added tests.") && message.contains("- tests"), message);
+        assertTrue(body.at("/output_config/format/schema/properties").has("goal_parts_not_done"), body.toString());
+        assertFalse(body.toString().contains("change_descriptions"), body.toString());
+    }
+
+    @Test
+    void combine_without_a_goal_never_asks_for_the_goal_check(@TempDir Path home) throws Exception {
+        responseBody = message("{\"session_summary\": \"Tidied up.\"}");
+
+        SummaryResponse r = service(home, FAKE_KEY).combineSummaries(List.of(
+                new SummaryResponse("Part one.", List.of()), new SummaryResponse("Part two.", List.of())), null);
+
+        assertEquals("Tidied up.", r.sessionSummary());
+        assertNull(r.goalPartsNotDone());
+        String body = seenBody.get().toString();
+        assertFalse(body.contains("goal_parts_not_done"), body);
+        assertFalse(body.contains("GOAL CHECK"), body);
+    }
+
+    @Test
     void explain_asks_for_key_points_testable_and_an_issue_and_reads_them(@TempDir Path home) throws Exception {
         responseBody = message("""
                 {"overview": "Cuts 3 earlier.", "steps": [{"text": "Cuts.", "diff_line_start": 2, "diff_line_end": 3}],

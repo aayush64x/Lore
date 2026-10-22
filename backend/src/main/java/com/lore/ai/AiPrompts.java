@@ -1,5 +1,7 @@
 package com.lore.ai;
 
+import com.lore.ai.dto.SummaryResponse;
+
 import java.util.List;
 
 /**
@@ -84,6 +86,60 @@ public final class AiPrompts {
                 sb.append(diff);
                 if (!diff.endsWith("\n")) sb.append('\n');
                 totalSize += diff.length();
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** For a session summarized in parts: one summary from the parts' summaries. */
+    public static String combineSystemPrompt() {
+        return """
+                You are a code change summarizer for a learning tool called Lore. A coding session \
+                was too big to summarize at once, so its changes were summarized in parts. You will \
+                receive the summary of each part. The changes were split only by count: one file's \
+                changes can be spread over several parts, and the parts are not steps in time. A part \
+                that covers only some of a file says nothing about whether that file was finished, so \
+                ignore any part summary that says a file was only partly changed or left unfinished. \
+                Describe only what the session as a whole did. Never mention the parts, the split, or \
+                an order in which things were done.
+
+                Return a "session_summary": a plain-English summary of the whole session (2-4 \
+                sentences). Explain what was accomplished across all the parts, not part by part. \
+                Write for someone who wants to understand what happened, not someone reviewing a PR.
+
+                Every text value is plain sentences. Never end a text with JSON characters such as \
+                }, ] or a quote: the JSON structure is handled for you.""";
+    }
+
+    /** The combine prompt plus the goal check, used only when the developer gave a goal. */
+    public static String combineWithGoalSystemPrompt() {
+        return combineSystemPrompt() + """
+
+
+                GOAL CHECK: the developer's goal is quoted at the top of the message. Each part also \
+                lists the parts of the goal that none of its own changes do. Also return \
+                "goal_parts_not_done": the parts of the goal that the whole session doesn't do, each \
+                as a short phrase. A part of the goal is only not done if every part lists it as not \
+                done (in any wording). An empty list if every part of the goal was done.""";
+    }
+
+    public static String combineUserMessage(List<SummaryResponse> parts, String reason) {
+        boolean goal = reason != null && !reason.isBlank();
+        StringBuilder sb = new StringBuilder();
+        if (goal) {
+            sb.append("In their own words, the developer was trying to:\n").append(reason.strip()).append("\n\n");
+        }
+        sb.append("The session was summarized in ").append(parts.size()).append(" parts:\n\n");
+        for (int i = 0; i < parts.size(); i++) {
+            SummaryResponse part = parts.get(i);
+            sb.append("### Part ").append(i + 1).append('\n')
+                    .append(part.sessionSummary() == null ? "(no summary)" : part.sessionSummary().strip()).append('\n');
+            if (goal) {
+                List<String> gaps = part.goalPartsNotDone() == null ? List.of() : part.goalPartsNotDone();
+                sb.append("Parts of the goal this part's changes don't do:\n");
+                if (gaps.isEmpty()) sb.append("- none\n");
+                for (String gap : gaps) sb.append("- ").append(gap.strip()).append('\n');
             }
             sb.append('\n');
         }

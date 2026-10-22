@@ -22,6 +22,12 @@ public class FakeAi implements AiService {
 
     public volatile Mode mode = Mode.WORKING;
     public volatile int summarizeCalls;
+    /** How many changes each summarize call got, in the order the calls came in. */
+    public final List<Integer> summarizeSizes = new java.util.concurrent.CopyOnWriteArrayList<>();
+    public volatile int combineCalls;
+    public volatile List<SummaryResponse> lastCombineParts;
+    /** Makes combineSummaries fail like CRASH, while summarize keeps working. */
+    public volatile boolean crashCombine;
     public volatile int explainCalls;
     public volatile String lastExplainReason;
     public volatile UserProfile lastExplainProfile;
@@ -42,6 +48,10 @@ public class FakeAi implements AiService {
     public void reset(Mode mode) {
         this.mode = mode;
         summarizeCalls = 0;
+        summarizeSizes.clear();
+        combineCalls = 0;
+        lastCombineParts = null;
+        crashCombine = false;
         explainCalls = 0;
         garbledAnswers = 0;
         goalGaps = List.of("Add a test");
@@ -61,9 +71,11 @@ public class FakeAi implements AiService {
         return "}]}";
     }
 
+    /** synchronized: a big session's parts are summarized at the same time. */
     @Override
-    public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
+    public synchronized SummaryResponse summarize(List<ChangeInput> changes, String reason) {
         summarizeCalls++;
+        summarizeSizes.add(changes.size());
         fail();
         String summary = "Summary for: " + reason + tail();
         // Like the real service: the goal check only when a goal was given.
@@ -76,6 +88,17 @@ public class FakeAi implements AiService {
                 .map(c -> new SummaryResponse.ChangeDescription(c.filePath(), c.displayOrder(), "about " + c.filePath(),
                         goalMatch(c.filePath()), "because of " + c.filePath()))
                 .toList(), goalGaps);
+    }
+
+    @Override
+    public SummaryResponse combineSummaries(List<SummaryResponse> parts, String reason) {
+        combineCalls++;
+        lastCombineParts = parts;
+        fail();
+        if (crashCombine) throw new IllegalStateException("boom");
+        String summary = "Combined " + parts.size() + " parts" + tail();
+        if (reason == null || reason.isBlank()) return new SummaryResponse(summary, List.of());
+        return new SummaryResponse(summary, List.of(), goalGaps);
     }
 
     @Override

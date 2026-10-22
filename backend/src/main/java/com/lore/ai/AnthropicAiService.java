@@ -117,6 +117,20 @@ public class AnthropicAiService implements AiService {
             @JsonPropertyDescription("One short line saying why")
             String goalReason) {}
 
+    /** One summary joined from the summaries of a big session's parts. */
+    record CombinedOutput(
+            @JsonProperty("session_summary")
+            @JsonPropertyDescription("Plain-English summary of the whole session, 2-4 sentences")
+            String sessionSummary) {}
+
+    record CombinedGoalOutput(
+            @JsonProperty("session_summary")
+            @JsonPropertyDescription("Plain-English summary of the whole session, 2-4 sentences")
+            String sessionSummary,
+            @JsonProperty("goal_parts_not_done")
+            @JsonPropertyDescription("Parts of the stated goal that the whole session doesn't do; empty if all were done")
+            List<String> goalPartsNotDone) {}
+
     record ExplanationOutput(
             @JsonPropertyDescription("One sentence saying what this change does overall")
             String overview,
@@ -193,6 +207,17 @@ public class AnthropicAiService implements AiService {
         List<String> gaps = out.goalPartsNotDone() == null ? List.of()
                 : out.goalPartsNotDone().stream().filter(g -> g != null && !g.isBlank()).map(String::strip).toList();
         return new SummaryResponse(out.sessionSummary(), descriptions, gaps);
+    }
+
+    @Override
+    public SummaryResponse combineSummaries(List<SummaryResponse> parts, String reason) {
+        String message = AiPrompts.combineUserMessage(parts, reason);
+        if (reason == null || reason.isBlank()) {
+            CombinedOutput out = call(CombinedOutput.class, AiPrompts.combineSystemPrompt(), message);
+            return new SummaryResponse(out.sessionSummary(), List.of());
+        }
+        CombinedGoalOutput out = call(CombinedGoalOutput.class, AiPrompts.combineWithGoalSystemPrompt(), message);
+        return new SummaryResponse(out.sessionSummary(), List.of(), clean(out.goalPartsNotDone()));
     }
 
     @Override

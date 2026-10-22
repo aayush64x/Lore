@@ -23,12 +23,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 public class SessionService {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
+
+    /**
+     * Above this many changes the summary is asked for in parts of this size, then joined.
+     * One answer has to describe every change it was given, and 330 changes in one call ran
+     * past the answer's length limit and got cut off.
+     */
+    static final int SUMMARY_BATCH_SIZE = 60;
+    /** How many parts are asked for at the same time. */
+    private static final int SUMMARY_THREADS = 4;
 
     private final SessionRepository sessionRepository;
     private final ChangeRepository changeRepository;
@@ -166,10 +179,9 @@ public class SessionService {
                             c.getChangeType().name(), c.getDiffContent(), c.isBinary()))
                     .toList();
 
-            // Asked once more if a text field comes back with stray JSON characters.
-            SummaryResponse summary = AiOutputCheck.askWithRetry(
-                    () -> aiService.summarize(aiInputs, session.getReason()),
-                    AiOutputCheck::problems);
+            SummaryResponse summary = aiInputs.size() <= SUMMARY_BATCH_SIZE
+                    ? askSummary(aiInputs, session.getReason())
+                    : summarizeInParts(aiInputs, session.getReason());
             if (summary == null || summary.sessionSummary() == null || summary.sessionSummary().isBlank()) {
                 throw new AiUnavailableException("AI returned an empty summary.");
             }
@@ -195,6 +207,47 @@ public class SessionService {
             log.error("AI summarization failed", e);
             return "AI summary failed.";
         }
+    }
+
+    /** One summary call, asked once more if a text field comes back with stray JSON characters. */
+    private SummaryResponse askSummary(List<AiService.ChangeInput> inputs, String reason) {
+        return AiOutputCheck.askWithRetry(() -> aiService.summarize(inputs, reason), AiOutputCheck::problems);
+    }
+
+    /**
+     * Summarizes a big session in parts of SUMMARY_BATCH_SIZE changes, a few parts at a time,
+     * then asks for one session summary (and goal check) from the parts' summaries. If any
+     * call fails the whole summary fails, so a session never ends up half described.
+     */
+    private SummaryResponse summarizeInParts(List<AiService.ChangeInput> inputs, String reason) {
+        ExecutorService pool = Executors.newFixedThreadPool(SUMMARY_THREADS);
+        List<SummaryResponse> parts = new ArrayList<>();
+        try {
+            List<CompletableFuture<SummaryResponse>> futures = new ArrayList<>();
+            for (int i = 0; i < inputs.size(); i += SUMMARY_BATCH_SIZE) {
+                List<AiService.ChangeInput> batch = inputs.subList(i, Math.min(i + SUMMARY_BATCH_SIZE, inputs.size()));
+                futures.add(CompletableFuture.supplyAsync(() -> askSummary(batch, reason), pool));
+            }
+            for (CompletableFuture<SummaryResponse> f : futures) {
+                try {
+                    parts.add(f.join());
+                } catch (CompletionException e) {
+                    // Rethrow the part's own error, so an AiUnavailableException keeps its message.
+                    if (e.getCause() instanceof RuntimeException cause) throw cause;
+                    throw e;
+                }
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        SummaryResponse combined = AiOutputCheck.askWithRetry(
+                () -> aiService.combineSummaries(parts, reason), AiOutputCheck::problems);
+        List<SummaryResponse.ChangeDescription> descriptions = new ArrayList<>();
+        for (SummaryResponse part : parts) {
+            if (part.changeDescriptions() != null) descriptions.addAll(part.changeDescriptions());
+        }
+        return new SummaryResponse(combined.sessionSummary(), descriptions, combined.goalPartsNotDone());
     }
 
     /**

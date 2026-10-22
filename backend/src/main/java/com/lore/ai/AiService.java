@@ -10,6 +10,15 @@ public interface AiService {
 
     SummaryResponse summarize(List<ChangeInput> changes, String reason);
 
+    /**
+     * For a session too big for one summary call: joins the summaries of its parts (each
+     * from summarize) into one session summary, plus the goal check when reason is given.
+     * Gets no diffs. The answer's changeDescriptions are empty.
+     */
+    default SummaryResponse combineSummaries(List<SummaryResponse> parts, String reason) {
+        throw new AiUnavailableException("Sessions this big can only be summarized with the Anthropic provider.");
+    }
+
     /** reason is what the user said they were trying to do (may be null). */
     ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile);
 
