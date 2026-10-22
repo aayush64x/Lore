@@ -12,4 +12,9 @@ public interface ChangeConceptRepository extends JpaRepository<ChangeConcept, UU
     /** With each tag's change loaded, so it can be read outside a transaction. */
     @Query("SELECT cc FROM ChangeConcept cc JOIN FETCH cc.change ch WHERE ch.session.id = :sessionId")
     List<ChangeConcept> findByChangeSessionId(@Param("sessionId") UUID sessionId);
+
+    /** Every tag in a project's stopped sessions, with its change and session loaded. */
+    @Query("SELECT cc FROM ChangeConcept cc JOIN FETCH cc.change ch JOIN FETCH ch.session s "
+            + "WHERE s.projectPath = :project AND s.status = com.lore.session.Session.SessionStatus.COMPLETE")
+    List<ChangeConcept> findInProject(@Param("project") String project);
 }
