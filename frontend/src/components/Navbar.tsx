@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { conceptsUrl, sessionsUrl } from "../api/client";
+import ThemeToggle from "./ThemeToggle";
 
 export interface Crumb {
   label: string;
@@ -109,6 +110,9 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
       </nav>
       {center && <div className="shrink-0">{center}</div>}
       {right && <div className="shrink-0 ml-auto">{right}</div>}
+      <div className={right ? "shrink-0" : "shrink-0 ml-auto"}>
+        <ThemeToggle />
+      </div>
       </div>
     </header>
   );
