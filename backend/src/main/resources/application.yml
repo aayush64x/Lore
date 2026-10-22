@@ -2,7 +2,12 @@ spring:
   main:
     banner-mode: off
   datasource:
-    url: jdbc:h2:file:${lore.home}/lore;AUTO_SERVER=TRUE
+    # MAX_COMPACT_TIME=0: H2 never moves data or shrinks the file while closing. A close
+    # cut off halfway (seen when the JAR was replaced, or at JVM shutdown) left the header
+    # pointing past the end of the file, and the database couldn't be opened again.
+    # (DB_CLOSE_ON_EXIT=FALSE would also help, but H2 doesn't allow it with AUTO_SERVER,
+    # which lets lore ui and lore stop share the database.)
+    url: jdbc:h2:file:${lore.home}/lore;AUTO_SERVER=TRUE;MAX_COMPACT_TIME=0
     driver-class-name: org.h2.Driver
     username: sa
     password:

@@ -1,8 +1,10 @@
 package com.lore;
 
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
 @SpringBootApplication
 public class LoreApplication {
@@ -36,9 +38,15 @@ public class LoreApplication {
             System.setProperty("server.port", port);
         }
 
-        new SpringApplicationBuilder(LoreApplication.class)
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(LoreApplication.class)
                 .web(webType)
                 .logStartupInfo(false)
                 .run(args);
+
+        // Every command but ui is done here. Close Spring now, which closes the database while
+        // the JVM is still running normally, instead of in a shutdown hook as the JVM exits.
+        if (webType == WebApplicationType.NONE) {
+            System.exit(SpringApplication.exit(context));
+        }
     }
 }
