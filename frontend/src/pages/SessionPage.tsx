@@ -32,6 +32,7 @@ import ExplainPanel from "../components/ExplainPanel";
 import FileSidebar from "../components/FileSidebar";
 import type { FileSummary } from "../components/FileSidebar";
 import ProgressBar from "../components/ProgressBar";
+import EmptyState, { Loading } from "../components/EmptyState";
 import Navbar from "../components/Navbar";
 import SessionHeader from "../components/SessionHeader";
 import TeachBackPanel from "../components/TeachBackPanel";
@@ -461,7 +462,7 @@ export default function SessionPage() {
     return (
       <div className="min-h-screen bg-paper text-ink">
         {navbar}
-        <div className="px-6 py-6 text-ink-3">Loading session...</div>
+        <Loading>Loading session...</Loading>
       </div>
     );
   }
@@ -470,8 +471,8 @@ export default function SessionPage() {
     return (
       <div className="min-h-screen bg-paper text-ink">
         <Navbar project={null} crumbs={[{ label: "Session not found" }]} />
-        <div className="px-6 py-6">
-          <p className="text-bad">{error ?? "Session not found."}</p>
+        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-8">
+          <EmptyState title="Session not found">It may have been deleted.</EmptyState>
         </div>
       </div>
     );

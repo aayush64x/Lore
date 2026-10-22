@@ -22,6 +22,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DELETE_CONFIRM, deleteSession, fetchSessions, sessionTitle } from "../api/client";
 import type { SessionResponse } from "../api/client";
+import EmptyState, { Command, Loading } from "../components/EmptyState";
 import Navbar from "../components/Navbar";
 
 // The result remembers which project it was loaded for, so "loading" can be worked
@@ -87,35 +88,19 @@ export default function SessionList() {
       <h1 className="font-serif text-[28px] leading-tight font-semibold tracking-tight text-ink mb-6">Sessions</h1>
 
       {!project && (
-        <div className="text-ink-3 text-center py-12">
-          <p>
-            No project selected. Run{" "}
-            <code className="bg-sunk px-1.5 py-0.5 rounded text-sm font-mono">
-              lore ui
-            </code>{" "}
-            from inside your project folder to see its sessions.
-          </p>
-        </div>
+        <EmptyState title="No project selected">
+          Run <Command>lore ui</Command> from inside your project folder to see its sessions.
+        </EmptyState>
       )}
 
-      {loading && (
-        <div className="text-ink-3 text-center py-12">Loading sessions...</div>
-      )}
+      {loading && <Loading>Loading sessions...</Loading>}
 
-      {error && (
-        <div className="text-bad text-center py-12">{error}</div>
-      )}
+      {error && <EmptyState title="Something went wrong" error>{error}</EmptyState>}
 
       {!loading && sessions && sessions.length === 0 && (
-        <div className="text-ink-3 text-center py-12">
-          <p>
-            No sessions yet. Run{" "}
-            <code className="bg-sunk px-1.5 py-0.5 rounded text-sm font-mono">
-              lore start
-            </code>{" "}
-            in your terminal to record your first one.
-          </p>
-        </div>
+        <EmptyState title="No sessions yet">
+          Run <Command>lore start</Command> in your terminal to record your first one.
+        </EmptyState>
       )}
 
       {deleteError && (

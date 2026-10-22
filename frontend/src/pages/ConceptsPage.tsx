@@ -20,6 +20,7 @@ import { changeUrl, conceptAnchor, fetchConceptGraph, fetchConcepts, fetchSessio
 import type { ConceptCount, ConceptGraphData, ConceptGraphNode, ConceptsResponse } from "../api/client";
 import ConceptChanges from "../components/ConceptChanges";
 import ConceptGraph from "../components/ConceptGraph";
+import EmptyState, { Command, Loading } from "../components/EmptyState";
 import Navbar from "../components/Navbar";
 
 type LoadResult =
@@ -200,18 +201,16 @@ export default function ConceptsPage() {
         </p>
 
         {!project && (
-          <p className="text-ink-3 text-center py-12">
-            No project selected. Run <code className="bg-sunk px-1.5 py-0.5 rounded text-sm font-mono">lore ui</code>{" "}
-            from inside your project folder.
-          </p>
+          <EmptyState title="No project selected">
+            Run <Command>lore ui</Command> from inside your project folder.
+          </EmptyState>
         )}
-        {loading && <p className="text-ink-3 text-center py-12">Loading concepts...</p>}
-        {current?.error && <p className="text-bad text-center py-12">{current.error}</p>}
+        {loading && <Loading>Loading concepts...</Loading>}
+        {current?.error && <EmptyState title="Something went wrong" error>{current.error}</EmptyState>}
         {empty && (
-          <p className="text-ink-3 text-center py-12">
-            No concepts yet. They're added when you run{" "}
-            <code className="bg-sunk px-1.5 py-0.5 rounded text-sm font-mono">lore stop</code>.
-          </p>
+          <EmptyState title="No concepts yet">
+            They're added when you run <Command>lore stop</Command>.
+          </EmptyState>
         )}
 
         {data && !empty && (

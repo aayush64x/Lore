@@ -28,6 +28,8 @@ Rules (see `CLAUDE.md`): one small task per slice. Build, test, commit, push. Re
 - [ ] **11. Fresh-install test.** *(On hold Oct 21, Aayush.)* Follow the README as a brand-new user with an empty setup. Fix anything that breaks.
 - [ ] **11b. UI polish pass** (before Oct 23). Spacing, buttons, empty and error states, readable on a small screen.
   - [x] Part 1 (Oct 22): no sideways scrolling on any page at phone width (390px). Breadcrumbs get their own line, the toolbar wraps, code scrolls inside its box.
+  - [x] "Study notebook" redesign (Oct 22): shared color, font and spacing tokens in index.css; all four pages restyled, light and dark.
+  - [x] Part 2 (Oct 22): one look for empty, loading and error states on every page; errors have a Refresh button.
 
 ## Must fix before rollout (do not cut)
 

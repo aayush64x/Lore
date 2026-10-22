@@ -16,6 +16,7 @@ import { REVIEW_CHANGED, answerReview, conceptsUrl, fetchReview, moveDemoClock, 
 import type { ReviewItem, ReviewResponse, ReviewResult } from "../api/client";
 import DiffView from "../components/DiffView";
 import { diffRows } from "../components/diffLines";
+import EmptyState, { Command, Loading } from "../components/EmptyState";
 import Navbar from "../components/Navbar";
 
 type LoadResult =
@@ -234,9 +235,13 @@ export default function ReviewPage() {
           tomorrow.
         </p>
 
-        {!project && <p className="text-ink-3 text-center py-12">No project selected. Run lore ui from inside your project folder.</p>}
-        {project && !current && <p className="text-ink-3 text-center py-12">Loading reviews...</p>}
-        {current?.error && <p className="text-bad text-center py-12">{current.error}</p>}
+        {!project && (
+          <EmptyState title="No project selected">
+            Run <Command>lore ui</Command> from inside your project folder.
+          </EmptyState>
+        )}
+        {project && !current && <Loading>Loading reviews...</Loading>}
+        {current?.error && <EmptyState title="Something went wrong" error>{current.error}</EmptyState>}
 
         {data && project && (
           <>
@@ -249,10 +254,9 @@ export default function ReviewPage() {
             </p>
 
             {data.due.length === 0 ? (
-              <p className="text-ink-3 text-center py-12">
-                Nothing to review today.
-                {data.upcomingCount === 0 && " Mark changes understood, and they'll come back here a day later."}
-              </p>
+              <EmptyState title="Nothing to review today">
+                {data.upcomingCount === 0 && "Mark changes understood, and they'll come back here a day later."}
+              </EmptyState>
             ) : (
               // Keyed by the clock, so moving it gives fresh cards (no old answers left in them).
               <ul key={`${data.demo.daysAhead}-${reloads}`} className="mt-4 space-y-4">
