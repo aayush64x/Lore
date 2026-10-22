@@ -17,15 +17,17 @@ import java.util.Optional;
 /**
  * The concepts a change can be tagged with, from concepts.txt: {lore.home}/concepts.txt if
  * the user made one, else the copy built into Lore. Read again on every use, so an edit
- * counts from the next summary on. Lines starting with # are comments, except the one
- * right above a group of concepts, which names the group.
+ * counts from the next summary on. A line is "Name | one-sentence meaning", or just "Name".
+ * Lines starting with # are comments, except the one right above a group of concepts,
+ * which names the group.
  */
 @Component
 public class ConceptList {
 
     static final String FILE = "concepts.txt";
 
-    public record Concept(String name, String group) {}
+    /** meaning is the sentence after "|" on the concept's line; null if there is none. */
+    public record Concept(String name, String group, String meaning) {}
 
     private final Path userFile;
 
@@ -71,8 +73,14 @@ public class ConceptList {
             if (line.startsWith("#")) {
                 // A heading only if a concept comes right after it; otherwise just a comment.
                 if (i + 1 < lines.size() && !lines.get(i + 1).startsWith("#")) group = line.substring(1).strip();
-            } else if (out.stream().noneMatch(c -> key(c.name()).equals(key(line)))) {
-                out.add(new Concept(line, group));
+            } else {
+                // "Name | meaning"; a line with no "|" is just a name.
+                int bar = line.indexOf('|');
+                String name = (bar < 0 ? line : line.substring(0, bar)).strip();
+                String meaning = bar < 0 ? null : line.substring(bar + 1).strip();
+                if (!name.isEmpty() && out.stream().noneMatch(c -> key(c.name()).equals(key(name)))) {
+                    out.add(new Concept(name, group, meaning == null || meaning.isEmpty() ? null : meaning));
+                }
             }
         }
         return out;

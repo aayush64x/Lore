@@ -1,56 +1,57 @@
 # Concepts Lore can tag a change with: general lessons, at the level of a beginner
 # course. During the summary the AI picks 1-3 of these per change, names copied exactly.
+# Each concept can have a one-sentence meaning after a "|", shown on the Concepts page.
 # Lines starting with # are comments, except the one right above a group of concepts,
 # which is that group's heading. Empty lines are ignored.
 # To change the list without rebuilding Lore, put your own copy at ~/.lore/concepts.txt.
 
 # Web basics
-HTML structure
-Page layout (Flexbox/Grid)
-Responsive design
-Theming & CSS variables
-Forms & user input
-Accessibility
+HTML structure | The tags that build a web page, like headings, paragraphs and buttons.
+Page layout (Flexbox/Grid) | How things on a page are lined up in rows, columns and boxes.
+Responsive design | Making a page look good on a phone, a tablet and a big screen.
+Theming & CSS variables | Saving colors and sizes once so the whole page can change its look at once.
+Forms & user input | Boxes and buttons where people type or pick things, and checking what they entered.
+Accessibility | Making a page work for everyone, including people who use a keyboard or a screen reader.
 
 # Programming fundamentals
-Variables & data types
-Conditionals
-Loops
-Functions
-Arrays & lists
-Objects & maps
-Classes & objects (OOP)
-Error handling
-Modules & imports
-Regular expressions
+Variables & data types | Named boxes that hold values, like a number, some text or true/false.
+Conditionals | Making the program choose what to do with if and else.
+Loops | Doing the same steps again for each item or until something is done.
+Functions | A named set of steps you can run again whenever you need it.
+Arrays & lists | A list that keeps many values in order, like a shopping list.
+Objects & maps | A thing that stores values under names, like a contact card with name and phone.
+Classes & objects (OOP) | A blueprint for making things that have their own data and actions.
+Error handling | Planning for things that go wrong so the program doesn't just crash.
+Modules & imports | Splitting code into files and pulling in the pieces you need.
+Regular expressions | A short pattern for finding or checking text, like "looks like an email".
 
 # JavaScript / frontend
-DOM & events
-Async code (promises/await)
-Fetching data from APIs
-Browser storage (localStorage)
+DOM & events | Changing a web page with code and reacting when someone clicks or types.
+Async code (promises/await) | Starting something slow, like loading data, and carrying on until it's ready.
+Fetching data from APIs | Asking another program or website for data over the internet.
+Browser storage (localStorage) | Saving small bits of data in the browser so they're still there next time.
 
 # React
-Components & props
-State
-Side effects (useEffect)
-Lists & keys
-Routing
+Components & props | Building a page from reusable pieces and passing each piece the info it needs.
+State | Data a component remembers, which updates the screen when it changes.
+Side effects (useEffect) | Running code after the screen updates, like loading data or saving it.
+Lists & keys | Showing a list of items on screen, each with its own label so React can track it.
+Routing | Showing a different page for each web address in the app.
 
 # Backend
-REST APIs
-Request validation
-Databases & SQL
-Data models
-Authentication
-Configuration & environment variables
-Logging
+REST APIs | Web addresses a program answers, like "get orders" or "create an order".
+Request validation | Checking data sent to the server is correct before using it.
+Databases & SQL | Storing data in tables and asking for it with SQL commands.
+Data models | Deciding what pieces of data a thing has, like an order having an item and a quantity.
+Authentication | Checking who someone is, like logging in, before letting them do things.
+Configuration & environment variables | Settings kept outside the code, like secret keys, so they can change without editing it.
+Logging | Writing notes about what the program is doing, to help find problems later.
 
 # General
-Data structures
-Algorithms
-Testing
-Git & version control
-Performance
-Security
-Dependencies & packages
+Data structures | Ways to organize data, like lists, maps and trees, so it's quick to use.
+Algorithms | Step-by-step recipes for solving a problem, like sorting or searching.
+Testing | Writing small checks that run your code and make sure it does the right thing.
+Git & version control | Saving snapshots of your code so you can see changes and go back.
+Performance | Making code faster or use less memory.
+Security | Keeping data and users safe from people trying to break in or cheat.
+Dependencies & packages | Code other people wrote that your project downloads and uses.

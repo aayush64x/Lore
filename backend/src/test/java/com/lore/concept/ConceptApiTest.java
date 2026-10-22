@@ -77,6 +77,7 @@ class ConceptApiTest {
                 .andExpect(jsonPath("$.concepts", hasSize(2)))
                 .andExpect(jsonPath("$.concepts[0].name").value("Loops"))
                 .andExpect(jsonPath("$.concepts[0].group").value("Programming fundamentals"))
+                .andExpect(jsonPath("$.concepts[0].meaning").value("Doing the same steps again for each item or until something is done."))
                 .andExpect(jsonPath("$.concepts[0].seen").value(3))
                 .andExpect(jsonPath("$.concepts[0].understood").value(2))
                 .andExpect(jsonPath("$.concepts[0].sessions").value(2))
@@ -161,6 +162,8 @@ class ConceptApiTest {
                 .andExpect(jsonPath("$.nodes[0].seen").value(3))
                 .andExpect(jsonPath("$.nodes[0].understood").value(1))
                 .andExpect(jsonPath("$.nodes[0].group").value("Programming fundamentals"))
+                .andExpect(jsonPath("$.nodes[0].meaning").value("Doing the same steps again for each item or until something is done."))
+                .andExpect(jsonPath("$.nodes[?(@.id == 'other:websockets')].meaning", contains(nullValue())))
                 // Its changes, newest session first, with what the side panel needs.
                 .andExpect(jsonPath("$.nodes[0].changes", hasSize(3)))
                 .andExpect(jsonPath("$.nodes[0].changes[0].changeId").value(latest.getId().toString()))

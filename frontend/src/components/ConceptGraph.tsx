@@ -1,23 +1,32 @@
-// The Concepts page's graph view (react-force-graph-2d does the layout and physics).
+// The Concepts page's graph view (react-force-graph-2d draws it and handles zoom and clicks).
 //
 // A circle per concept: bigger = seen on more changes; filled grey (none understood),
-// yellow (some) or green (most, 75%+); outlined in its section's color from concepts.txt
-// (dashed grey for "Other" suggestions). Sections are pulled toward their own spot so
-// they cluster. A line joins two concepts tagged on the same change; thicker = more
-// often together. Clicking a circle opens a side panel with that concept's changes.
+// yellow (some) or green (most, 75%+). Concepts sit in a block per category (the # headings
+// in concepts.txt, then suggestions), each block with its name on top. The blocks are laid
+// out in rows here, not by physics, so circles, names and headings never overlap. Clicking a
+// circle opens a side panel with the concept's meaning and its changes, the same list as
+// the table.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import ForceGraph2D from "react-force-graph-2d";
 import type { ForceGraphMethods, LinkObject, NodeObject } from "react-force-graph-2d";
-import { sessionTitle } from "../api/client";
 import type { ConceptGraphData, ConceptGraphNode } from "../api/client";
+import ConceptChanges from "./ConceptChanges";
 
 type GraphNode = NodeObject<ConceptGraphNode>;
 
-const SECTION_COLORS = ["#2563eb", "#9333ea", "#db2777", "#ea580c", "#0d9488", "#4f46e5", "#0891b2", "#65a30d"];
 const FILL = { none: "#9ca3af", some: "#facc15", most: "#22c55e" };
-const HEIGHT = 560;
+const MAX_HEIGHT = 480;
+const SUGGESTED = "Suggested";
+const NO_LONGER = "No longer on your list";
+
+// Layout sizes, in graph units (1 unit = 1 screen pixel before zooming).
+const SLOT_WIDTH = 170; // one concept and its name
+const SLOT_GAP = 22; // below a circle: room for its name
+const PER_ROW = 2; // concepts side by side in a category block
+const BLOCK_GAP = 40; // between category blocks
+const HEADING = 30; // a block's heading
+const MAX_LABEL = 26; // longer names are cut short (the full name is on hover and in the panel)
 
 function fillFor(n: ConceptGraphNode): string {
   if (n.understood === 0) return FILL.none;
@@ -26,6 +35,63 @@ function fillFor(n: ConceptGraphNode): string {
 
 function radius(n: ConceptGraphNode): number {
   return 8 + 6 * Math.sqrt(n.seen);
+}
+
+function fullName(n: ConceptGraphNode): string {
+  return n.other ? `Other: ${n.name}` : n.name;
+}
+
+function shortName(n: ConceptGraphNode): string {
+  const name = fullName(n);
+  return name.length > MAX_LABEL ? `${name.slice(0, MAX_LABEL - 1).trimEnd()}…` : name;
+}
+
+function categoryOf(n: ConceptGraphNode): string {
+  return n.group ?? (n.other ? SUGGESTED : NO_LONGER);
+}
+
+type Heading = { text: string; x: number; y: number };
+
+/**
+ * Places every concept: categories in concepts.txt order, as blocks that wrap into rows to
+ * fit the width; inside a block, concepts most-seen first, PER_ROW to a line.
+ */
+function layout(data: ConceptGraphData, width: number) {
+  const byCategory = new Map<string, ConceptGraphNode[]>();
+  for (const category of [...data.groups, SUGGESTED, NO_LONGER]) byCategory.set(category, []);
+  for (const n of data.nodes) byCategory.get(categoryOf(n))?.push(n);
+
+  const tallest = Math.max(...data.nodes.map(radius), 0);
+  const slotHeight = 2 * tallest + SLOT_GAP;
+  const blockWidth = PER_ROW * SLOT_WIDTH;
+  const perLine = Math.max(1, Math.floor((width + BLOCK_GAP) / (blockWidth + BLOCK_GAP)));
+
+  const positions = new Map<string, { x: number; y: number }>();
+  const headings: Heading[] = [];
+  let column = 0;
+  let top = 0;
+  let lineHeight = 0;
+  let right = 0;
+  for (const [category, nodes] of byCategory) {
+    if (nodes.length === 0) continue;
+    if (column === perLine) {
+      column = 0;
+      top += lineHeight + BLOCK_GAP;
+      lineHeight = 0;
+    }
+    const left = column * (blockWidth + BLOCK_GAP);
+    headings.push({ text: category, x: left + blockWidth / 2, y: top });
+    nodes.forEach((n, i) => {
+      positions.set(n.id, {
+        x: left + (i % PER_ROW) * SLOT_WIDTH + SLOT_WIDTH / 2,
+        y: top + HEADING + Math.floor(i / PER_ROW) * slotHeight + tallest,
+      });
+    });
+    lineHeight = Math.max(lineHeight, HEADING + Math.ceil(nodes.length / PER_ROW) * slotHeight);
+    right = Math.max(right, left + blockWidth);
+    column++;
+  }
+  return { positions, headings, width: right, height: top + lineHeight };
 }
 
 /** Follows the light/dark switch, so the labels stay readable. */
@@ -39,7 +105,19 @@ function useDark(): boolean {
   return dark;
 }
 
-function SidePanel({ node, color, onClose }: { node: ConceptGraphNode; color: string; onClose: () => void }) {
+/** Text with a halo in the background color, so nothing behind it cuts through. */
+function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, dark: boolean, bold = false) {
+  ctx.font = `${bold ? "600 13px" : "12px"} Inter Variable, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.lineWidth = 3;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = dark ? "#111827" : "#ffffff";
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = dark ? (bold ? "#f9fafb" : "#e5e7eb") : bold ? "#111827" : "#374151";
+  ctx.fillText(text, x, y);
+}
+
+function SidePanel({ node, onClose }: { node: ConceptGraphNode; onClose: () => void }) {
   return (
     <aside
       aria-label={`${node.name}: changes`}
@@ -47,36 +125,23 @@ function SidePanel({ node, color, onClose }: { node: ConceptGraphNode; color: st
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="font-semibold text-gray-900">{node.other ? `Other: ${node.name}` : node.name}</h3>
-          <p className="text-xs" style={{ color }}>
-            {node.other ? "Suggested, not on your list" : node.group ?? "No longer on your list"}
-          </p>
+          <h3 className="font-semibold text-gray-900">{fullName(node)}</h3>
+          <p className="text-xs text-gray-500">{node.other ? "Suggested, not on your list" : node.group ?? NO_LONGER}</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-700">
           ✕
         </button>
       </div>
+      {node.meaning && <p className="mt-2 text-sm text-gray-600">{node.meaning}</p>}
       <p className="mt-2 text-sm text-gray-700">
         <span className="font-semibold text-gray-900">
           {node.understood} of {node.seen}
         </span>{" "}
         {node.seen === 1 ? "change" : "changes"} understood
       </p>
-      <ul className="mt-3 space-y-3">
-        {node.changes.map((c) => (
-          <li key={c.changeId} className="text-sm">
-            <Link
-              to={`/sessions/${c.sessionId}/file?path=${encodeURIComponent(c.filePath)}`}
-              className="font-mono text-xs text-blue-600 hover:underline break-all"
-            >
-              {c.filePath}
-            </Link>
-            {c.understood && <span className="ml-1.5 text-xs text-green-700">✓ understood</span>}
-            <div className="text-xs text-gray-500">{sessionTitle(c.sessionReason)}</div>
-            {c.description && <p className="mt-0.5 text-gray-700">{c.description}</p>}
-          </li>
-        ))}
-      </ul>
+      <div className="mt-3">
+        <ConceptChanges changes={node.changes} />
+      </div>
     </aside>
   );
 }
@@ -88,15 +153,20 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
   const [selected, setSelected] = useState<ConceptGraphNode | null>(null);
   const dark = useDark();
 
-  // The library moves the objects it's given, so give it its own copies.
+  const placed = useMemo(() => layout(data, width - 60), [data, width]);
+  // The box is only as tall as the layout needs, up to MAX_HEIGHT (then it zooms out to fit).
+  const height = Math.min(MAX_HEIGHT, placed.height + 60);
+  // Copies pinned in place (fx/fy), so the library's physics doesn't move them. No lines.
   const graphData = useMemo(
-    () => ({ nodes: data.nodes.map((n) => ({ ...n })), links: data.links.map((l) => ({ ...l })) }),
-    [data],
+    () => ({
+      nodes: data.nodes.map((n) => {
+        const at = placed.positions.get(n.id) ?? { x: 0, y: 0 };
+        return { ...n, x: at.x, y: at.y, fx: at.x, fy: at.y };
+      }),
+      links: [],
+    }),
+    [data, placed],
   );
-  const colorOf = useMemo(() => {
-    const colors = new Map(data.groups.map((g, i) => [g, SECTION_COLORS[i % SECTION_COLORS.length]]));
-    return (n: ConceptGraphNode) => (n.group ? colors.get(n.group) ?? "#6b7280" : "#6b7280");
-  }, [data.groups]);
 
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
@@ -104,71 +174,39 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
     return () => observer.disconnect();
   }, []);
 
-  // Each section gets a spot on a circle, and its concepts are nudged toward it, so
-  // sections cluster. "Other" suggestions (no section) drift to the middle.
-  useEffect(() => {
+  // Zoom to show the whole layout, headings included, but never past 1:1 (small graphs
+  // would get huge text).
+  function fit() {
     const g = graph.current;
     if (!g) return;
-    const spots = new Map(
-      data.groups.map((group, i) => {
-        const angle = (2 * Math.PI * i) / Math.max(data.groups.length, 1);
-        return [group, { x: 150 * Math.cos(angle), y: 150 * Math.sin(angle) }];
-      }),
-    );
-    let nodes: GraphNode[] = [];
-    const cluster = Object.assign(
-      (alpha: number) => {
-        for (const n of nodes) {
-          const spot = (n.group && spots.get(n.group)) || { x: 0, y: 0 };
-          n.vx = (n.vx ?? 0) + (spot.x - (n.x ?? 0)) * 0.04 * alpha;
-          n.vy = (n.vy ?? 0) + (spot.y - (n.y ?? 0)) * 0.04 * alpha;
-        }
-      },
-      { initialize: (all: GraphNode[]) => (nodes = all) },
-    );
-    g.d3Force("section", cluster);
-    // More room than the defaults, so circles and their labels don't overlap.
-    (g.d3Force("charge") as unknown as { strength?: (s: number) => void } | undefined)?.strength?.(-260);
-    (g.d3Force("link") as unknown as { distance?: (d: number) => void } | undefined)?.distance?.(75);
-    g.d3ReheatSimulation();
-  }, [data.groups, graphData]);
+    g.centerAt(placed.width / 2, placed.height / 2);
+    g.zoom(Math.min(1, (width - 40) / placed.width, (height - 40) / placed.height));
+  }
 
   return (
     <div className="mt-4">
-      <div ref={box} className="relative rounded-lg border border-gray-200 bg-white overflow-hidden" style={{ height: HEIGHT }}>
+      <div ref={box} className="relative rounded-lg border border-gray-200 bg-white overflow-hidden" style={{ height }}>
         <ForceGraph2D
           ref={graph}
           graphData={graphData}
           width={width}
-          height={HEIGHT}
+          height={height}
           backgroundColor="rgba(0,0,0,0)"
-          cooldownTicks={150}
-          onEngineStop={() => graph.current?.zoomToFit(400, 70)}
-          nodeLabel={(n) => `${n.name}: ${n.understood} of ${n.seen} understood`}
+          cooldownTicks={1}
+          onEngineStop={fit}
+          nodeLabel={(n) => `${fullName(n)}: ${n.understood} of ${n.seen} understood`}
           nodeCanvasObject={(n, ctx, scale) => {
             const r = radius(n);
             ctx.beginPath();
             ctx.arc(n.x ?? 0, n.y ?? 0, r, 0, 2 * Math.PI);
             ctx.fillStyle = fillFor(n);
             ctx.fill();
-            ctx.lineWidth = (selected?.id === n.id ? 4 : 2.5) / Math.min(scale, 2);
-            ctx.strokeStyle = colorOf(n);
-            ctx.setLineDash(n.other ? [3, 2] : []);
+            // A thin outline only, so a selected circle can stand out.
+            ctx.lineWidth = (selected?.id === n.id ? 3 : 1) / Math.min(scale, 2);
+            ctx.strokeStyle = selected?.id === n.id ? (dark ? "#f9fafb" : "#111827") : dark ? "#111827" : "#ffffff";
             ctx.stroke();
-            ctx.setLineDash([]);
-            const font = 12 / Math.min(scale, 2.5);
-            ctx.font = `${font}px Inter Variable, sans-serif`;
-            ctx.textAlign = "center";
             ctx.textBaseline = "top";
-            const label = n.other ? `Other: ${n.name}` : n.name;
-            const labelY = (n.y ?? 0) + r + 3 / Math.min(scale, 2);
-            // A halo in the background color, so lines and circles behind the label don't cut through it.
-            ctx.lineWidth = 3 / Math.min(scale, 2.5);
-            ctx.lineJoin = "round";
-            ctx.strokeStyle = dark ? "#111827" : "#ffffff";
-            ctx.strokeText(label, n.x ?? 0, labelY);
-            ctx.fillStyle = dark ? "#e5e7eb" : "#374151";
-            ctx.fillText(label, n.x ?? 0, labelY);
+            drawLabel(ctx, shortName(n), n.x ?? 0, (n.y ?? 0) + r + 4, dark);
           }}
           nodePointerAreaPaint={(n, color, ctx) => {
             ctx.fillStyle = color;
@@ -176,44 +214,30 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
             ctx.arc(n.x ?? 0, n.y ?? 0, radius(n) + 2, 0, 2 * Math.PI);
             ctx.fill();
           }}
-          linkWidth={(l) => 1 + 2 * ((l.count as number) - 1)}
-          linkColor={() => (dark ? "rgba(156,163,175,0.45)" : "rgba(107,114,128,0.35)")}
-          linkLabel={(l) => `Together on ${l.count} ${l.count === 1 ? "change" : "changes"}`}
+          // Each category's name, on top of its block.
+          onRenderFramePost={(ctx) => {
+            ctx.textBaseline = "top";
+            for (const h of placed.headings) drawLabel(ctx, h.text, h.x, h.y, dark, true);
+          }}
+          enableNodeDrag={false}
           onNodeClick={(n) => setSelected(data.nodes.find((d) => d.id === n.id) ?? null)}
           onBackgroundClick={() => setSelected(null)}
         />
-
-        {selected && <SidePanel node={selected} color={colorOf(selected)} onClose={() => setSelected(null)} />}
+        {selected && <SidePanel node={selected} onClose={() => setSelected(null)} />}
       </div>
-      {/* Legend: fill = understood, outline = section. */}
-      <div className="mt-2 px-1 text-xs text-gray-600 space-y-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {[
-            ["None understood", FILL.none],
-            ["Some", FILL.some],
-            ["Most (75%+)", FILL.most],
-          ].map(([label, color]) => (
-            <span key={label} className="inline-flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {data.groups.map((g) => (
-            <span key={g} className="inline-flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: colorOf({ group: g } as ConceptGraphNode) }} />
-              {g}
-            </span>
-          ))}
-          {data.nodes.some((n) => n.other) && (
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-dashed border-gray-400" />
-              Suggested
-            </span>
-          )}
-        </div>
-        <div>Bigger = seen on more changes · thicker line = tagged together more often · click a circle</div>
+
+      <div className="mt-2 px-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+        {[
+          ["None understood", FILL.none],
+          ["Some", FILL.some],
+          ["Most (75%+)", FILL.most],
+        ].map(([label, color]) => (
+          <span key={label} className="inline-flex items-center gap-1">
+            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: color }} />
+            {label}
+          </span>
+        ))}
+        <span>Bigger = seen on more changes · grouped by category · click a circle</span>
       </div>
     </div>
   );

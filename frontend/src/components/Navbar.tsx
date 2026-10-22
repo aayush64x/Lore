@@ -1,6 +1,6 @@
 // Navbar — the bar at the top of every page.
 //
-// Shows "Lore" (goes to the session list), Concepts and Review buttons, and a breadcrumb trail:
+// Shows "Lore" (goes to the session list), Review and Concepts buttons, and a breadcrumb trail:
 //   project › session title › file
 // Every crumb with a link is clickable. Long names are cut off with "…";
 // hover one to see it in full. Pages can add their own items in the
@@ -122,8 +122,8 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
 
         {project && (
           <>
-            <NavPill to={conceptsUrl(project)} active={path === "/concepts"} label="Concepts" icon={BOOK} />
             <NavPill to={reviewUrl(project)} active={path === "/review"} label="Review" icon={CLOCK} badge={reviewDue} />
+            <NavPill to={conceptsUrl(project)} active={path === "/concepts"} label="Concepts" icon={BOOK} />
           </>
         )}
 

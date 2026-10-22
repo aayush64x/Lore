@@ -28,7 +28,7 @@ public class ConceptGraph {
                             String description, boolean understood, Instant stoppedAt) {}
 
     /** id is the name for list concepts and "other:<name>" for suggestions; group is null for those. */
-    public record Node(String id, String name, String group, boolean other, int seen, int understood,
+    public record Node(String id, String name, String group, String meaning, boolean other, int seen, int understood,
                        List<ChangeRef> changes) {}
 
     /** count = how many changes were tagged with both. */
@@ -46,10 +46,10 @@ public class ConceptGraph {
     }
 
     public Graph forProject(String project) {
-        Map<String, String> groups = new HashMap<>();
+        Map<String, ConceptList.Concept> onList = new HashMap<>();
         List<String> groupOrder = new ArrayList<>();
         for (ConceptList.Concept c : conceptList.concepts()) {
-            groups.put(c.name(), c.group());
+            onList.put(c.name(), c);
             if (c.group() != null && !groupOrder.contains(c.group())) groupOrder.add(c.group());
         }
 
@@ -76,7 +76,9 @@ public class ConceptGraph {
             refs.sort(Comparator.comparing(ChangeRef::stoppedAt, Comparator.nullsLast(Comparator.reverseOrder()))
                     .thenComparing(ChangeRef::filePath));
             int understood = (int) refs.stream().filter(ChangeRef::understood).count();
-            nodes.add(new Node(e.getKey(), first.getName(), first.isOther() ? null : groups.get(first.getName()),
+            ConceptList.Concept concept = first.isOther() ? null : onList.get(first.getName());
+            nodes.add(new Node(e.getKey(), first.getName(), concept == null ? null : concept.group(),
+                    concept == null ? null : concept.meaning(),
                     first.isOther(), refs.size(), understood, refs));
         }
         nodes.sort(Comparator.comparingInt(Node::seen).reversed().thenComparing(n -> n.name().toLowerCase()));

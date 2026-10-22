@@ -224,6 +224,7 @@ export async function retrySummary(id: string): Promise<SessionDetailResponse> {
 export interface ConceptCount {
   name: string;
   group: string | null;
+  meaning: string | null; // one sentence from concepts.txt; null if the line has none
   seen: number;       // changes tagged with it
   understood: number; // of those, marked understood or passed in teach-back
   sessions: number;
@@ -243,6 +244,7 @@ export interface ConceptGraphNode {
   id: string;
   name: string;
   group: string | null; // heading in concepts.txt; null for suggestions
+  meaning: string | null;
   other: boolean;
   seen: number;
   understood: number;
@@ -409,6 +411,11 @@ export function sessionsUrl(project: string | null): string {
 // The Review page's address for a project.
 export function reviewUrl(project: string): string {
   return `/review?project=${encodeURIComponent(project)}`;
+}
+
+// A session page opened on one change: its file, with that change selected.
+export function changeUrl(sessionId: string, filePath: string, changeId: string): string {
+  return `/sessions/${sessionId}/file?path=${encodeURIComponent(filePath)}&change=${changeId}`;
 }
 
 // The Concepts page's address for a project, optionally scrolled to one concept's row.

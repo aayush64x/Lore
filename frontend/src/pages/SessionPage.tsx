@@ -59,6 +59,8 @@ export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const pathParam = searchParams.get("path");
+  // ?change=<id> (from the Concepts page): open on that change until another is picked.
+  const changeParam = searchParams.get("change");
   const unreviewedOnly = searchParams.get("unreviewed") === "1";
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionDetailResponse | null>(null);
@@ -157,7 +159,10 @@ export default function SessionPage() {
   }, [allChanges]);
 
   const selected =
-    changes.find((c) => c.id === selectedId) ?? changes.find((c) => !c.understood) ?? changes[0] ?? null;
+    changes.find((c) => c.id === (selectedId ?? changeParam)) ??
+    changes.find((c) => !c.understood) ??
+    changes[0] ??
+    null;
   const selectedIndex = selected ? changes.indexOf(selected) : -1;
   const explanationOf = (c: ChangeResponse) => explanations[c.id] ?? c.explanation ?? null;
   const explanation = selected ? explanationOf(selected) : null;
@@ -174,6 +179,12 @@ export default function SessionPage() {
     }
     return [...seen.values()];
   }, [allChanges, explanations]);
+
+  // Opened on a change from the Concepts page: scroll to it once the session has loaded.
+  const sessionLoaded = session !== null;
+  useEffect(() => {
+    if (sessionLoaded && changeParam) pendingScroll.current = changeParam;
+  }, [sessionLoaded, changeParam]);
 
   // After a change is picked (maybe in another file), scroll to it once it's drawn.
   useEffect(() => {

@@ -23,8 +23,9 @@ import java.util.UUID;
 @Service
 public class ConceptStats {
 
-    /** group is the concept's heading in concepts.txt; null if it's no longer on the list. */
-    public record ConceptCount(String name, String group, int seen, int understood, int sessions, Instant lastSeen) {}
+    /** group and meaning come from concepts.txt; null if it's no longer on the list (or has no meaning). */
+    public record ConceptCount(String name, String group, String meaning, int seen, int understood, int sessions,
+                               Instant lastSeen) {}
 
     /** changes = tagged changes (each counted once, however many tags), understoodChanges = of those. */
     public record Result(List<ConceptCount> concepts, List<ConceptCount> others, int changes, int understoodChanges) {}
@@ -38,8 +39,8 @@ public class ConceptStats {
     }
 
     public Result forProject(String project) {
-        Map<String, String> groups = new HashMap<>();
-        for (ConceptList.Concept c : conceptList.concepts()) groups.put(c.name(), c.group());
+        Map<String, ConceptList.Concept> onList = new HashMap<>();
+        for (ConceptList.Concept c : conceptList.concepts()) onList.put(c.name(), c);
 
         Map<String, List<ChangeConcept>> listed = new LinkedHashMap<>();
         Map<String, List<ChangeConcept>> others = new LinkedHashMap<>();
@@ -51,11 +52,11 @@ public class ConceptStats {
             (tag.isOther() ? others : listed).computeIfAbsent(key, k -> new ArrayList<>()).add(tag);
         }
         int understood = (int) changes.values().stream().filter(u -> u).count();
-        return new Result(counts(listed, groups), counts(others, Map.of()), changes.size(), understood);
+        return new Result(counts(listed, onList), counts(others, Map.of()), changes.size(), understood);
     }
 
     /** Most seen first, then by name. */
-    private static List<ConceptCount> counts(Map<String, List<ChangeConcept>> byName, Map<String, String> groups) {
+    private static List<ConceptCount> counts(Map<String, List<ChangeConcept>> byName, Map<String, ConceptList.Concept> onList) {
         List<ConceptCount> out = new ArrayList<>();
         for (List<ChangeConcept> tags : byName.values()) {
             String name = tags.get(0).getName();
@@ -72,7 +73,9 @@ public class ConceptStats {
                 Instant when = session.getStoppedAt();
                 if (when != null && (last == null || when.isAfter(last))) last = when;
             }
-            out.add(new ConceptCount(name, groups.get(name), changes.size(), understood, sessions.size(), last));
+            ConceptList.Concept concept = onList.get(name);
+            out.add(new ConceptCount(name, concept == null ? null : concept.group(), concept == null ? null : concept.meaning(),
+                    changes.size(), understood, sessions.size(), last));
         }
         out.sort(Comparator.comparingInt(ConceptCount::seen).reversed()
                 .thenComparing(c -> c.name().toLowerCase()));

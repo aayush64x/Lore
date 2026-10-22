@@ -16,12 +16,15 @@ class ConceptListTest {
         List<ConceptList.Concept> concepts = new ConceptList(home).concepts();
 
         assertEquals(39, concepts.size());
-        assertEquals(new ConceptList.Concept("HTML structure", "Web basics"), concepts.get(0));
-        assertEquals(new ConceptList.Concept("Side effects (useEffect)", "React"),
-                concepts.stream().filter(c -> c.name().startsWith("Side effects")).findFirst().orElseThrow());
-        assertEquals(new ConceptList.Concept("Dependencies & packages", "General"), concepts.get(38));
-        assertEquals(new ConceptList.Concept("Regular expressions", "Programming fundamentals"),
-                concepts.stream().filter(c -> c.name().equals("Regular expressions")).findFirst().orElseThrow());
+        assertEquals(new ConceptList.Concept("HTML structure", "Web basics",
+                "The tags that build a web page, like headings, paragraphs and buttons."), concepts.get(0));
+        assertEquals("React", concepts.stream().filter(c -> c.name().equals("Side effects (useEffect)")).findFirst().orElseThrow().group());
+        assertEquals("Dependencies & packages", concepts.get(38).name());
+        assertEquals("General", concepts.get(38).group());
+        assertEquals("Programming fundamentals",
+                concepts.stream().filter(c -> c.name().equals("Regular expressions")).findFirst().orElseThrow().group());
+        assertTrue(concepts.stream().allMatch(c -> c.meaning() != null && !c.meaning().isBlank()),
+                "every built-in concept has a meaning");
         assertTrue(concepts.stream().noneMatch(c -> c.name().startsWith("#")), "comments are never concepts");
     }
 
@@ -40,9 +43,29 @@ class ConceptListTest {
                 """);
 
         assertEquals(List.of(
-                new ConceptList.Concept("Loops", "Basics"),
-                new ConceptList.Concept("Functions", "Basics"),
-                new ConceptList.Concept("Generics", "Extra")), new ConceptList(home).concepts());
+                new ConceptList.Concept("Loops", "Basics", null),
+                new ConceptList.Concept("Functions", "Basics", null),
+                new ConceptList.Concept("Generics", "Extra", null)), new ConceptList(home).concepts());
+    }
+
+    @Test
+    void a_meaning_after_a_bar_is_read_and_a_line_without_one_still_works(@TempDir Path home) throws Exception {
+        Files.writeString(home.resolve("concepts.txt"), """
+                # Basics
+                Loops | Doing the same steps again.
+                Functions
+                Arrays |
+                Maps|Values stored under names | with a bar inside
+                """);
+
+        assertEquals(List.of(
+                new ConceptList.Concept("Loops", "Basics", "Doing the same steps again."),
+                new ConceptList.Concept("Functions", "Basics", null),
+                new ConceptList.Concept("Arrays", "Basics", null),
+                new ConceptList.Concept("Maps", "Basics", "Values stored under names | with a bar inside")),
+                new ConceptList(home).concepts());
+        assertEquals(List.of("Loops", "Functions", "Arrays", "Maps"), new ConceptList(home).names(),
+                "the AI only ever sees the names");
     }
 
     @Test
