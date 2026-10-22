@@ -1,11 +1,11 @@
 // The Concepts page's graph view (react-force-graph-2d draws it and handles zoom and clicks).
 //
 // A circle per concept: bigger = seen on more changes; filled grey (none understood),
-// yellow (some) or green (most, 75%+). Concepts sit in a block per category (the # headings
-// in concepts.txt, then suggestions), each block with its name on top. The blocks are laid
-// out in rows here, not by physics, so circles, names and headings never overlap. Clicking a
-// circle opens a side panel with the concept's meaning and its changes, the same list as
-// the table.
+// amber (some) or green (most, 75%+), from the shared color tokens. Concepts sit in a
+// block per category (the # headings in concepts.txt, then suggestions), each block with
+// its name on top. The blocks are laid out in rows here, not by physics, so circles,
+// names and headings never overlap. Clicking a circle opens a side panel with the
+// concept's meaning and its changes, the same list as the table.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
@@ -15,7 +15,6 @@ import ConceptChanges from "./ConceptChanges";
 
 type GraphNode = NodeObject<ConceptGraphNode>;
 
-const FILL = { none: "#9ca3af", some: "#facc15", most: "#22c55e" };
 const MAX_HEIGHT = 480;
 const SUGGESTED = "Suggested";
 const NO_LONGER = "No longer on your list";
@@ -28,9 +27,9 @@ const BLOCK_GAP = 40; // between category blocks
 const HEADING = 30; // a block's heading
 const MAX_LABEL = 26; // longer names are cut short (the full name is on hover and in the panel)
 
-function fillFor(n: ConceptGraphNode): string {
-  if (n.understood === 0) return FILL.none;
-  return n.understood / n.seen >= 0.75 ? FILL.most : FILL.some;
+function fillFor(n: ConceptGraphNode): "none" | "some" | "most" {
+  if (n.understood === 0) return "none";
+  return n.understood / n.seen >= 0.75 ? "most" : "some";
 }
 
 function radius(n: ConceptGraphNode): number {
@@ -94,26 +93,43 @@ function layout(data: ConceptGraphData, width: number) {
   return { positions, headings, width: right, height: top + lineHeight };
 }
 
-/** Follows the light/dark switch, so the labels stay readable. */
-function useDark(): boolean {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+/** The canvas can't use Tailwind classes, so it reads the shared color tokens (index.css). */
+function readPalette() {
+  const css = getComputedStyle(document.documentElement);
+  const v = (name: string) => css.getPropertyValue(name).trim();
+  return {
+    none: v("--fill-none"),
+    some: v("--fill-some"),
+    most: v("--fill-most"),
+    surface: v("--surface"),
+    ink: v("--ink"),
+    ink2: v("--ink-2"),
+  };
+}
+
+type Palette = ReturnType<typeof readPalette>;
+
+/** Follows the light/dark switch, so the circles and labels use that mode's colors. */
+function usePalette(): Palette {
+  const [palette, setPalette] = useState(readPalette);
   useEffect(() => {
-    const observer = new MutationObserver(() => setDark(document.documentElement.classList.contains("dark")));
+    const observer = new MutationObserver(() => setPalette(readPalette()));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
-  return dark;
+  return palette;
 }
 
 /** Text with a halo in the background color, so nothing behind it cuts through. */
-function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, dark: boolean, bold = false) {
-  ctx.font = `${bold ? "600 13px" : "12px"} Inter Variable, sans-serif`;
+function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, palette: Palette, bold = false) {
+  // Category headings use the heading serif; concept names stay Inter.
+  ctx.font = bold ? `600 14px "Source Serif 4 Variable", Georgia, serif` : "12px Inter Variable, sans-serif";
   ctx.textAlign = "center";
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
-  ctx.strokeStyle = dark ? "#111827" : "#ffffff";
+  ctx.strokeStyle = palette.surface;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = dark ? (bold ? "#f9fafb" : "#e5e7eb") : bold ? "#111827" : "#374151";
+  ctx.fillStyle = bold ? palette.ink : palette.ink2;
   ctx.fillText(text, x, y);
 }
 
@@ -121,20 +137,20 @@ function SidePanel({ node, onClose }: { node: ConceptGraphNode; onClose: () => v
   return (
     <aside
       aria-label={`${node.name}: changes`}
-      className="absolute top-3 right-3 bottom-3 w-80 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4 shadow-lg"
+      className="absolute top-3 right-3 bottom-3 w-80 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-card border border-line bg-surface p-4 shadow-lg"
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="font-semibold text-gray-900">{fullName(node)}</h3>
-          <p className="text-xs text-gray-500">{node.other ? "Suggested, not on your list" : node.group ?? NO_LONGER}</p>
+          <h3 className="font-serif text-[17px] font-semibold text-ink">{fullName(node)}</h3>
+          <p className="text-xs text-ink-3">{node.other ? "Suggested, not on your list" : node.group ?? NO_LONGER}</p>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-700">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-control px-1 text-ink-3 transition-colors duration-150 hover:text-ink">
           ✕
         </button>
       </div>
-      {node.meaning && <p className="mt-2 text-sm text-gray-600">{node.meaning}</p>}
-      <p className="mt-2 text-sm text-gray-700">
-        <span className="font-semibold text-gray-900">
+      {node.meaning && <p className="mt-2 text-sm leading-relaxed text-ink-2">{node.meaning}</p>}
+      <p className="mt-2 text-sm text-ink-2">
+        <span className="font-semibold text-ink">
           {node.understood} of {node.seen}
         </span>{" "}
         {node.seen === 1 ? "change" : "changes"} understood
@@ -151,7 +167,7 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
   const graph = useRef<ForceGraphMethods<GraphNode, LinkObject<ConceptGraphNode>> | undefined>(undefined);
   const [width, setWidth] = useState(800);
   const [selected, setSelected] = useState<ConceptGraphNode | null>(null);
-  const dark = useDark();
+  const palette = usePalette();
 
   const placed = useMemo(() => layout(data, width - 60), [data, width]);
   // The box is only as tall as the layout needs, up to MAX_HEIGHT (then it zooms out to fit).
@@ -185,7 +201,7 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
 
   return (
     <div className="mt-4">
-      <div ref={box} className="relative rounded-lg border border-gray-200 bg-white overflow-hidden" style={{ height }}>
+      <div ref={box} className="relative rounded-card border border-line bg-surface overflow-hidden" style={{ height }}>
         <ForceGraph2D
           ref={graph}
           graphData={graphData}
@@ -199,14 +215,14 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
             const r = radius(n);
             ctx.beginPath();
             ctx.arc(n.x ?? 0, n.y ?? 0, r, 0, 2 * Math.PI);
-            ctx.fillStyle = fillFor(n);
+            ctx.fillStyle = palette[fillFor(n)];
             ctx.fill();
             // A thin outline only, so a selected circle can stand out.
             ctx.lineWidth = (selected?.id === n.id ? 3 : 1) / Math.min(scale, 2);
-            ctx.strokeStyle = selected?.id === n.id ? (dark ? "#f9fafb" : "#111827") : dark ? "#111827" : "#ffffff";
+            ctx.strokeStyle = selected?.id === n.id ? palette.ink : palette.surface;
             ctx.stroke();
             ctx.textBaseline = "top";
-            drawLabel(ctx, shortName(n), n.x ?? 0, (n.y ?? 0) + r + 4, dark);
+            drawLabel(ctx, shortName(n), n.x ?? 0, (n.y ?? 0) + r + 4, palette);
           }}
           nodePointerAreaPaint={(n, color, ctx) => {
             ctx.fillStyle = color;
@@ -217,7 +233,7 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
           // Each category's name, on top of its block.
           onRenderFramePost={(ctx) => {
             ctx.textBaseline = "top";
-            for (const h of placed.headings) drawLabel(ctx, h.text, h.x, h.y, dark, true);
+            for (const h of placed.headings) drawLabel(ctx, h.text, h.x, h.y, palette, true);
           }}
           enableNodeDrag={false}
           onNodeClick={(n) => setSelected(data.nodes.find((d) => d.id === n.id) ?? null)}
@@ -226,14 +242,14 @@ export default function ConceptGraph({ data }: { data: ConceptGraphData }) {
         {selected && <SidePanel node={selected} onClose={() => setSelected(null)} />}
       </div>
 
-      <div className="mt-2 px-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+      <div className="mt-3 px-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-3">
         {[
-          ["None understood", FILL.none],
-          ["Some", FILL.some],
-          ["Most (75%+)", FILL.most],
+          ["None understood", "bg-fill-none"],
+          ["Some", "bg-fill-some"],
+          ["Most (75%+)", "bg-fill-most"],
         ].map(([label, color]) => (
           <span key={label} className="inline-flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: color }} />
+            <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`} />
             {label}
           </span>
         ))}

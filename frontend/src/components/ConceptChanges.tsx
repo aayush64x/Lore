@@ -10,29 +10,29 @@ export default function ConceptChanges({ changes }: { changes: ConceptGraphNode[
   return (
     <ul className="space-y-2">
       {changes.map((c) => (
-        <li key={c.changeId} className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+        <li key={c.changeId} className="rounded-control border border-line bg-surface px-3.5 py-3 text-sm">
           <div className="flex items-start gap-2">
             <Link
               to={changeUrl(c.sessionId, c.filePath, c.changeId)}
-              className="font-mono text-xs text-blue-600 hover:underline break-all"
+              className="font-mono text-xs text-accent underline-offset-2 hover:underline break-all"
             >
               {c.filePath}
             </Link>
             {c.understood ? (
-              <span className="ml-auto shrink-0 rounded-full border border-green-300 bg-green-50 px-2 py-0.5 text-[11px] text-green-700">
+              <span className="ml-auto shrink-0 rounded-full border border-ok/30 bg-ok-soft px-2 py-0.5 text-[11px] font-medium text-ok">
                 ✓ Understood
               </span>
             ) : (
-              <span className="ml-auto shrink-0 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] text-orange-700">
+              <span className="ml-auto shrink-0 rounded-full border border-warn/30 bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn">
                 Not yet
               </span>
             )}
           </div>
-          <div className="text-xs text-gray-500">{sessionTitle(c.sessionReason)}</div>
-          {c.description && <p className="mt-0.5 text-gray-700">{c.description}</p>}
+          <div className="mt-0.5 text-xs text-ink-3">{sessionTitle(c.sessionReason)}</div>
+          {c.description && <p className="mt-1.5 leading-relaxed text-ink">{c.description}</p>}
           {c.note && (
-            <p className="mt-1 whitespace-pre-wrap rounded border-l-2 border-blue-300 bg-blue-50/60 px-2 py-1 text-gray-800">
-              <span className="text-xs font-medium text-blue-700">My note: </span>
+            <p className="mt-2 whitespace-pre-wrap border-l-2 border-accent/50 pl-3 text-ink-2">
+              <span className="text-xs font-medium text-ink-3">My note: </span>
               {c.note}
             </p>
           )}

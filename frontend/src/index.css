@@ -3,6 +3,108 @@
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Headings only (page titles, concept names). Body text and buttons stay Inter. */
+  --font-serif: "Source Serif 4 Variable", ui-serif, Georgia, serif;
+}
+
+/* ---------------------------------------------------------------------------------
+   "Study notebook" design tokens, shared by every page.
+   Light = warm paper; dark = dark warm paper (not pure black). Pages use them through
+   the Tailwind colors below: bg-paper, bg-surface, bg-sunk, text-ink, text-ink-2,
+   text-ink-3, border-line, border-line-strong, bg-accent, text-accent, bg-accent-soft,
+   and ok / warn / bad (+ -soft) for status. Status is never shown by color alone.
+   --------------------------------------------------------------------------------- */
+:root {
+  --paper: #f6f3ec;        /* the page */
+  --surface: #fffdf8;      /* cards, rows, panels */
+  --sunk: #eee9df;         /* hover, an opened row */
+  --line: #e2dccf;         /* borders, dividers */
+  --line-strong: #cdc4b4;  /* inputs, a selected outline */
+  --ink: #24201a;          /* headings and body text */
+  --ink-2: #5a5348;        /* secondary text */
+  --ink-3: #6f675a;        /* meta text (still 4.5:1 on paper) */
+  --accent: #2f4fd8;       /* main buttons, links, focus */
+  --accent-hover: #2442bd;
+  --accent-soft: #e6eafa;
+  --on-accent: #ffffff;
+  --ok: #2f6b43;           /* understood */
+  --ok-soft: #e4efe5;
+  --warn: #8a4f0c;         /* not yet */
+  --warn-soft: #f7ecd9;
+  --bad: #a33a29;          /* issues, delete, due count */
+  --bad-soft: #f6e3de;
+  /* Graph and progress fills: none / some / most understood. */
+  --fill-none: #b9b0a1;
+  --fill-some: #d9a23a;
+  --fill-most: #4f9a66;
+  --radius-control: 6px;   /* buttons, inputs */
+  --radius-card: 10px;     /* cards, panels */
+}
+
+:root.dark {
+  --paper: #1c1a16;
+  --surface: #24211c;
+  --sunk: #2c2822;
+  --line: #3a352d;
+  --line-strong: #514a3f;
+  --ink: #ede6da;
+  --ink-2: #c3b9aa;
+  --ink-3: #a29886;
+  --accent: #93a6ff;
+  --accent-hover: #adbbff;
+  --accent-soft: #2a2f48;
+  --on-accent: #15172a;
+  --ok: #93c9a1;
+  --ok-soft: #233426;
+  --warn: #e6b56b;
+  --warn-soft: #3a2d19;
+  --bad: #f19c8c;
+  --bad-soft: #402520;
+  --fill-none: #6b6355;
+  --fill-some: #d6a24a;
+  --fill-most: #6fae80;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunk: var(--sunk);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-fill-none: var(--fill-none);
+  --color-fill-some: var(--fill-some);
+  --color-fill-most: var(--fill-most);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+}
+
+/* A visible focus ring on everything you can click or type in. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Motion is small (150-200ms fades); none at all when the system asks for less. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* JetBrains Mono joins "!==" or "=>" into one symbol. Show the real characters. */

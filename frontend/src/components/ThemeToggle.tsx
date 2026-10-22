@@ -32,7 +32,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Light mode" : "Dark mode"}
-      className="shrink-0 p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+      className="shrink-0 p-1.5 rounded-control text-ink-3 transition-colors duration-150 hover:text-ink hover:bg-sunk"
     >
       {dark ? (
         // Sun

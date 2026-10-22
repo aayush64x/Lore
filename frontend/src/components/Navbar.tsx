@@ -49,10 +49,10 @@ function NavPill({ to, active, label, icon, badge = 0 }: { to: string; active: b
       to={to}
       aria-current={active ? "page" : undefined}
       aria-label={badge > 0 ? `${label}, ${badge} due` : label}
-      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-control border px-3 py-1 text-sm font-medium transition-colors duration-150 ${
         active
-          ? "bg-blue-600 border-blue-600 text-white"
-          : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
+          ? "bg-accent border-accent text-on-accent"
+          : "bg-surface border-line text-ink-2 hover:bg-sunk hover:text-ink"
       }`}
     >
       <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
@@ -60,7 +60,7 @@ function NavPill({ to, active, label, icon, badge = 0 }: { to: string; active: b
       </svg>
       {label}
       {badge > 0 && (
-        <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-xs font-semibold leading-5 text-center">
+        <span className="min-w-5 h-5 px-1.5 rounded-full bg-bad text-on-accent text-xs font-semibold leading-5 text-center">
           {badge}
         </span>
       )}
@@ -109,7 +109,7 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
 
   return (
     <header
-      className={`bg-white border-b border-gray-200 sticky top-0 z-10 transition-shadow ${
+      className={`bg-surface border-b border-line sticky top-0 z-10 transition-shadow ${
         scrolled || windowScrolled ? "shadow-sm" : ""
       }`}
     >
@@ -118,7 +118,7 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
       >
       {/* basis: room for the Concepts and Review pills and the breadcrumbs before the rest wraps below. */}
       <nav aria-label="Breadcrumb" className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 min-w-0 flex-1 basis-full sm:basis-[36rem]">
-        <Link to={sessionsUrl(project)} className="font-semibold text-base text-gray-900 shrink-0">
+        <Link to={sessionsUrl(project)} className="font-serif font-semibold text-lg text-ink shrink-0">
           Lore
         </Link>
 
@@ -129,7 +129,7 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
           </>
         )}
 
-        {all.length > 0 && <span className="hidden sm:block h-5 w-px bg-gray-200 shrink-0" aria-hidden="true" />}
+        {all.length > 0 && <span className="hidden sm:block h-5 w-px bg-line shrink-0" aria-hidden="true" />}
 
         <div className="sm:hidden ml-auto shrink-0">
           <ThemeToggle />
@@ -144,13 +144,13 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
             const text = `truncate ${crumb.mono ? "font-mono text-xs" : ""}`;
             return (
               <li key={i} className={`flex items-center gap-1.5 min-w-0 ${edge ? "sm:shrink-0 max-w-[16rem]" : "shrink"}`}>
-                {i > 0 && <span className="text-gray-400 shrink-0" aria-hidden="true">›</span>}
+                {i > 0 && <span className="text-ink-3 shrink-0" aria-hidden="true">›</span>}
                 {crumb.to ? (
-                  <Link to={crumb.to} title={crumb.label} className={`${text} text-blue-600 hover:underline`}>
+                  <Link to={crumb.to} title={crumb.label} className={`${text} text-accent underline-offset-2 hover:underline`}>
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span title={crumb.label} aria-current={last ? "page" : undefined} className={`${text} text-gray-700`}>
+                  <span title={crumb.label} aria-current={last ? "page" : undefined} className={`${text} text-ink-2`}>
                     {crumb.label}
                   </span>
                 )}
