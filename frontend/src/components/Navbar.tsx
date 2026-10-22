@@ -1,6 +1,6 @@
 // Navbar — the bar at the top of every page.
 //
-// Shows "Lore" (goes to the session list) and a breadcrumb trail:
+// Shows "Lore" (goes to the session list), a Concepts button, and a breadcrumb trail:
 //   project › session title › file
 // Every crumb with a link is clickable. Long names are cut off with "…";
 // hover one to see it in full. Pages can add their own items in the
@@ -57,10 +57,29 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
       <div
         className={`px-6 min-h-12 py-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}
       >
-      <nav aria-label="Breadcrumb" className="flex items-center gap-3 min-w-0 flex-1 basis-80">
+      {/* basis: room for the Concepts pill and the breadcrumbs before the rest wraps below. */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-3 min-w-0 flex-1 basis-[28rem]">
         <Link to={sessionsUrl(project)} className="font-semibold text-base text-gray-900 shrink-0">
           Lore
         </Link>
+
+        {project && (
+          // A pill next to the logo, in the same place on every page; solid while you're on it.
+          <Link
+            to={conceptsUrl(project)}
+            aria-current={onConcepts ? "page" : undefined}
+            className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
+              onConcepts
+                ? "bg-blue-600 border-blue-600 text-white"
+                : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
+            }`}
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+              <path d="M10 4.5C8.6 3.6 6.8 3 5 3c-1 0-2 .2-3 .5v12c1-.3 2-.5 3-.5 1.8 0 3.6.6 5 1.5V4.5zM11 4.5v12c1.4-.9 3.2-1.5 5-1.5 1 0 2 .2 3 .5v-12C18 3.2 17 3 16 3c-1.8 0-3.6.6-5 1.5z" />
+            </svg>
+            Concepts
+          </Link>
+        )}
 
         {all.length > 0 && <span className="h-5 w-px bg-gray-200 shrink-0" aria-hidden="true" />}
 
@@ -88,15 +107,6 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
           })}
         </ol>
       </nav>
-      {project && (
-        <Link
-          to={conceptsUrl(project)}
-          aria-current={onConcepts ? "page" : undefined}
-          className={`shrink-0 ${onConcepts ? "font-semibold text-gray-900" : "text-gray-600 hover:text-gray-900"}`}
-        >
-          Concepts
-        </Link>
-      )}
       {center && <div className="shrink-0">{center}</div>}
       {right && <div className="shrink-0 ml-auto">{right}</div>}
       </div>
