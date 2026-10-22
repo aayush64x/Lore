@@ -21,7 +21,8 @@ import java.util.function.UnaryOperator;
 /**
  * Finds the Anthropic API key: the ANTHROPIC_API_KEY environment variable first,
  * then anthropic.api.key in {lore.home}/config.properties. The same file may also
- * hold anthropic.model=... to override the default Claude model, and the user's profile
+ * hold lines that change which Claude model does each job (anthropic.explain-model,
+ * anthropic.summary-model, anthropic.grading-model), and the user's profile
  * (profile.level, profile.goal). Saving writes that file so only the owner can read it.
  * Nothing here ever logs or prints the key.
  */
@@ -30,7 +31,10 @@ public class ApiKeyStore {
 
     public static final String ENV_VAR = "ANTHROPIC_API_KEY";
     static final String PROPERTY = "anthropic.api.key";
-    static final String MODEL_PROPERTY = "anthropic.model";
+    static final String EXPLAIN_MODEL_PROPERTY = "anthropic.explain-model";
+    /** The old name for the explain model, from before each job had its own; still read. */
+    static final String OLD_MODEL_PROPERTY = "anthropic.model";
+    static final String SUMMARY_MODEL_PROPERTY = "anthropic.summary-model";
     static final String GRADING_MODEL_PROPERTY = "anthropic.grading-model";
     /** Set to "skipped" when the user skipped the first-run key prompt, so it isn't shown again. */
     static final String PROMPT_PROPERTY = "anthropic.api.key.prompt";
@@ -67,16 +71,24 @@ public class ApiKeyStore {
                 .filter(k -> !k.isEmpty());
     }
 
-    /** The anthropic.model line from config.properties, if the user set one. */
-    public Optional<String> modelOverride() {
-        return Optional.ofNullable(load().getProperty(MODEL_PROPERTY))
-                .map(String::strip)
-                .filter(m -> !m.isEmpty());
+    /** The anthropic.explain-model line (or the old anthropic.model) from config.properties, if set. */
+    public Optional<String> explainModelOverride() {
+        Properties props = load();
+        return setting(props, EXPLAIN_MODEL_PROPERTY).or(() -> setting(props, OLD_MODEL_PROPERTY));
+    }
+
+    /** The anthropic.summary-model line from config.properties, if the user set one. */
+    public Optional<String> summaryModelOverride() {
+        return setting(load(), SUMMARY_MODEL_PROPERTY);
     }
 
     /** The anthropic.grading-model line from config.properties, if the user set one. */
     public Optional<String> gradingModelOverride() {
-        return Optional.ofNullable(load().getProperty(GRADING_MODEL_PROPERTY))
+        return setting(load(), GRADING_MODEL_PROPERTY);
+    }
+
+    private static Optional<String> setting(Properties props, String name) {
+        return Optional.ofNullable(props.getProperty(name))
                 .map(String::strip)
                 .filter(m -> !m.isEmpty());
     }
@@ -141,7 +153,7 @@ public class ApiKeyStore {
         try {
             try (Writer w = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
                 props.store(w, "Lore settings. Keep this file private.\n"
-                        + "To change the Claude model, add a line like: anthropic.model=claude-opus-5-5");
+                        + "To change a Claude model, add a line like: anthropic.explain-model=claude-opus-5-5");
             }
             Files.move(tmp, configFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
                     java.nio.file.StandardCopyOption.ATOMIC_MOVE);

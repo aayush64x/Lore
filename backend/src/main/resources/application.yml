@@ -32,13 +32,15 @@ lore:
     # anthropic (default), bedrock, or none
     provider: anthropic
   anthropic:
-    # Default Claude model. Users pay with their own key, so this is the cheaper,
-    # faster Sonnet. To use another model, add a line to ~/.lore/config.properties:
-    #   anthropic.model=claude-opus-5-5
-    model: claude-sonnet-5-5
-    # Grades teach-back answers: a small, cheap, fast job. Override with a line
+    # Which Claude model does each job. Users pay with their own key, so only Explain,
+    # which has to teach, uses Sonnet. Summaries (one line per change, plus the session
+    # summary) and teach-back grading are short jobs for the much cheaper Haiku.
+    # To change one, add a line to ~/.lore/config.properties, like:
+    #   anthropic.explain-model=claude-opus-5-5
+    #   anthropic.summary-model=claude-sonnet-5-5
     #   anthropic.grading-model=claude-sonnet-5-5
-    # in ~/.lore/config.properties.
+    explain-model: claude-sonnet-5-5
+    summary-model: claude-haiku-5-5
     grading-model: claude-haiku-5-5
   aws:
     region: us-east-1

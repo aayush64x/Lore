@@ -131,9 +131,9 @@ public final class AiPrompts {
             sb.append("In their own words, the developer was trying to:\n").append(reason.strip()).append("\n\n");
         }
         sb.append("The session was summarized in ").append(parts.size()).append(" parts:\n\n");
-        for (int i = 0; i < parts.size(); i++) {
-            SummaryResponse part = parts.get(i);
-            sb.append("### Part ").append(i + 1).append('\n')
+        for (SummaryResponse part : parts) {
+            // Not numbered, so the summary has no "part 3" to point at.
+            sb.append("### Summary of some of the changes\n")
                     .append(part.sessionSummary() == null ? "(no summary)" : part.sessionSummary().strip()).append('\n');
             if (goal) {
                 List<String> gaps = part.goalPartsNotDone() == null ? List.of() : part.goalPartsNotDone();

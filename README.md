@@ -117,18 +117,21 @@ Lore must run inside a git repository. If the folder isn't one, it tells you to 
 
 Lore calls Claude with your key only when:
 
-- you run `lore stop` (one summary call per session),
+- you run `lore stop` (one summary call per session; sessions over 60 changes are summarized in groups of up to 60, plus one call to join them),
 - you click **Explain this** (one call per change; saved, so it's never paid for twice),
 - you click **Check my answer** (one small grading call).
 
-Summaries and explanations use `claude-sonnet-5-5`. Teach-back grading uses the much cheaper `claude-haiku-5-5`, with its instructions cached. A small session usually costs a few cents; large sessions with many explained changes cost more.
+Only **Explain** uses `claude-sonnet-5-5`, because it has to teach. Summaries and teach-back grading use the much cheaper `claude-haiku-5-5`. A small session usually costs a cent or two; sessions with many explained changes cost more.
 
-To use other models, add lines to `~/.lore/config.properties`:
+To use other models, add any of these lines to `~/.lore/config.properties`:
 
 ```properties
-anthropic.model=claude-opus-5-5
+anthropic.explain-model=claude-opus-5-5
+anthropic.summary-model=claude-sonnet-5-5
 anthropic.grading-model=claude-sonnet-5-5
 ```
+
+(The older `anthropic.model` line still works and sets the Explain model.)
 
 ## Your data
 

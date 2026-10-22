@@ -55,7 +55,7 @@ class AnthropicAiServiceTest {
 
     private AnthropicAiService service(Path home, String envKey) {
         ApiKeyStore store = new ApiKeyStore(home, name -> ApiKeyStore.ENV_VAR.equals(name) ? envKey : null);
-        return new AnthropicAiService(store, "claude-sonnet-5-5", "claude-haiku-5-5",
+        return new AnthropicAiService(store, "claude-sonnet-5-5", "claude-haiku-5-5", "claude-haiku-5-5",
                 "http://127.0.0.1:" + server.getAddress().getPort());
     }
 
@@ -84,7 +84,8 @@ class AnthropicAiServiceTest {
 
         JsonNode body = seenBody.get();
         assertEquals(FAKE_KEY, seenKey.get());
-        assertEquals("claude-sonnet-5-5", body.get("model").asText());
+        assertEquals("claude-haiku-5-5", body.get("model").asText(), "summaries use the cheap summary model");
+        assertEquals("disabled", body.at("/thinking/type").asText(), body.toString());
         assertEquals("json_schema", body.at("/output_config/format/type").asText());
         assertTrue(body.at("/output_config/format/schema/properties").has("change_descriptions"), body.toString());
     }
@@ -143,7 +144,7 @@ class AnthropicAiServiceTest {
         assertTrue(r.changeDescriptions().isEmpty());
         JsonNode body = seenBody.get();
         String message = body.at("/messages/0/content").toString();
-        assertTrue(message.contains("### Part 1") && message.contains("Added tests.") && message.contains("- tests"), message);
+        assertTrue(message.contains("### Summary of some of the changes") && !message.contains("Part 1") && message.contains("Added tests.") && message.contains("- tests"), message);
         assertTrue(body.at("/output_config/format/schema/properties").has("goal_parts_not_done"), body.toString());
         assertFalse(body.toString().contains("change_descriptions"), body.toString());
     }
@@ -274,12 +275,63 @@ class AnthropicAiServiceTest {
         assertEquals(FAKE_KEY, seenKey.get());
     }
 
-    @Test
-    void model_can_be_changed_in_config_file(@TempDir Path home) throws Exception {
-        Files.writeString(home.resolve("config.properties"), "anthropic.model=claude-opus-5-5\n");
-        responseBody = message("{\"session_summary\": \"ok\", \"change_descriptions\": []}");
+    private static final String EXPLANATION = """
+            {"overview": "Adds a.", "steps": [], "concepts": [], "key_points": ["a"], "testable": true, "possible_issue": []}""";
 
+    @Test
+    void explain_uses_the_explain_model_with_its_default_thinking(@TempDir Path home) throws Exception {
+        responseBody = message(EXPLANATION);
+
+        service(home, FAKE_KEY).explain("a.js", "+a\n", null, UserProfile.DEFAULT);
+
+        assertEquals("claude-sonnet-5-5", seenBody.get().get("model").asText());
+        assertTrue(seenBody.get().path("thinking").isMissingNode(), seenBody.get().toString());
+    }
+
+    @Test
+    void combine_uses_the_summary_model(@TempDir Path home) throws Exception {
+        responseBody = message("{\"session_summary\": \"ok\"}");
+
+        service(home, FAKE_KEY).combineSummaries(List.of(new SummaryResponse("p", List.of())), null);
+
+        assertEquals("claude-haiku-5-5", seenBody.get().get("model").asText());
+        assertEquals("disabled", seenBody.get().at("/thinking/type").asText());
+    }
+
+    @Test
+    void each_jobs_model_can_be_changed_in_config_file(@TempDir Path home) throws Exception {
+        Files.writeString(home.resolve("config.properties"),
+                "anthropic.explain-model=claude-opus-5-5\nanthropic.summary-model=claude-sonnet-5-5\n");
+
+        responseBody = message("{\"session_summary\": \"ok\", \"change_descriptions\": []}");
         service(home, FAKE_KEY).summarize(List.of(), null);
+        assertEquals("claude-sonnet-5-5", seenBody.get().get("model").asText());
+
+        responseBody = message(EXPLANATION);
+        service(home, FAKE_KEY).explain("a.js", "+a\n", null, UserProfile.DEFAULT);
+        assertEquals("claude-opus-5-5", seenBody.get().get("model").asText());
+    }
+
+    @Test
+    void the_old_model_setting_still_changes_the_explain_model_only(@TempDir Path home) throws Exception {
+        Files.writeString(home.resolve("config.properties"), "anthropic.model=claude-opus-5-5\n");
+
+        responseBody = message(EXPLANATION);
+        service(home, FAKE_KEY).explain("a.js", "+a\n", null, UserProfile.DEFAULT);
+        assertEquals("claude-opus-5-5", seenBody.get().get("model").asText());
+
+        responseBody = message("{\"session_summary\": \"ok\", \"change_descriptions\": []}");
+        service(home, FAKE_KEY).summarize(List.of(), null);
+        assertEquals("claude-haiku-5-5", seenBody.get().get("model").asText());
+    }
+
+    @Test
+    void the_new_explain_setting_wins_over_the_old_one(@TempDir Path home) throws Exception {
+        Files.writeString(home.resolve("config.properties"),
+                "anthropic.model=claude-opus-5\nanthropic.explain-model=claude-opus-5-5\n");
+        responseBody = message(EXPLANATION);
+
+        service(home, FAKE_KEY).explain("a.js", "+a\n", null, UserProfile.DEFAULT);
 
         assertEquals("claude-opus-5-5", seenBody.get().get("model").asText());
     }

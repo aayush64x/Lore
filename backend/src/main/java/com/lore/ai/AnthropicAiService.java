@@ -43,9 +43,9 @@ public class AnthropicAiService implements AiService {
     private static final long GRADE_MAX_TOKENS = 400L;
 
     private final ApiKeyStore keyStore;
-    /** Default from lore.anthropic.model; anthropic.model in config.properties overrides it. */
-    private final String defaultModel;
-    /** Default from lore.anthropic.grading-model; anthropic.grading-model in config.properties overrides it. */
+    /** Defaults from lore.anthropic.*-model; the matching anthropic.*-model lines in config.properties override them. */
+    private final String defaultExplainModel;
+    private final String defaultSummaryModel;
     private final String defaultGradingModel;
     private final String baseUrl;
 
@@ -53,15 +53,19 @@ public class AnthropicAiService implements AiService {
     private String clientKey;
 
     @Autowired
-    public AnthropicAiService(ApiKeyStore keyStore, @Value("${lore.anthropic.model}") String defaultModel,
+    public AnthropicAiService(ApiKeyStore keyStore,
+                              @Value("${lore.anthropic.explain-model}") String defaultExplainModel,
+                              @Value("${lore.anthropic.summary-model}") String defaultSummaryModel,
                               @Value("${lore.anthropic.grading-model}") String defaultGradingModel) {
-        this(keyStore, defaultModel, defaultGradingModel, API_BASE_URL);
+        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, API_BASE_URL);
     }
 
     /** Tests only: points the client at a local stub server instead of api.anthropic.com. */
-    AnthropicAiService(ApiKeyStore keyStore, String defaultModel, String defaultGradingModel, String baseUrl) {
+    AnthropicAiService(ApiKeyStore keyStore, String defaultExplainModel, String defaultSummaryModel,
+                       String defaultGradingModel, String baseUrl) {
         this.keyStore = keyStore;
-        this.defaultModel = defaultModel;
+        this.defaultExplainModel = defaultExplainModel;
+        this.defaultSummaryModel = defaultSummaryModel;
         this.defaultGradingModel = defaultGradingModel;
         this.baseUrl = baseUrl;
     }
@@ -178,7 +182,7 @@ public class AnthropicAiService implements AiService {
     public SummaryResponse summarize(List<ChangeInput> changes, String reason) {
         if (reason != null && !reason.isBlank()) return summarizeWithGoal(changes, reason);
 
-        SummaryOutput out = call(SummaryOutput.class,
+        SummaryOutput out = summaryCall(SummaryOutput.class,
                 AiPrompts.summarySystemPrompt(),
                 AiPrompts.summaryUserMessage(changes, reason));
 
@@ -192,7 +196,7 @@ public class AnthropicAiService implements AiService {
     }
 
     private SummaryResponse summarizeWithGoal(List<ChangeInput> changes, String reason) {
-        GoalSummaryOutput out = call(GoalSummaryOutput.class,
+        GoalSummaryOutput out = summaryCall(GoalSummaryOutput.class,
                 AiPrompts.summaryWithGoalSystemPrompt(),
                 AiPrompts.summaryUserMessage(changes, reason));
 
@@ -213,16 +217,16 @@ public class AnthropicAiService implements AiService {
     public SummaryResponse combineSummaries(List<SummaryResponse> parts, String reason) {
         String message = AiPrompts.combineUserMessage(parts, reason);
         if (reason == null || reason.isBlank()) {
-            CombinedOutput out = call(CombinedOutput.class, AiPrompts.combineSystemPrompt(), message);
+            CombinedOutput out = summaryCall(CombinedOutput.class, AiPrompts.combineSystemPrompt(), message);
             return new SummaryResponse(out.sessionSummary(), List.of());
         }
-        CombinedGoalOutput out = call(CombinedGoalOutput.class, AiPrompts.combineWithGoalSystemPrompt(), message);
+        CombinedGoalOutput out = summaryCall(CombinedGoalOutput.class, AiPrompts.combineWithGoalSystemPrompt(), message);
         return new SummaryResponse(out.sessionSummary(), List.of(), clean(out.goalPartsNotDone()));
     }
 
     @Override
     public ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile) {
-        ExplanationOutput out = call(ExplanationOutput.class,
+        ExplanationOutput out = explainCall(ExplanationOutput.class,
                 AiPrompts.explainSystemPrompt(profile),
                 AiPrompts.explainUserMessage(filePath, diffContent, reason));
 
@@ -280,15 +284,30 @@ public class AnthropicAiService implements AiService {
                 : items.stream().filter(t -> t != null && !t.isBlank()).map(String::strip).toList();
     }
 
-    private <T> T call(Class<T> outputType, String system, String userMessage) {
-        StructuredMessageCreateParams<T> params = MessageCreateParams.builder()
-                .model(keyStore.modelOverride().orElse(defaultModel))
+    /** Explain: the teaching job, on the explain model with its default thinking. */
+    private <T> T explainCall(Class<T> outputType, String system, String userMessage) {
+        return send(MessageCreateParams.builder()
+                .model(keyStore.explainModelOverride().orElse(defaultExplainModel))
                 .maxTokens(MAX_TOKENS)
                 .system(system)
                 .outputConfig(outputType)
                 .addUserMessage(userMessage)
-                .build();
-        return send(params);
+                .build());
+    }
+
+    /**
+     * Summaries: the cheap summary model with thinking off. One-line answers don't need it,
+     * and thinking tokens would come out of the same budget as the answer.
+     */
+    private <T> T summaryCall(Class<T> outputType, String system, String userMessage) {
+        return send(MessageCreateParams.builder()
+                .model(keyStore.summaryModelOverride().orElse(defaultSummaryModel))
+                .maxTokens(MAX_TOKENS)
+                .system(system)
+                .thinking(ThinkingConfigDisabled.builder().build())
+                .outputConfig(outputType)
+                .addUserMessage(userMessage)
+                .build());
     }
 
     /** Sends the request and reads the structured answer; every failure becomes AiUnavailableException. */
@@ -347,6 +366,6 @@ public class AnthropicAiService implements AiService {
 
     @Override
     public String toString() {
-        return "AnthropicAiService[defaultModel=" + defaultModel + "]";
+        return "AnthropicAiService[defaultExplainModel=" + defaultExplainModel + "]";
     }
 }
