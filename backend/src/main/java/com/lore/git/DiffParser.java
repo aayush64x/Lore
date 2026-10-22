@@ -149,6 +149,10 @@ public class DiffParser {
             addNewFileChunks(file, hunk, changes, order);
             return;
         }
+        if (hunk.text.toString().lines().count() - 1 > HunkSplitter.MAX) {
+            addHunkPieces(file, hunk, changes, order);
+            return;
+        }
         changes.add(new ParsedChange(
                 file.path, file.type, file.oldPath,
                 hunk.oldStart, hunk.oldCount, hunk.newStart, hunk.newCount,
@@ -182,6 +186,41 @@ public class DiffParser {
                     0, 0, newStart, to - from,
                     text.toString(), false, order[0]++
             ));
+        }
+    }
+
+    /**
+     * A long hunk of edits becomes several changes, one per piece of whole functions (see
+     * HunkSplitter), each with its own "@@ -oldStart,oldCount +newStart,newCount @@" header
+     * counted from the lines before it, so it reads like a hunk git could have written.
+     */
+    private void addHunkPieces(FileState file, HunkState hunk, List<ParsedChange> changes, int[] order) {
+        List<String> body = hunk.text.toString().lines().skip(1).toList(); // drop the @@ line
+        List<Integer> starts = HunkSplitter.pieceStarts(body);
+        // The next line number on each side. Git writes "-5,0" for "after line 5".
+        int oldLine = hunk.oldCount == 0 ? hunk.oldStart + 1 : hunk.oldStart;
+        int newLine = hunk.newCount == 0 ? hunk.newStart + 1 : hunk.newStart;
+        for (int p = 0; p < starts.size(); p++) {
+            int from = starts.get(p);
+            int to = p + 1 < starts.size() ? starts.get(p + 1) : body.size();
+            int oldCount = 0, newCount = 0;
+            for (String l : body.subList(from, to)) {
+                if (l.startsWith("-") || l.startsWith(" ") || l.isEmpty()) oldCount++;
+                if (l.startsWith("+") || l.startsWith(" ") || l.isEmpty()) newCount++;
+            }
+            int oldStart = oldCount == 0 ? oldLine - 1 : oldLine;
+            int newStart = newCount == 0 ? newLine - 1 : newLine;
+            StringBuilder text = new StringBuilder()
+                    .append("@@ -").append(oldStart).append(',').append(oldCount)
+                    .append(" +").append(newStart).append(',').append(newCount).append(" @@\n");
+            for (String l : body.subList(from, to)) text.append(l).append('\n');
+            changes.add(new ParsedChange(
+                    file.path, file.type, file.oldPath,
+                    oldStart, oldCount, newStart, newCount,
+                    text.toString(), false, order[0]++
+            ));
+            oldLine += oldCount;
+            newLine += newCount;
         }
     }
 

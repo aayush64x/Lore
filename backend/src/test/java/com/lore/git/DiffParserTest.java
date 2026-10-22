@@ -300,6 +300,67 @@ class DiffParserTest {
         assertEquals(chunks.size(), changes.get(changes.size() - 1).displayOrder());
     }
 
+    /**
+     * One long hunk in an existing file: 8 methods of 12 old lines, separated by an empty
+     * line, each with its first body line replaced and one line added.
+     */
+    private static String bigEditDiff() {
+        StringBuilder body = new StringBuilder();
+        int oldCount = 0, newCount = 0;
+        for (int m = 0; m < 8; m++) {
+            if (m > 0) { body.append(" \n"); oldCount++; newCount++; }
+            body.append("     /** m").append(m).append(" */\n     void m").append(m).append("() {\n");
+            body.append("-        old").append(m).append("();\n");
+            body.append("+        neu").append(m).append("();\n");
+            body.append("+        log(\"m").append(m).append("\");\n");
+            for (int i = 0; i < 8; i++) body.append("         step").append(i).append("();\n");
+            body.append("     }\n");
+            oldCount += 12;
+            newCount += 13;
+        }
+        return "diff --git a/A.java b/A.java\n--- a/A.java\n+++ b/A.java\n"
+                + "@@ -10," + oldCount + " +10," + newCount + " @@ class A {\n" + body;
+    }
+
+    @Test
+    void long_edit_to_an_existing_file_is_split_into_pieces_of_whole_methods() {
+        List<DiffParser.ParsedChange> pieces = parser.parse(bigEditDiff());
+
+        assertTrue(pieces.size() >= 2, "pieces: " + pieces.size());
+        int oldNext = 10, newNext = 10;
+        StringBuilder joined = new StringBuilder();
+        for (int i = 0; i < pieces.size(); i++) {
+            DiffParser.ParsedChange p = pieces.get(i);
+            assertEquals("MODIFIED", p.changeType());
+            assertEquals(i, p.displayOrder());
+            assertEquals(oldNext, p.oldStart(), "piece " + i);
+            assertEquals(newNext, p.newStart(), "piece " + i);
+            List<String> lines = p.diffContent().lines().toList();
+            assertEquals("@@ -" + p.oldStart() + "," + p.oldCount() + " +" + p.newStart() + "," + p.newCount() + " @@",
+                    lines.get(0));
+            assertTrue(lines.size() - 1 <= 80, "piece " + i + " has " + (lines.size() - 1) + " lines");
+            String first = lines.get(1);
+            assertTrue(i == 0 || first.contains("/** m"), "piece " + i + " should start at a method: " + first);
+            assertTrue(lines.get(lines.size() - 1).equals("     }") || lines.get(lines.size() - 1).equals(" "),
+                    "piece " + i + " should end at a method's end: " + lines.get(lines.size() - 1));
+            oldNext += p.oldCount();
+            newNext += p.newCount();
+            lines.stream().skip(1).forEach(l -> joined.append(l).append('\n'));
+        }
+        assertEquals(10 + 8 * 12 + 7, oldNext, "pieces cover every old line once");
+        assertEquals(10 + 8 * 13 + 7, newNext, "pieces cover every new line once");
+        String original = bigEditDiff();
+        assertEquals(original.substring(original.indexOf("class A {\n") + "class A {\n".length()), joined.toString());
+    }
+
+    @Test
+    void a_short_edit_stays_one_change() {
+        String diff = "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,2 +1,2 @@\n-a\n+b\n c\n";
+        List<DiffParser.ParsedChange> changes = parser.parse(diff);
+        assertEquals(1, changes.size());
+        assertEquals("@@ -1,2 +1,2 @@\n-a\n+b\n c\n", changes.get(0).diffContent());
+    }
+
     @Test
     void new_file_of_80_lines_stays_one_change() {
         List<DiffParser.ParsedChange> changes = parser.parse(newFileDiff("small.js", 80, false));
