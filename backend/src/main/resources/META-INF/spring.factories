@@ -1,0 +1,2 @@
+# A damaged database at startup is reported as a short message with what to do.
+org.springframework.boot.diagnostics.FailureAnalyzer=com.lore.BrokenDatabaseAnalyzer

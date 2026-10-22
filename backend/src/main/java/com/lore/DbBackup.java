@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -61,6 +62,22 @@ public final class DbBackup {
             return Files.move(backup, good);
         } catch (IOException | RuntimeException e) {
             return backup;
+        }
+    }
+
+    /** The newest backup marked good (-ok.mv.db) in {lore.home}/backups, or null if there is none. */
+    static Path newestGood(Path loreHome) {
+        Path dir = loreHome.resolve("backups");
+        if (!Files.isDirectory(dir)) return null;
+        try (Stream<Path> files = Files.list(dir)) {
+            return files.filter(p -> {
+                        String name = p.getFileName().toString();
+                        return name.startsWith("lore-") && name.endsWith(GOOD_SUFFIX);
+                    })
+                    .max(Comparator.comparing(p -> p.getFileName().toString()))
+                    .orElse(null);
+        } catch (IOException e) {
+            return null;
         }
     }
 

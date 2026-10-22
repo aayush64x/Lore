@@ -195,7 +195,7 @@ A secret hard-coded in a file you changed would be sent along with that change, 
 | The summary says it couldn't be created | Your session is still saved. Fix the key or network, then click **Retry** on the session page. |
 | Port 8080 is already in use | `lore ui --port 9000` |
 | `Teach-back only works with the Anthropic provider` | Teach-back needs the default Anthropic setup; use **Skip test** meanwhile. |
-| Lore fails to start with a database error | Stop every `lore` command, then copy the newest `~/.lore/backups/lore-…-ok.mv.db` over `~/.lore/lore.mv.db`. You lose at most the work since that backup. |
+| "Lore couldn't open its database … The file looks damaged" | Lore prints your last good backup and the commands to restore it; follow them. In short: stop every `lore` command, move `~/.lore/lore.mv.db` aside, and copy the newest `~/.lore/backups/lore-…-ok.mv.db` in its place. You lose at most the work since that backup. |
 
 ## Update or uninstall
 
@@ -236,10 +236,6 @@ devpost/       planning documents and the build log
 ```
 
 To work on Lore: `cd backend && mvn package` builds everything and runs the tests. For the web page with live reload, run `lore ui` and then `cd frontend && npm install && npm run dev`.
-
-## TODO (later)
-
-- A friendly error when the database is broken, pointing to the last good backup (`~/.lore/backups/lore-…-ok.mv.db`) and how to restore it. Today Lore just fails to start with a Java error.
 
 ## Built with
 

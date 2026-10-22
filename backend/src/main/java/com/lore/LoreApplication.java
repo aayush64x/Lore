@@ -40,10 +40,18 @@ public class LoreApplication {
             System.setProperty("server.port", port);
         }
 
-        ConfigurableApplicationContext context = new SpringApplicationBuilder(LoreApplication.class)
-                .web(webType)
-                .logStartupInfo(false)
-                .run(args);
+        ConfigurableApplicationContext context;
+        try {
+            context = new SpringApplicationBuilder(LoreApplication.class)
+                    .web(webType)
+                    .logStartupInfo(false)
+                    .run(args);
+        } catch (RuntimeException e) {
+            // Spring has already said what went wrong: a damaged database as a short message
+            // with what to do (BrokenDatabaseAnalyzer), anything else as the full error.
+            System.exit(1);
+            return;
+        }
 
         // Spring is up, so the database opened (and migrated) fine: the copy made above is good.
         DbBackup.markGood(backup);
