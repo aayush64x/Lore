@@ -73,6 +73,30 @@ public class ChangeController {
 
     public record QuestionRequest(String question) {}
 
+    public record NoteRequest(String note) {}
+
+    /** The longest note accepted (the column's size). */
+    static final int MAX_NOTE_LENGTH = 5000;
+
+    /**
+     * Saves the reader's note on a change ("What I learned / why I kept this"). Blank clears
+     * it. 200: {note} (null when cleared). 400: too long. 404: no such change.
+     */
+    @PutMapping("/changes/{id}/note")
+    public ResponseEntity<?> saveNote(@PathVariable UUID id, @RequestBody(required = false) NoteRequest body) {
+        Change change = changeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        String note = body == null || body.note() == null ? "" : body.note().strip();
+        if (note.length() > MAX_NOTE_LENGTH) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Keep it under " + MAX_NOTE_LENGTH + " characters."));
+        }
+        change.setNote(note.isEmpty() ? null : note);
+        changeRepository.save(change);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("note", change.getNote());
+        return ResponseEntity.ok(out);
+    }
+
     /**
      * A follow-up question about a change, answered for a beginner (Sonnet) with the diff,
      * the saved explanation and the last few questions asked about it. Saved, so it shows

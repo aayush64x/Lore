@@ -614,6 +614,7 @@ export default function SessionPage() {
                 if (asked) updateChange(selected.id, { questions: [...selected.questions, asked] });
                 refreshCost();
               }}
+              onNoteSaved={(note) => updateChange(selected.id, { note })}
             />
           )}
         </aside>

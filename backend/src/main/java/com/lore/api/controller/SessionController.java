@@ -200,7 +200,8 @@ public class SessionController {
                         TeachBackView.understoodBy(c),
                         TeachBackView.state(attempts.getOrDefault(c.getId(), List.of()), explanations.get(c.getId())),
                         concepts.getOrDefault(c.getId(), List.of()),
-                        questions.getOrDefault(c.getId(), List.of())
+                        questions.getOrDefault(c.getId(), List.of()),
+                        c.getNote()
                 ))
                 .toList();
 

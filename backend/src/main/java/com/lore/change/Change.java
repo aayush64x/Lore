@@ -61,6 +61,9 @@ public class Change {
     @Column(name = "understood_by")
     private UnderstoodBy understoodBy;
 
+    /** The reader's own note ("What I learned / why I kept this"); null = none. */
+    private String note;
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
@@ -106,6 +109,8 @@ public class Change {
         this.understood = by != null;
         this.understoodBy = by;
     }
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
     public int getDisplayOrder() { return displayOrder; }
     public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
 

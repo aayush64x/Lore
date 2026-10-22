@@ -25,7 +25,7 @@ public class ConceptGraph {
 
     /** One change a concept was tagged on, for the side panel. */
     public record ChangeRef(UUID changeId, UUID sessionId, String sessionReason, String filePath,
-                            String description, boolean understood, Instant stoppedAt) {}
+                            String description, boolean understood, Instant stoppedAt, String note) {}
 
     /** id is the name for list concepts and "other:<name>" for suggestions; group is null for those. */
     public record Node(String id, String name, String group, String meaning, boolean other, int seen, int understood,
@@ -70,7 +70,7 @@ public class ConceptGraph {
                 Change c = tag.getChange();
                 Session s = c.getSession();
                 changes.putIfAbsent(c.getId(), new ChangeRef(c.getId(), s.getId(), s.getReason(), c.getFilePath(),
-                        c.getDescription(), c.isUnderstood(), s.getStoppedAt()));
+                        c.getDescription(), c.isUnderstood(), s.getStoppedAt(), c.getNote()));
             }
             List<ChangeRef> refs = new ArrayList<>(changes.values());
             refs.sort(Comparator.comparing(ChangeRef::stoppedAt, Comparator.nullsLast(Comparator.reverseOrder()))

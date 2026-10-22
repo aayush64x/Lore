@@ -32,5 +32,7 @@ public record ChangeResponse(
         // Concept tags from the summary: list concepts first, by name; empty for older sessions.
         List<ConceptTags.Tag> concepts,
         // Follow-up questions asked under the explanation, oldest first.
-        List<QuestionResponse> questions
+        List<QuestionResponse> questions,
+        // The reader's own note ("What I learned / why I kept this"), or null.
+        String note
 ) {}

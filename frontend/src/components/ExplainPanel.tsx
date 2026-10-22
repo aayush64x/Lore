@@ -3,6 +3,7 @@ import { conceptsUrl } from "../api/client";
 import type { ChangeResponse, ExplanationData, QuestionResponse } from "../api/client";
 import ExplainWalkthrough from "./ExplainWalkthrough";
 import FollowUp from "./FollowUp";
+import NoteBox from "./NoteBox";
 
 interface ExplainPanelProps {
   change: ChangeResponse;
@@ -29,6 +30,8 @@ interface ExplainPanelProps {
   onExplainForTest: () => void;
   // A follow-up question was answered (or failed: null).
   onQuestionAsked: (asked: QuestionResponse | null) => void;
+  // The note was saved (null = cleared).
+  onNoteSaved: (note: string | null) => void;
 }
 
 const LINK = "text-xs text-gray-500 hover:text-gray-800 underline";
@@ -55,6 +58,7 @@ export default function ExplainPanel({
   onTestMe,
   onExplainForTest,
   onQuestionAsked,
+  onNoteSaved,
 }: ExplainPanelProps) {
   const passed = change.understoodBy === "teach_back";
   const canTest = explanation?.testable === true && !!explanation.hasKeyPoints;
@@ -212,6 +216,8 @@ export default function ExplainPanel({
           <p className="text-xs text-gray-400 mt-4">Keys: ← → steps · [ ] files · b sidebar</p>
         </div>
       )}
+
+      <NoteBox key={change.id} changeId={change.id} note={change.note} onSaved={onNoteSaved} />
     </div>
   );
 }

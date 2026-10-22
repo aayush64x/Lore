@@ -67,6 +67,7 @@ export interface ChangeResponse {
   teachBack: TeachBackState;
   concepts: { name: string; other: boolean }[]; // concept tags from the summary; other = not on the list
   questions: QuestionResponse[]; // follow-up questions asked under the explanation, oldest first
+  note: string | null; // the reader's own note ("What I learned / why I kept this")
 }
 
 export interface QuestionResponse {
@@ -256,6 +257,7 @@ export interface ConceptGraphNode {
     description: string | null;
     understood: boolean;
     stoppedAt: string | null;
+    note: string | null;
   }[];
 }
 
@@ -386,6 +388,22 @@ export async function askQuestion(changeId: string, question: string): Promise<Q
     throw new Error(body?.error ?? "Couldn't answer that. Try again.");
   }
   return response.json();
+}
+
+// PUT /api/changes/{id}/note: saves the reader's note on a change; blank clears it.
+// Returns the saved note (null when cleared). On failure the server sends { error }.
+export async function saveNote(changeId: string, note: string): Promise<string | null> {
+  const response = await fetch(`/api/changes/${changeId}/note`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Couldn't save the note. Try again.");
+  }
+  const data: { note: string | null } = await response.json();
+  return data.note;
 }
 
 // DELETE /api/sessions/{id}
