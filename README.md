@@ -31,7 +31,11 @@ lore start   →   code as usual (AI agent, paste, or type)   →   lore stop   
 - **"Lore found an issue"**: a red badge on a line where the AI-written code has a real edge case or bug, with the reason.
 - **Teach-back.** Click **Test me** and explain the change in your own words. A small, cheap model grades it against the key points, ignores spelling, and gives hints that point you in the right direction without giving the answer. You get 3 tries; after 2 misses the key points are shown. Passing marks the change understood. You can retake a passed change as practice at any time, and you can always skip the test and mark a change yourself.
 - **Progress** per session: which files are passed, self-marked, or still to learn.
-- A GitHub-style diff with line numbers, a collapsible file list, and keyboard shortcuts (`[` `]` files, `←` `→` steps, `b` sidebar).
+- **Concepts.** Each change is tagged with 1–3 general concepts ("Loops", "Fetching data from APIs") from a list you can edit. The **Concepts** page shows every concept across your sessions and how much of it you've understood. See [Concepts](#concepts).
+- **Review.** Changes you understood come back after 1, 3, 7 and 14 days, with one question each. The **Review** button in the top bar shows how many are due. See [Review](#review).
+- **AI cost** per session: an estimate of what the session cost in AI calls, split into summary, explain and grading. See [Costs](#costs).
+- Big changes are split into pieces of whole functions, so you can study a long file one part at a time.
+- A GitHub-style diff with line numbers, a collapsible file list, a light/dark switch, and keyboard shortcuts (`[` `]` files, `←` `→` steps, `b` sidebar).
 
 ## Requirements
 
@@ -95,6 +99,9 @@ On the page:
 3. Click **Explain this** on a change and step through it with `←` `→`.
 4. Click **Test me** and explain the change in your own words, or **Skip test** to mark it yourself.
 5. **Start learning →** takes you to the next change you haven't understood.
+6. Come back over the next days and open **Review** in the top bar to answer what's due.
+
+To remove a session you don't need, click **Delete** on it in the session list (or **Delete session** on its page). It removes the session and its hidden snapshot, never your code. A session that's still running can't be deleted: stop it first with `lore stop`.
 
 Press `Ctrl+C` in the terminal to stop `lore ui`.
 
@@ -117,9 +124,23 @@ Lore must run inside a git repository. If the folder isn't one, it tells you to 
 
 When you run `lore stop`, each change is tagged with 1–3 general concepts, like "Loops" or "Fetching data from APIs", picked from a fixed list. The **Concepts** page (link in the top bar) shows every concept from your sessions in this project: how many changes used it, and how many of those you understood.
 
+On a session page, each change shows its concepts as small chips under its summary; click one to see that concept across your sessions.
+
 When nothing on the list fits a change, the AI suggests a name instead. Those show up apart, under "Suggested, not on your list".
 
 To change the list, put your own copy at `~/.lore/concepts.txt`. **It replaces the built-in list completely**, so start from a full copy of [`backend/src/main/resources/concepts.txt`](backend/src/main/resources/concepts.txt) and add or remove lines. One concept per line; a `#` line right above a group of concepts is that group's heading. Changes count from the next `lore stop` on; already tagged sessions keep their tags.
+
+## Review
+
+A change you mark understood, or pass in teach-back, comes back for review **1 day** later. Each review asks one question: *"In your own words, what does this change do, and why?"* The answer is graded like a teach-back (against the change's key points, or its one-line summary if you never clicked **Explain this**).
+
+- **Pass:** it comes back after the next gap, **3**, then **7**, then **14** days. Passing the 14-day review finishes it.
+- **Partly:** the same gap again.
+- **Not yet:** back to 1 day.
+
+The **Review** button in the top bar shows a red count of what's due today. On the page, **Show the change** opens the diff if you're stuck; the change's summary only shows after you answer, so it doesn't give the answer away. Changes you understood before this feature existed join the queue a day after you update.
+
+**For demos:** add `demo.time-travel=true` to `~/.lore/config.properties` and restart `lore ui`. The Review page then has a "pretend 1/3/7/14 days passed" box. It only moves Lore's clock while `lore ui` runs (restarting puts it back); reviews answered while it's ahead are scheduled from that pretend date.
 
 ## Costs
 
@@ -127,7 +148,7 @@ Lore calls Claude with your key only when:
 
 - you run `lore stop` (one summary call per session; sessions over 60 changes are summarized in groups of up to 60, plus one call to join them),
 - you click **Explain this** (one call per change; saved, so it's never paid for twice),
-- you click **Check my answer** (one small grading call).
+- you click **Check my answer** in a teach-back, or **Check** on a review (one small grading call each).
 
 Only **Explain** uses `claude-sonnet-5-5`, because it has to teach. Summaries and teach-back grading use the much cheaper `claude-haiku-5-5`. A small session usually costs a cent or two; sessions with many explained changes cost more.
 
@@ -141,7 +162,7 @@ anthropic.grading-model=claude-sonnet-5-5
 
 (The older `anthropic.model` line still works and sets the Explain model.)
 
-Each session page shows an **estimated** AI cost (like `~$0.02`; hover it for summary / explain / grading). It's worked out from the token counts Claude sends back and a built-in price table. If prices change, fix them in `~/.lore/config.properties` without updating Lore (check [anthropic.com/pricing](https://www.anthropic.com/pricing)):
+Each session page shows an **estimated** AI cost in its header (like **AI cost ~$0.02**). Click it for the cost of the summary, of Explain (with the number of calls) and of teach-back grading; **Show details** adds the tokens and model names. It's worked out from the token counts Claude sends back and a built-in price table. If prices change, fix them in `~/.lore/config.properties` without updating Lore (check [anthropic.com/pricing](https://www.anthropic.com/pricing)):
 
 ```properties
 price.claude-sonnet-5-5.input=2.00
@@ -158,7 +179,7 @@ A model with no price shows its token count instead. Sessions from before this f
 - Only the **changed lines** of a session go to the AI, never the whole project. Files git ignores (like `.env`) are never captured. Binary files, lockfiles and build output are skipped.
 - The web page only listens on `127.0.0.1`.
 - Lore never changes your code. It only reads it and keeps hidden snapshot refs (`refs/lore/sessions/...`).
-- Every time Lore starts, it backs up its database to `~/.lore/backups/` and keeps the newest 3. To restore, stop Lore and copy a backup over `~/.lore/lore.mv.db`.
+- Every time Lore starts, it backs up its database to `~/.lore/backups/` and keeps the newest 3. A backup whose name ends in `-ok.mv.db` is from a start where the database opened fine, and the newest of those is always kept. To restore, stop Lore and copy that backup over `~/.lore/lore.mv.db`.
 - To keep data somewhere else, set `LORE_HOME` to a folder.
 
 A secret hard-coded in a file you changed would be sent along with that change, so keep secrets in ignored files like `.env`.
@@ -174,6 +195,7 @@ A secret hard-coded in a file you changed would be sent along with that change, 
 | The summary says it couldn't be created | Your session is still saved. Fix the key or network, then click **Retry** on the session page. |
 | Port 8080 is already in use | `lore ui --port 9000` |
 | `Teach-back only works with the Anthropic provider` | Teach-back needs the default Anthropic setup; use **Skip test** meanwhile. |
+| Lore fails to start with a database error | Stop every `lore` command, then copy the newest `~/.lore/backups/lore-…-ok.mv.db` over `~/.lore/lore.mv.db`. You lose at most the work since that backup. |
 
 ## Update or uninstall
 
@@ -203,6 +225,9 @@ backend/       Java 21, Spring Boot 3, Picocli, H2, Flyway (one JAR with the web
   git/         snapshots, diffs, diff parser
   session/     sessions and the summary at lore stop
   change/      changes, explanations, teach-back attempts
+  concept/     the concept list and each change's concept tags
+  review/      the review schedule (1, 3, 7, 14 days)
+  cost/        token counts per AI call and the price table
   ai/          Anthropic API calls, prompts, output checks
   api/         REST endpoints under /api
 frontend/      React, TypeScript, Vite, Tailwind
