@@ -1,6 +1,6 @@
 // Navbar — the bar at the top of every page.
 //
-// Shows "Lore" (goes to the session list), a Concepts button, and a breadcrumb trail:
+// Shows "Lore" (goes to the session list), Concepts and Review buttons, and a breadcrumb trail:
 //   project › session title › file
 // Every crumb with a link is clickable. Long names are cut off with "…";
 // hover one to see it in full. Pages can add their own items in the
@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { conceptsUrl, sessionsUrl } from "../api/client";
+import { REVIEW_CHANGED, conceptsUrl, fetchReviewCount, reviewUrl, sessionsUrl } from "../api/client";
 import ThemeToggle from "./ThemeToggle";
 
 export interface Crumb {
@@ -28,6 +28,44 @@ interface NavbarProps {
 }
 
 
+const BOOK = (
+  <path d="M10 4.5C8.6 3.6 6.8 3 5 3c-1 0-2 .2-3 .5v12c1-.3 2-.5 3-.5 1.8 0 3.6.6 5 1.5V4.5zM11 4.5v12c1.4-.9 3.2-1.5 5-1.5 1 0 2 .2 3 .5v-12C18 3.2 17 3 16 3c-1.8 0-3.6.6-5 1.5z" />
+);
+const CLOCK = (
+  <path
+    fillRule="evenodd"
+    d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm.75-12.25a.75.75 0 0 0-1.5 0V10c0 .2.08.39.22.53l2.5 2.5a.75.75 0 1 0 1.06-1.06l-2.28-2.28V5.75z"
+    clipRule="evenodd"
+  />
+);
+
+// A pill next to the logo, in the same place on every page; solid while you're on its page.
+// badge: a count shown in a small circle (hidden at 0).
+function NavPill({ to, active, label, icon, badge = 0 }: { to: string; active: boolean; label: string; icon: ReactNode; badge?: number }) {
+  return (
+    <Link
+      to={to}
+      aria-current={active ? "page" : undefined}
+      aria-label={badge > 0 ? `${label}, ${badge} due` : label}
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
+        active
+          ? "bg-blue-600 border-blue-600 text-white"
+          : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
+      }`}
+    >
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+        {icon}
+      </svg>
+      {label}
+      {badge > 0 && (
+        <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-xs font-semibold leading-5 text-center">
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 // "/Users/me/code/my-app" → "my-app" (also works with Windows "\").
 function projectName(project: string): string {
   return project.split(/[\\/]/).filter(Boolean).pop() ?? project;
@@ -35,7 +73,25 @@ function projectName(project: string): string {
 
 export default function Navbar({ project, crumbs = [], center, right, scrolled = false }: NavbarProps) {
   const [windowScrolled, setWindowScrolled] = useState(false);
-  const onConcepts = useLocation().pathname === "/concepts";
+  const path = useLocation().pathname;
+  const [reviewDue, setReviewDue] = useState(0);
+
+  // The Review badge: how many reviews are due. Counted again whenever a review is
+  // answered or the demo clock moves (the Review page sends REVIEW_CHANGED).
+  useEffect(() => {
+    if (!project) return;
+    let ignore = false;
+    const count = () =>
+      fetchReviewCount(project)
+        .then((n) => !ignore && setReviewDue(n))
+        .catch(() => {}); // No badge is fine; the page itself still works.
+    count();
+    window.addEventListener(REVIEW_CHANGED, count);
+    return () => {
+      ignore = true;
+      window.removeEventListener(REVIEW_CHANGED, count);
+    };
+  }, [project]);
 
   useEffect(() => {
     const onScroll = () => setWindowScrolled(window.scrollY > 0);
@@ -58,28 +114,17 @@ export default function Navbar({ project, crumbs = [], center, right, scrolled =
       <div
         className={`px-6 min-h-12 py-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}
       >
-      {/* basis: room for the Concepts pill and the breadcrumbs before the rest wraps below. */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-3 min-w-0 flex-1 basis-[28rem]">
+      {/* basis: room for the Concepts and Review pills and the breadcrumbs before the rest wraps below. */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-3 min-w-0 flex-1 basis-[36rem]">
         <Link to={sessionsUrl(project)} className="font-semibold text-base text-gray-900 shrink-0">
           Lore
         </Link>
 
         {project && (
-          // A pill next to the logo, in the same place on every page; solid while you're on it.
-          <Link
-            to={conceptsUrl(project)}
-            aria-current={onConcepts ? "page" : undefined}
-            className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
-              onConcepts
-                ? "bg-blue-600 border-blue-600 text-white"
-                : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
-            }`}
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
-              <path d="M10 4.5C8.6 3.6 6.8 3 5 3c-1 0-2 .2-3 .5v12c1-.3 2-.5 3-.5 1.8 0 3.6.6 5 1.5V4.5zM11 4.5v12c1.4-.9 3.2-1.5 5-1.5 1 0 2 .2 3 .5v-12C18 3.2 17 3 16 3c-1.8 0-3.6.6-5 1.5z" />
-            </svg>
-            Concepts
-          </Link>
+          <>
+            <NavPill to={conceptsUrl(project)} active={path === "/concepts"} label="Concepts" icon={BOOK} />
+            <NavPill to={reviewUrl(project)} active={path === "/review"} label="Review" icon={CLOCK} badge={reviewDue} />
+          </>
         )}
 
         {all.length > 0 && <span className="h-5 w-px bg-gray-200 shrink-0" aria-hidden="true" />}

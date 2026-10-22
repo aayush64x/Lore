@@ -239,6 +239,85 @@ export async function fetchConcepts(project: string): Promise<ConceptsResponse> 
   return response.json();
 }
 
+// One change that's due for review (see the Review page).
+export interface ReviewItem {
+  changeId: string;
+  sessionId: string;
+  sessionReason: string | null;
+  filePath: string;
+  changeType: string;
+  description: string | null;
+  diffContent: string | null;
+  oldStart: number;
+  newStart: number;
+  concepts: { name: string; other: boolean }[];
+  gapDays: number; // the gap it's on now: 1, 3, 7 or 14
+  dueAt: string;
+}
+
+export interface ReviewResponse {
+  question: string;
+  due: ReviewItem[];
+  dueCount: number;
+  upcomingCount: number;
+  doneCount: number;
+  demo: { enabled: boolean; daysAhead: number }; // the "pretend days passed" control
+}
+
+export interface ReviewResult {
+  verdict: "pass" | "partly" | "fail";
+  gotRight: string[];
+  missing: string[]; // hints, never the answer
+  done: boolean;     // passed the last (14-day) review: it won't come back
+  gapDays: number;   // when it comes back
+  nextDueAt: string;
+}
+
+// Sent when a review is answered or the demo clock moves, so the navbar badge re-counts.
+export const REVIEW_CHANGED = "lore-review-changed";
+
+// GET /api/review?project=...
+export async function fetchReview(project: string): Promise<ReviewResponse> {
+  const response = await fetch(`/api/review?project=${encodeURIComponent(project)}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+  return response.json();
+}
+
+// GET /api/review/count?project=... -> how many are due (the navbar badge)
+export async function fetchReviewCount(project: string): Promise<number> {
+  const response = await fetch(`/api/review/count?project=${encodeURIComponent(project)}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+  const data: { due: number } = await response.json();
+  return data.due;
+}
+
+// POST /api/review/{changeId}. On failure the server sends { error } that's safe to show.
+export async function answerReview(changeId: string, answer: string): Promise<ReviewResult> {
+  const response = await fetch(`/api/review/${changeId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answer }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? "Couldn't check your answer. Try again.");
+  }
+  return response.json();
+}
+
+// Demo only (demo.time-travel=true): POST /api/demo/days-passed?days=N, or /api/demo/reset.
+export async function moveDemoClock(days: number | "reset"): Promise<void> {
+  const url = days === "reset" ? "/api/demo/reset" : `/api/demo/days-passed?days=${days}`;
+  const response = await fetch(url, { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+}
+
 // GET /api/sessions/{id}/cost
 // The cost so far, re-read after an Explain or a teach-back answer adds to it.
 export async function fetchSessionCost(id: string): Promise<SessionCost | null> {
@@ -268,6 +347,11 @@ export const DELETE_CONFIRM = "Delete this session? This can't be undone.";
 // The session list's address for a project.
 export function sessionsUrl(project: string | null): string {
   return project ? `/?project=${encodeURIComponent(project)}` : "/";
+}
+
+// The Review page's address for a project.
+export function reviewUrl(project: string): string {
+  return `/review?project=${encodeURIComponent(project)}`;
 }
 
 // The Concepts page's address for a project, optionally scrolled to one concept's row.
