@@ -504,7 +504,6 @@ export default function SessionPage() {
               result={testResults[selected.id] ?? null}
               error={testErrors[selected.id] ?? null}
               onSubmit={() => submitTest(selected)}
-              onRetry={() => setTestResults((prev) => omit(prev, selected.id))}
               onCancel={() => setTestingId(null)}
               onSkip={() => handleMarkUnderstood(selected)}
             />

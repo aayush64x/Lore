@@ -9,8 +9,6 @@ interface TeachBackPanelProps {
   result: TeachBackResult | null;
   error: string | null;
   onSubmit: () => void;
-  // Clears the grade so the answer can be edited and sent again.
-  onRetry: () => void;
   onCancel: () => void;
   // Mark understood without passing (understood_by = self).
   onSkip: () => void;
@@ -35,7 +33,6 @@ export default function TeachBackPanel({
   result,
   error,
   onSubmit,
-  onRetry,
   onCancel,
   onSkip,
 }: TeachBackPanelProps) {
@@ -43,6 +40,10 @@ export default function TeachBackPanel({
   // Already passed: this is practice. No tries used, the pass can't be lost.
   const practice = change.understoodBy === "teach_back";
   const outOfTries = state.attemptsLeft === 0 && change.understoodBy !== "teach_back";
+  // Nothing left to check: a real (not practice) pass, or no tries left. Read from the
+  // grade itself: after a real pass the change already counts as passed.
+  const finished = (result?.verdict === "pass" && !result.practice) || outOfTries;
+  const canCheck = !finished && !busy && answer.trim() !== "";
   const tryNumber = Math.min(state.attemptsUsed + (result ? 0 : 1), state.attemptsUsed + state.attemptsLeft);
   const total = state.attemptsUsed + state.attemptsLeft;
 
@@ -65,16 +66,17 @@ export default function TeachBackPanel({
         In your own words, what does this change do and why?
       </label>
 
-      {/* The answer stays on screen after checking (read-only), with the grade under it.
-          With no tries left and no answer from this visit, there's nothing to show. */}
+      {/* The box stays editable after a grade (type or paste, then check again), with the
+          grade under it. It locks only when there's nothing left to check. With no tries
+          left and no answer from this visit, there's nothing to show. */}
       {(!outOfTries || result) && (
         <textarea
           id="teach-back-answer"
           value={answer}
           onChange={(e) => onAnswerChange(e.target.value)}
           onKeyDown={(e) => {
-            // Cmd/Ctrl+Enter sends; a plain Enter is a new line.
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !result && !busy && answer.trim() !== "") {
+            // Cmd/Ctrl+Enter checks; a plain Enter is a new line.
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canCheck) {
               e.preventDefault();
               onSubmit();
             }
@@ -82,13 +84,13 @@ export default function TeachBackPanel({
           maxLength={MAX_ANSWER}
           rows={6}
           autoFocus
-          readOnly={!!result || busy}
+          readOnly={finished || busy}
           placeholder="Plain words are fine. Spelling doesn't count."
           className="w-full text-sm p-3 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none read-only:bg-gray-50 read-only:text-gray-700"
         />
       )}
 
-      {!result && !outOfTries && (
+      {!finished && (
         <>
           <div className="flex items-center justify-between mt-1 mb-3 text-xs text-gray-400">
             <span>Cmd+Enter to check. The code stays on the left.</span>
@@ -99,10 +101,10 @@ export default function TeachBackPanel({
           <div className="flex items-center gap-3">
             <button
               onClick={onSubmit}
-              disabled={busy || answer.trim() === ""}
+              disabled={!canCheck}
               className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
             >
-              {busy ? "Checking…" : "Check my answer"}
+              {busy ? "Checking…" : result ? "Check again" : "Check my answer"}
             </button>
             <button onClick={onCancel} disabled={busy} className="text-sm text-gray-600 hover:text-gray-900">
               Back to the explanation
@@ -133,34 +135,10 @@ export default function TeachBackPanel({
         </div>
       )}
 
-      {result?.verdict === "pass" && (
-        <div className="flex items-center gap-3 mt-3">
-          {practice && (
-            <button
-              onClick={onRetry}
-              className="text-sm font-medium px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              Practice again
-            </button>
-          )}
-          <button onClick={onCancel} className="text-sm text-gray-600 hover:text-gray-900">
-            Back to the explanation
-          </button>
-        </div>
-      )}
-
-      {result && result.verdict !== "pass" && !outOfTries && (
-        <div className="flex items-center gap-3 mt-3">
-          <button
-            onClick={onRetry}
-            className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-          >
-            Retry (edit your answer)
-          </button>
-          <button onClick={onCancel} className="text-sm text-gray-600 hover:text-gray-900">
-            Back to the explanation
-          </button>
-        </div>
+      {result?.verdict === "pass" && finished && (
+        <button onClick={onCancel} className="mt-3 text-sm text-gray-600 hover:text-gray-900">
+          Back to the explanation
+        </button>
       )}
 
       {/* In practice the points are known from the pass; show them only after answering. */}

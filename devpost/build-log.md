@@ -670,3 +670,14 @@ Most of the list was already covered by steps 1–4. Added for the gaps:
 - Earlier grades aren't changed. This applies to new answers.
 
 **Files:** `backend/src/main/java/com/lore/ai/AiPrompts.java`, test in `AnthropicAiServiceTest`
+
+---
+
+## Teach-back: the answer box never locks after a grade
+
+- **From the end-to-end test:** pasting into the practice box "didn't work". After a grade, the box was locked (read-only). Typing or pasting silently did nothing, and the only hint was a light grey background.
+- Now the box **stays editable** after a grade, with the grade still showing underneath. Change or paste your answer, then click **Check again** (or Cmd+Enter). The Retry and Practice again buttons are gone, because Check again does both jobs.
+- It only locks when there's nothing left to check: a real (not practice) pass, or no tries left.
+- **Also fixed in my test setup:** `pkill` didn't match the scratch test servers (their data folder is an environment variable), so old ones kept running and held the scratch database. They're now stopped by their port.
+
+**Files:** `frontend/src/components/TeachBackPanel.tsx`, `frontend/src/pages/SessionPage.tsx`
