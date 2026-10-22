@@ -691,3 +691,14 @@ Most of the list was already covered by steps 1–4. Added for the gaps:
 - Every command, message and setting in it was checked against the code (`lore --help`, the first-run commands, error messages, config keys).
 
 **Files:** `README.md`, `devpost/slices.md` (9 done, 11 on hold)
+
+---
+
+## Slice 10 (prep): release v0.1.0
+
+- `gh` isn't installed, so the release isn't published yet. Everything for it is ready in `~/Desktop/Lore-release-v0.1.0/`: `lore.jar`, `install.sh`, `RELEASE_NOTES.md` (also in `devpost/release-notes-v0.1.0.md`).
+- Tested like a stranger would: `bash install.sh --jar lore.jar` from that folder in a scratch home. `lore --version` gives 0.1.0, and `lore` runs.
+- **Public-repo check (from the hackathon's ship guide):** the repo is public. `devpost/learner-profile.md` is ignored and was never committed. No API keys, AWS keys, private keys or tokens in any file or in the git history.
+- The Devpost write-up is **not** drafted here: the ship guide says the learner writes the submission text themselves.
+
+**Files:** `devpost/release-notes-v0.1.0.md` (new)
