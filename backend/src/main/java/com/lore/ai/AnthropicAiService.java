@@ -13,11 +13,13 @@ import com.anthropic.models.messages.StructuredMessageCreateParams;
 import com.anthropic.models.messages.StructuredOutputConfig;
 import com.anthropic.models.messages.TextBlockParam;
 import com.anthropic.models.messages.ThinkingConfigDisabled;
+import com.anthropic.models.messages.Usage;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
+import com.lore.cost.AiCallRecorder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -48,6 +50,8 @@ public class AnthropicAiService implements AiService {
     private final String defaultSummaryModel;
     private final String defaultGradingModel;
     private final String baseUrl;
+    /** Saves each call's token counts for the session's cost. Null in tests that don't need it. */
+    private final AiCallRecorder recorder;
 
     private AnthropicClient client;
     private String clientKey;
@@ -56,13 +60,20 @@ public class AnthropicAiService implements AiService {
     public AnthropicAiService(ApiKeyStore keyStore,
                               @Value("${lore.anthropic.explain-model}") String defaultExplainModel,
                               @Value("${lore.anthropic.summary-model}") String defaultSummaryModel,
-                              @Value("${lore.anthropic.grading-model}") String defaultGradingModel) {
-        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, API_BASE_URL);
+                              @Value("${lore.anthropic.grading-model}") String defaultGradingModel,
+                              AiCallRecorder recorder) {
+        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, API_BASE_URL, recorder);
     }
 
     /** Tests only: points the client at a local stub server instead of api.anthropic.com. */
     AnthropicAiService(ApiKeyStore keyStore, String defaultExplainModel, String defaultSummaryModel,
                        String defaultGradingModel, String baseUrl) {
+        this(keyStore, defaultExplainModel, defaultSummaryModel, defaultGradingModel, baseUrl, null);
+    }
+
+    AnthropicAiService(ApiKeyStore keyStore, String defaultExplainModel, String defaultSummaryModel,
+                       String defaultGradingModel, String baseUrl, AiCallRecorder recorder) {
+        this.recorder = recorder;
         this.keyStore = keyStore;
         this.defaultExplainModel = defaultExplainModel;
         this.defaultSummaryModel = defaultSummaryModel;
@@ -273,7 +284,7 @@ public class AnthropicAiService implements AiService {
                 .addUserMessage(AiPrompts.gradeUserMessage(diffContent, keyPoints, answer))
                 .build();
 
-        GradeOutput out = send(params);
+        GradeOutput out = send(model, params);
         if (out.verdict() == null) throw new AiUnavailableException("Claude returned no grade.");
         return new GradeResponse(out.verdict().name().toLowerCase(),
                 clean(out.gotRight()), clean(out.missing()), model);
@@ -286,8 +297,9 @@ public class AnthropicAiService implements AiService {
 
     /** Explain: the teaching job, on the explain model with its default thinking. */
     private <T> T explainCall(Class<T> outputType, String system, String userMessage) {
-        return send(MessageCreateParams.builder()
-                .model(keyStore.explainModelOverride().orElse(defaultExplainModel))
+        String model = keyStore.explainModelOverride().orElse(defaultExplainModel);
+        return send(model, MessageCreateParams.builder()
+                .model(model)
                 .maxTokens(MAX_TOKENS)
                 .system(system)
                 .outputConfig(outputType)
@@ -300,8 +312,9 @@ public class AnthropicAiService implements AiService {
      * and thinking tokens would come out of the same budget as the answer.
      */
     private <T> T summaryCall(Class<T> outputType, String system, String userMessage) {
-        return send(MessageCreateParams.builder()
-                .model(keyStore.summaryModelOverride().orElse(defaultSummaryModel))
+        String model = keyStore.summaryModelOverride().orElse(defaultSummaryModel);
+        return send(model, MessageCreateParams.builder()
+                .model(model)
                 .maxTokens(MAX_TOKENS)
                 .system(system)
                 .thinking(ThinkingConfigDisabled.builder().build())
@@ -310,8 +323,12 @@ public class AnthropicAiService implements AiService {
                 .build());
     }
 
-    /** Sends the request and reads the structured answer; every failure becomes AiUnavailableException. */
-    private <T> T send(StructuredMessageCreateParams<T> params) {
+    /**
+     * Sends the request and reads the structured answer; every failure becomes AiUnavailableException.
+     * Every answer that comes back is counted for the session's cost first, even one that is
+     * cut off or refused, because it was still paid for.
+     */
+    private <T> T send(String model, StructuredMessageCreateParams<T> params) {
         StructuredMessage<T> response;
         try {
             response = client().messages().create(params);
@@ -324,6 +341,12 @@ public class AnthropicAiService implements AiService {
         } catch (AnthropicException e) {
             throw new AiUnavailableException("Could not reach the Anthropic API ("
                     + e.getClass().getSimpleName() + ").");
+        }
+
+        if (recorder != null) {
+            Usage usage = response.usage();
+            recorder.record(model, usage.inputTokens(), usage.outputTokens(),
+                    usage.cacheReadInputTokens().orElse(0L), usage.cacheCreationInputTokens().orElse(0L));
         }
 
         StopReason stop = response.stopReason().orElse(null);

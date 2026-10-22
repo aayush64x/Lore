@@ -106,4 +106,40 @@ class MigrationTest {
             assertEquals("Old.", r.getString(4));
         }
     }
+
+    @Test
+    void v9_adds_an_empty_cost_table_and_keeps_old_sessions_as_they_were() throws Exception {
+        String url = newDb();
+        migrateTo(url, "8");
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            s.execute("INSERT INTO sessions (id, project_path, start_ref, status, started_at, reason, summary) "
+                    + "VALUES ('00000000-0000-0000-0000-000000000001', '/p', 'r', 'COMPLETE', CURRENT_TIMESTAMP, 'old goal', 'Old summary.')");
+            s.execute("INSERT INTO changes (id, session_id, file_path, change_type, understood) VALUES "
+                    + "('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000001', 'a.js', 'MODIFIED', TRUE)");
+            s.execute("INSERT INTO teach_back_attempts (id, change_id, answer, verdict, created_at) VALUES "
+                    + "('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'x', 'PASS', CURRENT_TIMESTAMP)");
+        }
+
+        migrateTo(url, "9");
+
+        try (Connection c = DriverManager.getConnection(url, "sa", ""); Statement s = c.createStatement()) {
+            try (ResultSet r = s.executeQuery("SELECT reason, summary FROM sessions")) {
+                assertTrue(r.next());
+                assertEquals("old goal", r.getString(1));
+                assertEquals("Old summary.", r.getString(2));
+                assertFalse(r.next());
+            }
+            try (ResultSet r = s.executeQuery(
+                    "SELECT (SELECT COUNT(*) FROM changes), (SELECT COUNT(*) FROM teach_back_attempts), (SELECT COUNT(*) FROM ai_calls)")) {
+                assertTrue(r.next());
+                assertEquals(1, r.getInt(1));
+                assertEquals(1, r.getInt(2));
+                assertEquals(0, r.getInt(3), "old sessions have no cost rows, so their cost stays hidden");
+            }
+            // New rows can point at an old session.
+            s.execute("INSERT INTO ai_calls (id, session_id, job, model, input_tokens, output_tokens, "
+                    + "cache_read_tokens, cache_write_tokens, created_at) VALUES ('00000000-0000-0000-0000-0000000000c1', "
+                    + "'00000000-0000-0000-0000-000000000001', 'EXPLAIN', 'claude-sonnet-5-5', 1, 1, 0, 0, CURRENT_TIMESTAMP)");
+        }
+    }
 }

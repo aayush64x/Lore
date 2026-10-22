@@ -26,6 +26,15 @@ export interface SessionDetailResponse {
   stoppedAt: string | null;
   changes: ChangeResponse[];
   goalGaps: string[] | null; // parts of the goal no change did; [] = all done; null = not checked
+  cost: SessionCost | null; // null for sessions from before costs were saved, and for providers other than Anthropic
+}
+
+// Estimated AI cost of a session, from token counts and the price table.
+// dollars is null when a call used a model with no price: show tokens then.
+export interface SessionCost {
+  dollars: number | null;
+  tokens: number;
+  jobs: { job: "summary" | "explain" | "grading"; dollars: number | null; tokens: number; calls: number }[];
 }
 
 // One hunk from a diff — a single chunk of modified code
@@ -192,6 +201,17 @@ export async function retrySummary(id: string): Promise<SessionDetailResponse> {
     throw new Error(body?.error ?? "Couldn't create the summary. Try again.");
   }
   return response.json();
+}
+
+// GET /api/sessions/{id}/cost
+// The cost so far, re-read after an Explain or a teach-back answer adds to it.
+export async function fetchSessionCost(id: string): Promise<SessionCost | null> {
+  const response = await fetch(`/api/sessions/${id}/cost`);
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+  const data: { cost: SessionCost | null } = await response.json();
+  return data.cost;
 }
 
 // DELETE /api/sessions/{id}

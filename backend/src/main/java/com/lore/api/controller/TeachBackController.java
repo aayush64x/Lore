@@ -11,6 +11,8 @@ import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
 import com.lore.change.TeachBackAttempt;
 import com.lore.change.TeachBackAttemptRepository;
+import com.lore.cost.AiCall;
+import com.lore.cost.AiCallRecorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -40,15 +42,18 @@ public class TeachBackController {
     private final ExplanationRepository explanationRepository;
     private final TeachBackAttemptRepository attemptRepository;
     private final AiService aiService;
+    private final AiCallRecorder recorder;
 
     public TeachBackController(ChangeRepository changeRepository,
                                ExplanationRepository explanationRepository,
                                TeachBackAttemptRepository attemptRepository,
-                               AiService aiService) {
+                               AiService aiService,
+                               AiCallRecorder recorder) {
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
         this.attemptRepository = attemptRepository;
         this.aiService = aiService;
+        this.recorder = recorder;
     }
 
     public record TeachBackRequest(String answer) {}
@@ -93,9 +98,9 @@ public class TeachBackController {
         TeachBackAttempt.Verdict verdict;
         try {
             // Only the diff, the key points and the answer go to the grader.
-            grade = AiOutputCheck.askWithRetry(
+            grade = recorder.during(change.getSession().getId(), AiCall.Job.GRADING, () -> AiOutputCheck.askWithRetry(
                     () -> aiService.grade(change.getDiffContent(), keyPoints, answer),
-                    AiOutputCheck::problems);
+                    AiOutputCheck::problems));
             verdict = TeachBackAttempt.Verdict.valueOf(grade.verdict().toUpperCase());
         } catch (AiUnavailableException e) {
             log.warn("Teach-back not graded for change {}: {}", id, e.getMessage());

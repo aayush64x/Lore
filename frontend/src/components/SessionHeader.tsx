@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import type { ReactNode } from "react";
 import { sessionDetails, sessionTitle } from "../api/client";
-import type { SessionDetailResponse } from "../api/client";
+import type { SessionCost, SessionDetailResponse } from "../api/client";
 
 interface SessionHeaderProps {
   session: SessionDetailResponse;
@@ -28,6 +28,22 @@ function duration(startedAt: string, stoppedAt: string | null): string | null {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+// "~$0.02", "<$0.01", or "~12,345 tokens" when a model had no price.
+function costText(dollars: number | null, tokens: number): string {
+  if (dollars === null) return `~${tokens.toLocaleString()} tokens`;
+  return dollars < 0.01 ? "<$0.01" : `~$${dollars.toFixed(2)}`;
+}
+
+const JOB_NAMES = { summary: "Summary", explain: "Explain", grading: "Teach-back grading" };
+
+// The hover text: what the estimate is made of.
+function costBreakdown(cost: SessionCost): string {
+  const lines = cost.jobs.map(
+    (j) => `${JOB_NAMES[j.job]}: ${j.calls === 0 ? "none yet" : costText(j.dollars, j.tokens)}`
+  );
+  return ["Estimated AI cost", ...lines, "An estimate from token counts and Lore's price table."].join("\n");
 }
 
 // Top of the session page: what you asked for, the numbers, the AI summary,
@@ -62,6 +78,12 @@ export default function SessionHeader({
     <span>
       <span className="font-semibold text-gray-900">{understood} of {total}</span> understood
     </span>,
+    // Hidden for older sessions (no cost saved) and when the provider isn't the Anthropic API.
+    session.cost && (
+      <span title={costBreakdown(session.cost)} className="cursor-help border-b border-dotted border-gray-400">
+        {costText(session.cost.dollars, session.cost.tokens)}
+      </span>
+    ),
   ].filter(Boolean);
 
   return (

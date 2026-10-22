@@ -11,6 +11,8 @@ import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
+import com.lore.cost.AiCall;
+import com.lore.cost.AiCallRecorder;
 import com.lore.session.Session;
 import com.lore.session.SessionRepository;
 import org.slf4j.Logger;
@@ -37,17 +39,20 @@ public class ChangeController {
     private final SessionRepository sessionRepository;
     private final AiService aiService;
     private final ApiKeyStore settings;
+    private final AiCallRecorder recorder;
 
     public ChangeController(ChangeRepository changeRepository,
                             ExplanationRepository explanationRepository,
                             SessionRepository sessionRepository,
                             AiService aiService,
-                            ApiKeyStore settings) {
+                            ApiKeyStore settings,
+                            AiCallRecorder recorder) {
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
         this.sessionRepository = sessionRepository;
         this.aiService = aiService;
         this.settings = settings;
+        this.recorder = recorder;
     }
 
     @PutMapping("/changes/{id}/understood")
@@ -89,9 +94,10 @@ public class ChangeController {
 
         try {
             // Asked once more if a text field comes back with stray JSON characters.
-            ExplanationResponse result = AiOutputCheck.askWithRetry(
-                    () -> aiService.explain(change.getFilePath(), change.getDiffContent(), reason, profile),
-                    AiOutputCheck::problems);
+            ExplanationResponse result = recorder.during(change.getSession().getId(), AiCall.Job.EXPLAIN,
+                    () -> AiOutputCheck.askWithRetry(
+                            () -> aiService.explain(change.getFilePath(), change.getDiffContent(), reason, profile),
+                            AiOutputCheck::problems));
             if (result == null || result.overview() == null || result.overview().isBlank()) {
                 throw new AiUnavailableException("AI returned an empty explanation.");
             }

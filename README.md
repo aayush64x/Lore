@@ -133,6 +133,17 @@ anthropic.grading-model=claude-sonnet-5-5
 
 (The older `anthropic.model` line still works and sets the Explain model.)
 
+Each session page shows an **estimated** AI cost (like `~$0.02`; hover it for summary / explain / grading). It's worked out from the token counts Claude sends back and a built-in price table. If prices change, fix them in `~/.lore/config.properties` without updating Lore (check [anthropic.com/pricing](https://www.anthropic.com/pricing)):
+
+```properties
+price.claude-sonnet-5-5.input=2.00
+price.claude-sonnet-5-5.output=10.00
+price.claude-sonnet-5-5.cache-read=0.10
+price.claude-sonnet-5-5.cache-write=2.50
+```
+
+A model with no price shows its token count instead. Sessions from before this feature, and the Bedrock provider, show no cost.
+
 ## Your data
 
 - Everything is stored locally in `~/.lore/` (an H2 database). Lore uploads nothing by itself.

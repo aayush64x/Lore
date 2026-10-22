@@ -10,6 +10,9 @@ import com.lore.change.Change;
 import com.lore.change.ChangeRepository;
 import com.lore.change.ExplanationRepository;
 import com.lore.change.TeachBackAttemptRepository;
+import com.lore.cost.AiCall;
+import com.lore.cost.AiCallRecorder;
+import com.lore.cost.AiCallRepository;
 import com.lore.git.DiffParser;
 import com.lore.git.GitService;
 import org.slf4j.Logger;
@@ -59,6 +62,8 @@ public class SessionService {
     private final AiService aiService;
     private final ExplanationRepository explanationRepository;
     private final TeachBackAttemptRepository attemptRepository;
+    private final AiCallRepository aiCallRepository;
+    private final AiCallRecorder recorder;
     private final TransactionTemplate transaction;
 
     public SessionService(SessionRepository sessionRepository,
@@ -68,6 +73,8 @@ public class SessionService {
                           AiService aiService,
                           ExplanationRepository explanationRepository,
                           TeachBackAttemptRepository attemptRepository,
+                          AiCallRepository aiCallRepository,
+                          AiCallRecorder recorder,
                           PlatformTransactionManager transactionManager) {
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
@@ -76,6 +83,8 @@ public class SessionService {
         this.aiService = aiService;
         this.explanationRepository = explanationRepository;
         this.attemptRepository = attemptRepository;
+        this.aiCallRepository = aiCallRepository;
+        this.recorder = recorder;
         this.transaction = new TransactionTemplate(transactionManager);
     }
 
@@ -171,8 +180,8 @@ public class SessionService {
     public static final String STOP_FIRST = "Stop this session first with lore stop.";
 
     /**
-     * Deletes a stopped (or discarded) session and everything saved for it: teach-back
-     * attempts, explanations (with their key points), changes, then the session, in one
+     * Deletes a stopped (or discarded) session and everything saved for it: AI call costs,
+     * teach-back attempts, explanations (with their key points), changes, then the session, in one
      * transaction. The foreign keys don't cascade, so children go first. Only after that
      * commits are the session's own snapshot refs removed from the project's repo.
      *
@@ -183,6 +192,7 @@ public class SessionService {
         Session session = transaction.execute(status -> {
             Session s = sessionRepository.findById(sessionId).orElseThrow();
             if (s.getStatus() == Session.SessionStatus.ACTIVE) throw new IllegalStateException(STOP_FIRST);
+            aiCallRepository.deleteAll(aiCallRepository.findBySessionId(sessionId));
             attemptRepository.deleteAll(attemptRepository.findByChangeSessionIdOrderByCreatedAt(sessionId));
             explanationRepository.deleteAll(explanationRepository.findByChangeSessionId(sessionId));
             changeRepository.deleteAll(changeRepository.findBySessionIdOrderByDisplayOrder(sessionId));
@@ -254,9 +264,11 @@ public class SessionService {
                             c.getChangeType().name(), c.getDiffContent(), c.isBinary()))
                     .toList();
 
-            SummaryResponse summary = aiInputs.size() <= SUMMARY_BATCH_SIZE
-                    ? askSummary(aiInputs, session.getReason())
-                    : summarizeInGroups(aiInputs, session.getReason(), progress);
+            UUID sessionId = session.getId();
+            SummaryResponse summary = recorder.during(sessionId, AiCall.Job.SUMMARY,
+                    () -> aiInputs.size() <= SUMMARY_BATCH_SIZE
+                            ? askSummary(aiInputs, session.getReason())
+                            : summarizeInGroups(sessionId, aiInputs, session.getReason(), progress));
             if (summary == null || summary.sessionSummary() == null || summary.sessionSummary().isBlank()) {
                 throw new AiUnavailableException("AI returned an empty summary.");
             }
@@ -323,7 +335,7 @@ public class SessionService {
      * asks for one session summary (and goal check) from the groups' summaries. If any call
      * fails the whole summary fails, so a session never ends up half described.
      */
-    private SummaryResponse summarizeInGroups(List<AiService.ChangeInput> inputs, String reason,
+    private SummaryResponse summarizeInGroups(UUID sessionId, List<AiService.ChangeInput> inputs, String reason,
                                               Consumer<String> progress) {
         List<List<AiService.ChangeInput>> groups = summaryGroups(inputs);
         progress.accept("Summarizing " + inputs.size() + " changes in " + groups.size() + " groups...");
@@ -334,7 +346,8 @@ public class SessionService {
             List<CompletableFuture<SummaryResponse>> futures = new ArrayList<>();
             for (List<AiService.ChangeInput> group : groups) {
                 futures.add(CompletableFuture.supplyAsync(() -> {
-                    SummaryResponse part = askSummary(group, reason);
+                    // A pool thread: it says itself which session its calls are for.
+                    SummaryResponse part = recorder.during(sessionId, AiCall.Job.SUMMARY, () -> askSummary(group, reason));
                     progress.accept("  " + done.incrementAndGet() + " of " + groups.size() + " groups done.");
                     return part;
                 }, pool));

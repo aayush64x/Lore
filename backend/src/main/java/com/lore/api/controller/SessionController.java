@@ -13,6 +13,7 @@ import com.lore.change.Explanation;
 import com.lore.change.ExplanationRepository;
 import com.lore.change.TeachBackAttempt;
 import com.lore.change.TeachBackAttemptRepository;
+import com.lore.cost.SessionCost;
 import com.lore.session.Session;
 import com.lore.session.SessionRepository;
 import com.lore.session.SessionService;
@@ -40,16 +41,18 @@ public class SessionController {
     private final ExplanationRepository explanationRepository;
     private final ApiKeyStore settings;
     private final TeachBackAttemptRepository attemptRepository;
+    private final SessionCost sessionCost;
 
     public SessionController(SessionService sessionService, SessionRepository sessionRepository, ChangeRepository changeRepository,
                              ExplanationRepository explanationRepository, ApiKeyStore settings,
-                             TeachBackAttemptRepository attemptRepository){
+                             TeachBackAttemptRepository attemptRepository, SessionCost sessionCost){
         this.sessionService = sessionService;
         this.sessionRepository = sessionRepository;
         this.changeRepository = changeRepository;
         this.explanationRepository = explanationRepository;
         this.settings = settings;
         this.attemptRepository = attemptRepository;
+        this.sessionCost = sessionCost;
 
     }
 
@@ -106,6 +109,18 @@ public class SessionController {
                     "summaryStatus", result.session().getSummaryStatus().toString()));
         }
         return ResponseEntity.ok(toDetail(result.session()));
+    }
+
+    /**
+     * The session's estimated AI cost, for the page to refresh after an Explain or a grade.
+     * {"cost": null} when there's nothing to show. 404: no such session.
+     */
+    @GetMapping("/sessions/{id}/cost")
+    public Map<String, Object> getSessionCost(@PathVariable UUID id) {
+        if (!sessionRepository.existsById(id)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        Map<String, Object> out = new HashMap<>();
+        out.put("cost", sessionCost.of(id).orElse(null));
+        return out;
     }
 
     /**
@@ -173,7 +188,8 @@ public class SessionController {
                 session.getStartedAt(),
                 session.getStoppedAt(),
                 changeResponses,
-                goalGaps(session.getGoalGaps())
+                goalGaps(session.getGoalGaps()),
+                sessionCost.of(id).orElse(null)
         );
     }
 

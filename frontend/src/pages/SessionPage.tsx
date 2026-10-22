@@ -19,6 +19,7 @@ import {
   deleteSession,
   explainChange,
   fetchSession,
+  fetchSessionCost,
   retrySummary,
   sessionTitle,
   sessionsUrl,
@@ -250,6 +251,14 @@ export default function SessionPage() {
       });
   }
 
+  // Explain and teach-back calls add to the session's AI cost, even when they fail.
+  function refreshCost() {
+    if (!id) return;
+    fetchSessionCost(id)
+      .then((cost) => setSession((prev) => (prev ? { ...prev, cost } : prev)))
+      .catch(() => {}); // The old number stays; it's only an estimate.
+  }
+
   async function handleExplain(changeId: string, refresh = false) {
     setExplainingId(changeId);
     setExplainErrors((prev) => {
@@ -265,6 +274,7 @@ export default function SessionPage() {
       setExplainErrors((prev) => ({ ...prev, [changeId]: "Couldn't explain this change." }));
     } finally {
       setExplainingId(null);
+      refreshCost();
     }
   }
 
@@ -339,6 +349,7 @@ export default function SessionPage() {
       }
     } finally {
       setTestBusyId(null);
+      refreshCost();
     }
   }
 

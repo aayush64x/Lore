@@ -5,11 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
+import com.lore.cost.AiCall;
+import com.lore.cost.AiCallRecorder;
+import com.lore.cost.AiCallRepository;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -17,9 +21,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 /** Runs AnthropicAiService against a local stub server; nothing goes to the real API. */
 class AnthropicAiServiceTest {
@@ -65,6 +72,75 @@ class AnthropicAiServiceTest {
                 "content", List.of(Map.of("type", "text", "text", text)),
                 "stop_reason", "end_turn",
                 "usage", Map.of("input_tokens", 10, "output_tokens", 10)));
+    }
+
+    // --- token counts for the session's cost ---
+
+    private static String messageWithUsage(String text, Map<String, Object> usage) throws Exception {
+        return mapper.writeValueAsString(Map.of(
+                "id", "msg_test", "type", "message", "role", "assistant", "model", "claude-haiku-5-5",
+                "content", List.of(Map.of("type", "text", "text", text)),
+                "stop_reason", "end_turn",
+                "usage", usage));
+    }
+
+    private AnthropicAiService recordingService(Path home, AiCallRecorder recorder) {
+        ApiKeyStore store = new ApiKeyStore(home, name -> ApiKeyStore.ENV_VAR.equals(name) ? FAKE_KEY : null);
+        return new AnthropicAiService(store, "claude-sonnet-5-5", "claude-haiku-5-5", "claude-haiku-5-5",
+                "http://127.0.0.1:" + server.getAddress().getPort(), recorder);
+    }
+
+    @Test
+    void each_answer_saves_the_models_token_counts_for_the_session(@TempDir Path home) throws Exception {
+        AiCallRepository repository = mock(AiCallRepository.class);
+        AiCallRecorder recorder = new AiCallRecorder(repository);
+        responseBody = messageWithUsage("{\"session_summary\": \"ok\", \"change_descriptions\": []}", Map.of(
+                "input_tokens", 1200, "output_tokens", 300,
+                "cache_read_input_tokens", 40, "cache_creation_input_tokens", 7));
+        UUID session = UUID.randomUUID();
+
+        recorder.during(session, AiCall.Job.SUMMARY, () -> recordingService(home, recorder).summarize(List.of(), null));
+
+        ArgumentCaptor<AiCall> saved = ArgumentCaptor.forClass(AiCall.class);
+        verify(repository).save(saved.capture());
+        AiCall row = saved.getValue();
+        assertEquals(session, row.getSessionId());
+        assertEquals(AiCall.Job.SUMMARY, row.getJob());
+        assertEquals("claude-haiku-5-5", row.getModel());
+        assertEquals(1200, row.getInputTokens());
+        assertEquals(300, row.getOutputTokens());
+        assertEquals(40, row.getCacheReadTokens());
+        assertEquals(7, row.getCacheWriteTokens());
+    }
+
+    @Test
+    void an_answer_that_was_cut_off_is_still_counted(@TempDir Path home) throws Exception {
+        AiCallRepository repository = mock(AiCallRepository.class);
+        AiCallRecorder recorder = new AiCallRecorder(repository);
+        responseBody = mapper.writeValueAsString(Map.of(
+                "id", "msg_test", "type", "message", "role", "assistant", "model", "claude-haiku-5-5",
+                "content", List.of(Map.of("type", "text", "text", "{\"session_summary\": \"cut")),
+                "stop_reason", "max_tokens",
+                "usage", Map.of("input_tokens", 5000, "output_tokens", 16000)));
+
+        assertThrows(AiUnavailableException.class, () -> recorder.during(UUID.randomUUID(), AiCall.Job.SUMMARY,
+                () -> recordingService(home, recorder).summarize(List.of(), null)));
+
+        verify(repository).save(any(AiCall.class));
+    }
+
+    @Test
+    void if_saving_the_cost_fails_the_answer_still_comes_back(@TempDir Path home) throws Exception {
+        AiCallRepository repository = mock(AiCallRepository.class);
+        when(repository.save(any())).thenThrow(new IllegalStateException("database is busy"));
+        AiCallRecorder recorder = new AiCallRecorder(repository);
+        responseBody = message("{\"session_summary\": \"Still here.\", \"change_descriptions\": []}");
+
+        SummaryResponse r = recorder.during(UUID.randomUUID(), AiCall.Job.SUMMARY,
+                () -> recordingService(home, recorder).summarize(List.of(), null));
+
+        assertEquals("Still here.", r.sessionSummary());
+        verify(repository).save(any(AiCall.class));
     }
 
     @Test

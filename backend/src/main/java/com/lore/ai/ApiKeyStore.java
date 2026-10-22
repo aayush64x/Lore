@@ -87,6 +87,11 @@ public class ApiKeyStore {
         return setting(load(), GRADING_MODEL_PROPERTY);
     }
 
+    /** Any other line from config.properties, like price.claude-haiku-5-5.input, if set. */
+    public Optional<String> setting(String name) {
+        return setting(load(), name);
+    }
+
     private static Optional<String> setting(Properties props, String name) {
         return Optional.ofNullable(props.getProperty(name))
                 .map(String::strip)

@@ -7,6 +7,7 @@ import com.lore.ai.AiUnavailableException;
 import com.lore.ai.dto.ExplanationResponse;
 import com.lore.ai.dto.GradeResponse;
 import com.lore.ai.dto.SummaryResponse;
+import com.lore.cost.AiCallRecorder;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -44,6 +45,15 @@ public class FakeAi implements AiService {
     public volatile String lastGradeAnswer;
     /** How many of the next answers (summary or explanation) end a text with stray "}]}". */
     public volatile int garbledAnswers;
+    /**
+     * When set, every call reports token counts to it like the real service does:
+     * model "fake-<job>", 1000 input, 100 output, 10 cache read, 1 cache write.
+     */
+    public volatile AiCallRecorder recorder;
+
+    private void reportTokens(String job) {
+        if (recorder != null) recorder.record("fake-" + job, 1000, 100, 10, 1);
+    }
 
     public void reset(Mode mode) {
         this.mode = mode;
@@ -76,6 +86,7 @@ public class FakeAi implements AiService {
     public synchronized SummaryResponse summarize(List<ChangeInput> changes, String reason) {
         summarizeCalls++;
         summarizeSizes.add(changes.size());
+        reportTokens("summary");
         fail();
         String summary = "Summary for: " + reason + tail();
         // Like the real service: the goal check only when a goal was given.
@@ -94,6 +105,7 @@ public class FakeAi implements AiService {
     public SummaryResponse combineSummaries(List<SummaryResponse> parts, String reason) {
         combineCalls++;
         lastCombineParts = parts;
+        reportTokens("combine");
         fail();
         if (crashCombine) throw new IllegalStateException("boom");
         String summary = "Combined " + parts.size() + " parts" + tail();
@@ -104,6 +116,7 @@ public class FakeAi implements AiService {
     @Override
     public ExplanationResponse explain(String filePath, String diffContent, String reason, UserProfile profile) {
         explainCalls++;
+        reportTokens("explain");
         lastExplainReason = reason;
         lastExplainProfile = profile;
         fail();
@@ -117,6 +130,7 @@ public class FakeAi implements AiService {
     @Override
     public GradeResponse grade(String diffContent, List<String> keyPoints, String answer) {
         gradeCalls++;
+        reportTokens("grade");
         lastGradeDiff = diffContent;
         lastGradeKeyPoints = keyPoints;
         lastGradeAnswer = answer;
