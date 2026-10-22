@@ -60,6 +60,11 @@ public class ReviewSchedule {
         return repository.save(item);
     }
 
+    /** The gap, in days, the item is on now (1, 3, 7 or 14). */
+    public static int gapDays(ReviewItem item) {
+        return DAYS[item.getStep()];
+    }
+
     /** True if it's waiting to be reviewed now: due, and not finished. */
     public boolean isDue(ReviewItem item) {
         return item.getDoneAt() == null && !item.getDueAt().isAfter(clock.now());
