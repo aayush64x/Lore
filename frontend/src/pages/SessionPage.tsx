@@ -94,6 +94,7 @@ export default function SessionPage() {
   // they're all at the top again. (Narrow screens scroll the whole page, header and all.)
   const [headerHidden, setHeaderHidden] = useState(false);
   const columnTops = useRef({ files: 0, diff: 0, panel: 0 });
+  const headerRef = useRef<HTMLDivElement>(null);
   const diffBoxRef = useRef<HTMLDivElement>(null);
   // Files sidebar folded to a thin rail (wide screens). Remembered in this browser.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
@@ -478,12 +479,19 @@ export default function SessionPage() {
     );
   }
 
-  // Hides after 40px, shows again only at the very top: the gap stops it flickering when
-  // the header's own height is what decides whether a column can scroll at all.
-  function onColumnScroll(column: keyof typeof columnTops.current, top: number) {
-    columnTops.current[column] = top;
+  // Hides after 40px, shows again only at the very top. It only hides when the column
+  // would still scroll without it: on a short file, hiding it made the column fit, the
+  // scroll snapped back to the top, the header came back, and it flickered.
+  function onColumnScroll(column: keyof typeof columnTops.current, el: HTMLElement) {
+    columnTops.current[column] = el.scrollTop;
     const tops = Object.values(columnTops.current);
-    setHeaderHidden((hidden) => (hidden ? tops.some((t) => t > 0) : tops.some((t) => t > 40)));
+    if (headerHidden) {
+      if (!tops.some((t) => t > 0)) setHeaderHidden(false);
+      return;
+    }
+    const headerHeight = headerRef.current?.scrollHeight ?? 0;
+    const room = el.scrollHeight - el.clientHeight;
+    if (el.scrollTop > 40 && room > headerHeight + 40) setHeaderHidden(true);
   }
 
   return (
@@ -495,7 +503,7 @@ export default function SessionPage() {
         }`}
         inert={headerHidden}
       >
-        <div className="overflow-hidden min-h-0">
+        <div ref={headerRef} className="overflow-hidden min-h-0">
           <SessionHeader
             session={session}
             fileCount={files.length}
@@ -520,7 +528,7 @@ export default function SessionPage() {
         className="min-[1000px]:flex-1 min-[1000px]:min-h-0 grid grid-cols-[minmax(0,1fr)] min-[1000px]:grid-cols-[var(--sidebar-w)_minmax(0,1fr)_clamp(400px,30vw,480px)] transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none"
       >
         <aside
-          onScroll={(e) => onColumnScroll("files", e.currentTarget.scrollTop)}
+          onScroll={(e) => onColumnScroll("files", e.currentTarget)}
           className="bg-surface border-b border-line min-[1000px]:border-b-0 min-[1000px]:border-r min-[1000px]:overflow-y-auto min-[1000px]:overflow-x-hidden"
         >
           <FileSidebar
@@ -537,7 +545,7 @@ export default function SessionPage() {
           ref={diffBoxRef}
           onScroll={(e) => {
             setDiffScrolled(e.currentTarget.scrollTop > 0);
-            onColumnScroll("diff", e.currentTarget.scrollTop);
+            onColumnScroll("diff", e.currentTarget);
           }}
           className="min-w-0 px-6 py-5 min-[1000px]:overflow-y-auto"
         >
@@ -570,7 +578,7 @@ export default function SessionPage() {
         </div>
 
         <aside
-          onScroll={(e) => onColumnScroll("panel", e.currentTarget.scrollTop)}
+          onScroll={(e) => onColumnScroll("panel", e.currentTarget)}
           className="bg-surface border-t border-line min-[1000px]:border-t-0 min-[1000px]:border-l min-[1000px]:overflow-y-auto"
         >
           {selected && passNote?.forChangeId === selected.id && (
