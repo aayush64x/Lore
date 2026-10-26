@@ -242,3 +242,7 @@ To work on Lore: `cd backend && mvn package` builds everything and runs the test
 Java 21, Spring Boot, Picocli, Spring Data JPA, H2, Flyway, the Anthropic Java SDK (Claude Sonnet and Haiku), React, TypeScript, Vite and Tailwind.
 
 Built for the Devpost hackathon "Build With AI: Basics", with an AI coding agent. The planning documents and a step-by-step build log are in `devpost/`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
